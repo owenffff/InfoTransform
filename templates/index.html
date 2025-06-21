@@ -22,31 +22,68 @@
                         <polyline points="7 10 12 15 17 10"></polyline>
                         <line x1="12" y1="15" x2="12" y2="3"></line>
                     </svg>
-                    <p class="drop-text">Drop your file here or click to browse</p>
-                    <p class="file-types">Supported: Images (JPG, PNG), PDFs, Documents (DOCX, PPTX), Audio (MP3, WAV)</p>
-                    <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.pdf,.docx,.pptx,.xlsx,.mp3,.wav,.m4a,.flac,.ogg,.webm" hidden>
+                    <p class="drop-text">Drop files here or click to browse</p>
+                    <p class="file-types">Supported: Images, PDFs, Documents, Audio, ZIP archives</p>
+                    <p class="batch-info">💡 Select multiple files or upload a ZIP archive for batch processing</p>
+                    <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.pdf,.docx,.pptx,.xlsx,.mp3,.wav,.m4a,.flac,.ogg,.webm,.zip" multiple hidden>
                 </div>
             </div>
 
             <!-- Processing Status -->
             <div id="processingStatus" class="processing-status hidden">
                 <div class="spinner"></div>
-                <p>Processing your file...</p>
+                <p id="processingText">Processing your file...</p>
+                <div id="progressContainer" class="progress-container hidden">
+                    <div class="progress-bar">
+                        <div id="progressBar" class="progress-fill"></div>
+                    </div>
+                    <p id="progressText" class="progress-text">0 / 0 files</p>
+                </div>
             </div>
 
             <!-- Results Section -->
             <div id="resultsSection" class="results-section hidden">
                 <div class="results-header">
                     <h2>📄 Conversion Result</h2>
-                    <button id="downloadBtn" class="download-btn">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                            <polyline points="7 10 12 15 17 10"></polyline>
-                            <line x1="12" y1="15" x2="12" y2="3"></line>
-                        </svg>
-                        Download Markdown
-                    </button>
+                    <div class="download-options">
+                        <button id="downloadBtn" class="download-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            Download Markdown
+                        </button>
+                        <button id="downloadZipBtn" class="download-btn secondary hidden">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 11v10H2V11"></path>
+                                <path d="M2 11V3h8l2 2h10v6"></path>
+                                <path d="M12 21v-8"></path>
+                            </svg>
+                            Download as ZIP
+                        </button>
+                    </div>
                 </div>
+                
+                <!-- Batch Summary (for multiple files) -->
+                <div id="batchSummary" class="batch-summary hidden">
+                    <h3>📊 Processing Summary</h3>
+                    <div class="summary-stats">
+                        <span class="stat">
+                            <strong>Total:</strong> <span id="totalFiles">0</span> files
+                        </span>
+                        <span class="stat success">
+                            <strong>✓ Processed:</strong> <span id="processedFiles">0</span>
+                        </span>
+                        <span class="stat error">
+                            <strong>✗ Failed:</strong> <span id="failedFiles">0</span>
+                        </span>
+                        <span class="stat skipped">
+                            <strong>⊘ Skipped:</strong> <span id="skippedFiles">0</span>
+                        </span>
+                    </div>
+                </div>
+                
                 <div class="result-content">
                     <pre id="resultContent"></pre>
                 </div>

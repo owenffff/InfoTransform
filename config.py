@@ -46,6 +46,12 @@ Format your response as clean markdown.""")
     ALLOWED_AUDIO_EXTENSIONS = {'mp3', 'wav', 'm4a', 'flac', 'ogg', 'webm'}
     ALLOWED_DOCUMENT_EXTENSIONS = {'pdf', 'docx', 'pptx', 'xlsx'}
     
+    # Batch Processing Configuration
+    MAX_CONCURRENT_PROCESSES = int(os.getenv('MAX_CONCURRENT_PROCESSES', 5))
+    BATCH_TIMEOUT = int(os.getenv('BATCH_TIMEOUT', 300))  # 5 minutes
+    MAX_ZIP_SIZE = 100 * 1024 * 1024  # 100MB for ZIP files
+    TEMP_EXTRACT_DIR = 'temp_extracts'
+    
     @classmethod
     def validate(cls):
         """Validate required configuration"""

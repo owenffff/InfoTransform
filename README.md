@@ -7,9 +7,12 @@ A web-based MVP that uses Microsoft's Markitdown library to convert images, docu
 - **🖼️ Image OCR**: Extract text from images (JPG, PNG, GIF, BMP, WebP)
 - **📄 Document Processing**: Convert PDFs, DOCX, PPTX, and XLSX files to Markdown
 - **🎤 Speech-to-Text**: Transcribe audio files (MP3, WAV, M4A, FLAC, OGG, WebM)
+- **📦 Batch Processing**: Process multiple files at once or upload ZIP archives
+- **⚡ Async Processing**: Fast concurrent processing of multiple files
+- **🗂️ Structure Preservation**: Maintains directory structure from ZIP files
 - **🔌 OpenAI-Compatible**: Works with any OpenAI-compatible API endpoint
-- **💾 Download Results**: Save processed content as Markdown files
-- **🎨 Clean Web Interface**: Simple drag-and-drop file upload
+- **💾 Flexible Downloads**: Save as combined Markdown or structured ZIP
+- **🎨 Clean Web Interface**: Simple drag-and-drop file upload with progress tracking
 
 ## 🚀 Quick Start
 
@@ -66,6 +69,8 @@ A web-based MVP that uses Microsoft's Markitdown library to convert images, docu
 | `WHISPER_MODEL` | Audio transcription model | `whisper-1` |
 | `VISION_PROMPT` | Custom prompt for image analysis | Smart OCR + description prompt |
 | `DOCINTEL_ENDPOINT` | Azure Document Intelligence endpoint | None (uses LLM-only mode) |
+| `MAX_CONCURRENT_PROCESSES` | Max files to process simultaneously | `5` |
+| `BATCH_TIMEOUT` | Timeout for batch processing (seconds) | `300` |
 | `FLASK_PORT` | Port to run the server on | `5000` |
 
 ### Vision Prompt Configuration
@@ -114,7 +119,8 @@ markitdown-mvp/
 ├── config.py           # Configuration management
 ├── processors/         # File processing modules
 │   ├── vision.py       # Image/document processor
-│   └── audio.py        # Audio transcription
+│   ├── audio.py        # Audio transcription
+│   └── batch.py        # Batch processing handler
 ├── templates/          # HTML templates
 │   └── index.html      # Main web interface
 ├── static/             # Static assets
@@ -127,16 +133,33 @@ markitdown-mvp/
 
 ## 🎯 Usage
 
+### Single File Processing
 1. **Upload a File**: Drag and drop or click to browse
 2. **Wait for Processing**: The file will be automatically processed
 3. **View Results**: See the Markdown output in the preview area
 4. **Download**: Click "Download Markdown" to save the result
+
+### Batch Processing
+1. **Select Multiple Files**: Use Ctrl/Cmd+Click or drag multiple files
+2. **Or Upload a ZIP**: Upload a ZIP archive containing multiple files
+3. **View Summary**: See processing statistics and combined results
+4. **Download Options**:
+   - **Download Markdown**: Get all results in a single markdown file
+   - **Download as ZIP**: Get individual markdown files preserving folder structure
+
+### Batch Processing Features
+- **Concurrent Processing**: Files are processed in parallel for speed
+- **Progress Tracking**: See real-time progress during batch operations
+- **Structure Preservation**: ZIP file directory structure is maintained
+- **Mixed File Types**: Process images, documents, and audio in one batch
+- **Error Handling**: Failed files don't stop the batch; see summary of successes/failures
 
 ### Supported File Types
 
 - **Images**: JPG, PNG, GIF, BMP, WebP
 - **Documents**: PDF, DOCX, PPTX, XLSX
 - **Audio**: MP3, WAV, M4A, FLAC, OGG, WebM
+- **Archives**: ZIP (for batch processing)
 
 ## 🛠️ Development
 
@@ -162,10 +185,12 @@ python app.py
 
 ## ⚠️ Limitations
 
-- Maximum file size: 16MB
+- Maximum file size: 16MB per file
+- Maximum ZIP size: 100MB for batch uploads
 - Processing time depends on file size and API response time
 - API rate limits apply based on your provider
 - Some complex layouts may not convert perfectly
+- Concurrent processing limited to 5 files at a time (configurable)
 
 ## 🔒 Security Notes
 
