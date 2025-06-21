@@ -10,7 +10,7 @@ import shutil
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime
-from config import Config
+from config import config
 
 
 class BatchProcessor:
@@ -38,7 +38,7 @@ class BatchProcessor:
         Returns:
             List of dicts with 'path' (relative) and 'full_path' (absolute)
         """
-        temp_dir = tempfile.mkdtemp(prefix='markitdown_', dir=Config.TEMP_EXTRACT_DIR)
+        temp_dir = tempfile.mkdtemp(prefix='markitdown_', dir=config.TEMP_EXTRACT_DIR)
         self.temp_dirs.append(temp_dir)
         
         files_info = []
@@ -136,8 +136,8 @@ class BatchProcessor:
         results = []
         if tasks:
             # Process in batches to respect concurrency limit
-            for i in range(0, len(tasks), Config.MAX_CONCURRENT_PROCESSES):
-                batch = tasks[i:i + Config.MAX_CONCURRENT_PROCESSES]
+            for i in range(0, len(tasks), config.MAX_CONCURRENT_PROCESSES):
+                batch = tasks[i:i + config.MAX_CONCURRENT_PROCESSES]
                 batch_results = await asyncio.gather(*batch, return_exceptions=True)
                 
                 # Handle results and exceptions

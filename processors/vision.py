@@ -5,27 +5,27 @@ Vision processor for handling images and documents using Markitdown
 import os
 from markitdown import MarkItDown
 from openai import OpenAI
-from config import Config
+from config import config
 
 
 class VisionProcessor:
     def __init__(self):
         """Initialize the vision processor with OpenAI-compatible client"""
         self.client = OpenAI(
-            api_key=Config.API_KEY,
-            base_url=Config.BASE_URL
+            api_key=config.API_KEY,
+            base_url=config.BASE_URL
         )
         
         # Initialize Markitdown with LLM support and optional Azure Document Intelligence
         init_params = {
             'llm_client': self.client,
-            'llm_model': Config.MODEL_NAME
+            'llm_model': config.MODEL_NAME
         }
         
         # Add Azure Document Intelligence endpoint if configured
-        if Config.DOCINTEL_ENDPOINT:
-            init_params['docintel_endpoint'] = Config.DOCINTEL_ENDPOINT
-            print(f"✓ Azure Document Intelligence enabled: {Config.DOCINTEL_ENDPOINT}")
+        if config.DOCINTEL_ENDPOINT:
+            init_params['docintel_endpoint'] = config.DOCINTEL_ENDPOINT
+            print(f"✓ Azure Document Intelligence enabled: {config.DOCINTEL_ENDPOINT}")
         
         self.md = MarkItDown(**init_params)
     
@@ -41,7 +41,7 @@ class VisionProcessor:
         """
         try:
             # Convert the file using Markitdown with custom vision prompt
-            result = self.md.convert(file_path, llm_prompt=Config.VISION_PROMPT)
+            result = self.md.convert(file_path, llm_prompt=config.VISION_PROMPT)
             
             return {
                 'success': True,
@@ -62,7 +62,7 @@ class VisionProcessor:
         """Check if the file type is supported for vision processing"""
         ext = filename.lower().split('.')[-1]
         supported_extensions = (
-            Config.ALLOWED_IMAGE_EXTENSIONS | 
-            Config.ALLOWED_DOCUMENT_EXTENSIONS
+            config.ALLOWED_IMAGE_EXTENSIONS | 
+            config.ALLOWED_DOCUMENT_EXTENSIONS
         )
         return ext in supported_extensions

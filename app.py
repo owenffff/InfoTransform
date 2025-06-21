@@ -6,7 +6,7 @@ import os
 import asyncio
 from flask import Flask, render_template, request, jsonify, send_file
 from werkzeug.utils import secure_filename
-from config import Config
+from config import config
 from processors import VisionProcessor, AudioProcessor, BatchProcessor
 import tempfile
 from datetime import datetime
@@ -14,12 +14,12 @@ import zipfile
 
 # Initialize Flask app
 app = Flask(__name__)
-app.config['SECRET_KEY'] = Config.SECRET_KEY
-app.config['MAX_CONTENT_LENGTH'] = Config.MAX_CONTENT_LENGTH
+app.config['SECRET_KEY'] = config.SECRET_KEY
+app.config['MAX_CONTENT_LENGTH'] = config.MAX_CONTENT_LENGTH
 
 # Create upload folder if it doesn't exist
-os.makedirs(Config.UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(Config.TEMP_EXTRACT_DIR, exist_ok=True)
+os.makedirs(config.UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(config.TEMP_EXTRACT_DIR, exist_ok=True)
 
 # Initialize processors
 vision_processor = None
@@ -30,7 +30,7 @@ def init_processors():
     """Initialize processors with error handling"""
     global vision_processor, audio_processor, batch_processor
     try:
-        Config.validate()
+        config.validate()
         vision_processor = VisionProcessor()
         audio_processor = AudioProcessor()
         batch_processor = BatchProcessor(vision_processor, audio_processor)
@@ -58,7 +58,7 @@ def upload_file():
     filename = secure_filename(file.filename)
     
     # Save the file temporarily
-    file_path = os.path.join(Config.UPLOAD_FOLDER, filename)
+    file_path = os.path.join(config.UPLOAD_FOLDER, filename)
     file.save(file_path)
     
     try:
@@ -125,15 +125,15 @@ def upload_batch():
         for file in files:
             if file.filename:
                 filename = secure_filename(file.filename)
-                file_path = os.path.join(Config.UPLOAD_FOLDER, filename)
+                file_path = os.path.join(config.UPLOAD_FOLDER, filename)
                 file.save(file_path)
                 saved_files.append(file_path)
                 
                 # Check if it's a ZIP file
                 if batch_processor.is_zip_file(filename):
                     # Check ZIP file size
-                    if os.path.getsize(file_path) > Config.MAX_ZIP_SIZE:
-                        raise Exception(f"ZIP file {filename} exceeds maximum size of {Config.MAX_ZIP_SIZE // (1024*1024)}MB")
+                    if os.path.getsize(file_path) > config.MAX_ZIP_SIZE:
+                        raise Exception(f"ZIP file {filename} exceeds maximum size of {config.MAX_ZIP_SIZE // (1024*1024)}MB")
                     
                     # Extract ZIP and get file info
                     extracted_files = batch_processor.extract_zip_with_structure(file_path)
@@ -230,7 +230,7 @@ if __name__ == '__main__':
     # Initialize processors
     if init_processors():
         print("✅ Processors initialized successfully")
-        print(f"🚀 Starting server on http://localhost:{Config.FLASK_PORT}")
-        app.run(debug=True, port=Config.FLASK_PORT)
+        print(f"🚀 Starting server on http://localhost:{config.FLASK_PORT}")
+        app.run(debug=True, port=config.FLASK_PORT)
     else:
         print("❌ Failed to initialize processors. Please check your configuration.")

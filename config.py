@@ -93,6 +93,11 @@ class Config:
     def TEMP_EXTRACT_DIR(self):
         return self.yaml_config['batch_processing']['temp_extract_dir']
     
+    # Server settings from YAML
+    @property
+    def UVICORN_PORT(self):
+        return self.yaml_config.get('server', {}).get('uvicorn_port', 8000)
+    
     def validate(self):
         """Validate required configuration"""
         if not self.API_KEY:

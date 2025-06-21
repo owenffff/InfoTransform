@@ -4,15 +4,15 @@ Audio processor for handling speech-to-text using OpenAI Whisper API
 
 import os
 from openai import OpenAI
-from config import Config
+from config import config
 
 
 class AudioProcessor:
     def __init__(self):
         """Initialize the audio processor with OpenAI-compatible client"""
         self.client = OpenAI(
-            api_key=Config.API_KEY,
-            base_url=Config.BASE_URL
+            api_key=config.API_KEY,
+            base_url=config.BASE_URL
         )
     
     def process_file(self, file_path):
@@ -30,7 +30,7 @@ class AudioProcessor:
             with open(file_path, 'rb') as audio_file:
                 # Use Whisper API for transcription
                 transcript = self.client.audio.transcriptions.create(
-                    model=Config.WHISPER_MODEL,
+                    model=config.WHISPER_MODEL,
                     file=audio_file,
                     response_format="text"
                 )
@@ -92,4 +92,4 @@ class AudioProcessor:
     def is_supported_file(self, filename):
         """Check if the file type is supported for audio processing"""
         ext = filename.lower().split('.')[-1]
-        return ext in Config.ALLOWED_AUDIO_EXTENSIONS
+        return ext in config.ALLOWED_AUDIO_EXTENSIONS
