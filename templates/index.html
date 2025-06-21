@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markitdown MVP - OCR & Speech to Text</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📝 Markitdown MVP</h1>
+            <p>Convert images, documents, and audio to Markdown</p>
+        </header>
+
+        <main>
+            <!-- Upload Section -->
+            <div class="upload-section">
+                <div id="dropZone" class="drop-zone">
+                    <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    <p class="drop-text">Drop your file here or click to browse</p>
+                    <p class="file-types">Supported: Images (JPG, PNG), PDFs, Documents (DOCX, PPTX), Audio (MP3, WAV)</p>
+                    <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.pdf,.docx,.pptx,.xlsx,.mp3,.wav,.m4a,.flac,.ogg,.webm" hidden>
+                </div>
+            </div>
+
+            <!-- Processing Status -->
+            <div id="processingStatus" class="processing-status hidden">
+                <div class="spinner"></div>
+                <p>Processing your file...</p>
+            </div>
+
+            <!-- Results Section -->
+            <div id="resultsSection" class="results-section hidden">
+                <div class="results-header">
+                    <h2>📄 Conversion Result</h2>
+                    <button id="downloadBtn" class="download-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        Download Markdown
+                    </button>
+                </div>
+                <div class="result-content">
+                    <pre id="resultContent"></pre>
+                </div>
+            </div>
+
+            <!-- Error Display -->
+            <div id="errorDisplay" class="error-display hidden">
+                <p class="error-message"></p>
+            </div>
+        </main>
+
+        <footer>
+            <p>Powered by Markitdown & OpenAI-compatible APIs</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
