@@ -1,0 +1,58 @@
+# Model Configuration
+models:
+  vision: gpt-4-vision-preview
+  whisper: whisper-1
+
+# Prompts
+prompts:
+  vision: |
+    Please analyze this image and provide output in the following format:
+
+    1. If the image contains text (documents, screenshots, signs, etc.):
+       - Extract ALL visible text exactly as it appears
+       - Preserve the original formatting, line breaks, and structure
+       - Include any headers, bullet points, or special formatting
+       - If there are multiple columns, process them in reading order
+
+    2. If the image contains no text or minimal text:
+       - Provide a detailed description of the image content
+       - Mention key visual elements, objects, people, or scenes
+       - Note any important details or context
+
+    3. If the image contains both text and visual elements:
+       - First extract all text content
+       - Then provide a brief description of non-text elements
+
+    Format your response as clean markdown.
+
+# Upload Configuration
+upload:
+  folder: uploads
+  max_file_size_mb: 16
+  allowed_extensions:
+    images:
+      - png
+      - jpg
+      - jpeg
+      - gif
+      - bmp
+      - webp
+    audio:
+      - mp3
+      - wav
+      - m4a
+      - flac
+      - ogg
+      - webm
+    documents:
+      - pdf
+      - docx
+      - pptx
+      - xlsx
+
+# Batch Processing
+batch_processing:
+  max_concurrent: 5
+  timeout_seconds: 300
+  max_zip_size_mb: 100
+  temp_extract_dir: temp_extracts

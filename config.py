@@ -1,60 +1,131 @@
 import os
+import yaml
 from dotenv import load_dotenv
+from pathlib import Path
 
 # Load environment variables
 load_dotenv()
 
 class Config:
-    # API Configuration
-    API_KEY = os.getenv('API_KEY')
-    BASE_URL = os.getenv('BASE_URL', 'https://api.openai.com/v1')
-    MODEL_NAME = os.getenv('MODEL_NAME', 'gpt-4-vision-preview')
-    WHISPER_MODEL = os.getenv('WHISPER_MODEL', 'whisper-1')
+    def __init__(self):
+        # Load YAML configuration
+        config_path = Path(__file__).parent / 'config.yaml'
+        with open(config_path, 'r') as f:
+            self.yaml_config = yaml.safe_load(f)
+        
+        # Validate on initialization
+        self.validate()
     
-    # Vision prompt for image analysis
-    VISION_PROMPT = os.getenv('VISION_PROMPT', """Please analyze this image and provide output in the following format:
-
-1. If the image contains text (documents, screenshots, signs, etc.):
-   - Extract ALL visible text exactly as it appears
-   - Preserve the original formatting, line breaks, and structure
-   - Include any headers, bullet points, or special formatting
-   - If there are multiple columns, process them in reading order
-
-2. If the image contains no text or minimal text:
-   - Provide a detailed description of the image content
-   - Mention key visual elements, objects, people, or scenes
-   - Note any important details or context
-
-3. If the image contains both text and visual elements:
-   - First extract all text content
-   - Then provide a brief description of non-text elements
-
-Format your response as clean markdown.""")
+    # Sensitive data from environment variables
+    @property
+    def API_KEY(self):
+        return os.getenv('API_KEY')
     
-    # Azure Document Intelligence (optional)
-    DOCINTEL_ENDPOINT = os.getenv('DOCINTEL_ENDPOINT', None)
+    @property
+    def SECRET_KEY(self):
+        return os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
     
-    # Flask Configuration
-    SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
-    FLASK_ENV = os.getenv('FLASK_ENV', 'development')
-    FLASK_PORT = int(os.getenv('FLASK_PORT', 5000))
+    @property
+    def BASE_URL(self):
+        return os.getenv('BASE_URL', 'https://api.openai.com/v1')
     
-    # Upload Configuration
-    UPLOAD_FOLDER = 'uploads'
-    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size
-    ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'}
-    ALLOWED_AUDIO_EXTENSIONS = {'mp3', 'wav', 'm4a', 'flac', 'ogg', 'webm'}
-    ALLOWED_DOCUMENT_EXTENSIONS = {'pdf', 'docx', 'pptx', 'xlsx'}
+    @property
+    def DOCINTEL_ENDPOINT(self):
+        return os.getenv('DOCINTEL_ENDPOINT')
     
-    # Batch Processing Configuration
-    MAX_CONCURRENT_PROCESSES = int(os.getenv('MAX_CONCURRENT_PROCESSES', 5))
-    BATCH_TIMEOUT = int(os.getenv('BATCH_TIMEOUT', 300))  # 5 minutes
-    MAX_ZIP_SIZE = 100 * 1024 * 1024  # 100MB for ZIP files
-    TEMP_EXTRACT_DIR = 'temp_extracts'
+    # Flask settings (environment-specific)
+    @property
+    def FLASK_ENV(self):
+        return os.getenv('FLASK_ENV', 'development')
     
-    @classmethod
-    def validate(cls):
+    @property
+    def FLASK_PORT(self):
+        return int(os.getenv('FLASK_PORT', 5000))
+    
+    # Model settings from YAML
+    @property
+    def MODEL_NAME(self):
+        return self.yaml_config['models']['vision']
+    
+    @property
+    def WHISPER_MODEL(self):
+        return self.yaml_config['models']['whisper']
+    
+    @property
+    def VISION_PROMPT(self):
+        return self.yaml_config['prompts']['vision']
+    
+    # Upload settings from YAML
+    @property
+    def UPLOAD_FOLDER(self):
+        return self.yaml_config['upload']['folder']
+    
+    @property
+    def MAX_CONTENT_LENGTH(self):
+        return self.yaml_config['upload']['max_file_size_mb'] * 1024 * 1024
+    
+    @property
+    def ALLOWED_IMAGE_EXTENSIONS(self):
+        return set(self.yaml_config['upload']['allowed_extensions']['images'])
+    
+    @property
+    def ALLOWED_AUDIO_EXTENSIONS(self):
+        return set(self.yaml_config['upload']['allowed_extensions']['audio'])
+    
+    @property
+    def ALLOWED_DOCUMENT_EXTENSIONS(self):
+        return set(self.yaml_config['upload']['allowed_extensions']['documents'])
+    
+    # Batch processing from YAML
+    @property
+    def MAX_CONCURRENT_PROCESSES(self):
+        return self.yaml_config['batch_processing']['max_concurrent']
+    
+    @property
+    def BATCH_TIMEOUT(self):
+        return self.yaml_config['batch_processing']['timeout_seconds']
+    
+    @property
+    def MAX_ZIP_SIZE(self):
+        return self.yaml_config['batch_processing']['max_zip_size_mb'] * 1024 * 1024
+    
+    @property
+    def TEMP_EXTRACT_DIR(self):
+        return self.yaml_config['batch_processing']['temp_extract_dir']
+    
+    def validate(self):
         """Validate required configuration"""
-        if not cls.API_KEY:
+        if not self.API_KEY:
             raise ValueError("API_KEY is required. Please set it in your .env file")
+        
+        # Validate YAML structure
+        required_keys = ['models', 'prompts', 'upload', 'batch_processing']
+        for key in required_keys:
+            if key not in self.yaml_config:
+                raise ValueError(f"Missing required section '{key}' in config.yaml")
+        
         return True
+
+# Create a singleton instance
+config = Config()
+
+# For backward compatibility, expose the config instance attributes at module level
+# This allows existing code to continue using "from config import Config" pattern
+API_KEY = config.API_KEY
+SECRET_KEY = config.SECRET_KEY
+BASE_URL = config.BASE_URL
+DOCINTEL_ENDPOINT = config.DOCINTEL_ENDPOINT
+FLASK_ENV = config.FLASK_ENV
+FLASK_PORT = config.FLASK_PORT
+MODEL_NAME = config.MODEL_NAME
+WHISPER_MODEL = config.WHISPER_MODEL
+VISION_PROMPT = config.VISION_PROMPT
+UPLOAD_FOLDER = config.UPLOAD_FOLDER
+MAX_CONTENT_LENGTH = config.MAX_CONTENT_LENGTH
+ALLOWED_IMAGE_EXTENSIONS = config.ALLOWED_IMAGE_EXTENSIONS
+ALLOWED_AUDIO_EXTENSIONS = config.ALLOWED_AUDIO_EXTENSIONS
+ALLOWED_DOCUMENT_EXTENSIONS = config.ALLOWED_DOCUMENT_EXTENSIONS
+MAX_CONCURRENT_PROCESSES = config.MAX_CONCURRENT_PROCESSES
+BATCH_TIMEOUT = config.BATCH_TIMEOUT
+MAX_ZIP_SIZE = config.MAX_ZIP_SIZE
+TEMP_EXTRACT_DIR = config.TEMP_EXTRACT_DIR
