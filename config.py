@@ -31,6 +31,9 @@ class Config:
 
 Format your response as clean markdown.""")
     
+    # Azure Document Intelligence (optional)
+    DOCINTEL_ENDPOINT = os.getenv('DOCINTEL_ENDPOINT', None)
+    
     # Flask Configuration
     SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
     FLASK_ENV = os.getenv('FLASK_ENV', 'development')

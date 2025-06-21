@@ -56,6 +56,12 @@ def check_environment():
     else:
         print(f"  ℹ️  VISION_PROMPT: Using default (optimized for OCR + descriptions)")
     
+    docintel_endpoint = os.getenv('DOCINTEL_ENDPOINT')
+    if docintel_endpoint:
+        print(f"  ℹ️  DOCINTEL_ENDPOINT: {docintel_endpoint}")
+    else:
+        print(f"  ℹ️  DOCINTEL_ENDPOINT: Not configured (using LLM-only mode)")
+    
     # Check directories
     print("\n📁 Checking directories:")
     dirs = ['uploads', 'templates', 'static', 'processors']

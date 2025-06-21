@@ -16,11 +16,18 @@ class VisionProcessor:
             base_url=Config.BASE_URL
         )
         
-        # Initialize Markitdown with LLM support for image descriptions
-        self.md = MarkItDown(
-            llm_client=self.client,
-            llm_model=Config.MODEL_NAME
-        )
+        # Initialize Markitdown with LLM support and optional Azure Document Intelligence
+        init_params = {
+            'llm_client': self.client,
+            'llm_model': Config.MODEL_NAME
+        }
+        
+        # Add Azure Document Intelligence endpoint if configured
+        if Config.DOCINTEL_ENDPOINT:
+            init_params['docintel_endpoint'] = Config.DOCINTEL_ENDPOINT
+            print(f"✓ Azure Document Intelligence enabled: {Config.DOCINTEL_ENDPOINT}")
+        
+        self.md = MarkItDown(**init_params)
     
     def process_file(self, file_path):
         """

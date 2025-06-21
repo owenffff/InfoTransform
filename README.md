@@ -65,6 +65,7 @@ A web-based MVP that uses Microsoft's Markitdown library to convert images, docu
 | `MODEL_NAME` | Vision model to use | `gpt-4-vision-preview` |
 | `WHISPER_MODEL` | Audio transcription model | `whisper-1` |
 | `VISION_PROMPT` | Custom prompt for image analysis | Smart OCR + description prompt |
+| `DOCINTEL_ENDPOINT` | Azure Document Intelligence endpoint | None (uses LLM-only mode) |
 | `FLASK_PORT` | Port to run the server on | `5000` |
 
 ### Vision Prompt Configuration
@@ -75,6 +76,27 @@ The default vision prompt is optimized to:
 - Handle mixed content (both text and visual elements)
 
 You can customize the vision prompt by setting the `VISION_PROMPT` environment variable in your `.env` file. The default prompt intelligently handles both OCR and image description tasks.
+
+### Azure Document Intelligence (Optional)
+
+For advanced document processing, you can optionally configure Azure Document Intelligence:
+
+1. **Set up Azure Document Intelligence**:
+   - Create an Azure Cognitive Services resource
+   - Get your endpoint URL (e.g., `https://your-resource.cognitiveservices.azure.com`)
+
+2. **Configure in `.env`**:
+   ```env
+   DOCINTEL_ENDPOINT=https://your-resource.cognitiveservices.azure.com
+   ```
+
+3. **Benefits**:
+   - Better structured data extraction from PDFs
+   - Advanced table recognition
+   - Form field extraction
+   - Layout analysis for complex documents
+
+When configured, Markitdown will automatically use Document Intelligence for supported document types while still using the LLM for images and other content.
 
 ### Using Alternative API Providers
 
