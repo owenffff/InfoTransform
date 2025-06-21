@@ -33,14 +33,10 @@ class Config:
     def DOCINTEL_ENDPOINT(self):
         return os.getenv('DOCINTEL_ENDPOINT')
     
-    # Flask settings (environment-specific)
+    # Server settings (environment-specific)
     @property
-    def FLASK_ENV(self):
-        return os.getenv('FLASK_ENV', 'development')
-    
-    @property
-    def FLASK_PORT(self):
-        return int(os.getenv('FLASK_PORT', 5000))
+    def PORT(self):
+        return int(os.getenv('PORT', self.yaml_config.get('server', {}).get('port', 8000)))
     
     # Model settings from YAML
     @property
@@ -93,10 +89,6 @@ class Config:
     def TEMP_EXTRACT_DIR(self):
         return self.yaml_config['batch_processing']['temp_extract_dir']
     
-    # Server settings from YAML
-    @property
-    def UVICORN_PORT(self):
-        return self.yaml_config.get('server', {}).get('uvicorn_port', 8000)
     
     def validate(self):
         """Validate required configuration"""
@@ -120,8 +112,7 @@ API_KEY = config.API_KEY
 SECRET_KEY = config.SECRET_KEY
 BASE_URL = config.BASE_URL
 DOCINTEL_ENDPOINT = config.DOCINTEL_ENDPOINT
-FLASK_ENV = config.FLASK_ENV
-FLASK_PORT = config.FLASK_PORT
+PORT = config.PORT
 MODEL_NAME = config.MODEL_NAME
 WHISPER_MODEL = config.WHISPER_MODEL
 VISION_PROMPT = config.VISION_PROMPT

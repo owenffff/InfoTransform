@@ -1,30 +1,34 @@
 """
-Flask application for Markitdown MVP
+FastAPI application for Markitdown MVP
 """
 
 import os
 import asyncio
-from flask import Flask, render_template, request, jsonify, send_file
-from werkzeug.utils import secure_filename
+import tempfile
+import shutil
+from datetime import datetime
+from pathlib import Path
+from typing import List, Optional
+
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, File, UploadFile, HTTPException, Form
+from fastapi.responses import FileResponse, JSONResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware
+from starlette.requests import Request
+import aiofiles
+import uvicorn
+
 from config import config
 from processors import VisionProcessor, AudioProcessor, BatchProcessor
-import tempfile
-from datetime import datetime
-import zipfile
 
-# Initialize Flask app
-app = Flask(__name__)
-app.config['SECRET_KEY'] = config.SECRET_KEY
-app.config['MAX_CONTENT_LENGTH'] = config.MAX_CONTENT_LENGTH
-
-# Create upload folder if it doesn't exist
-os.makedirs(config.UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(config.TEMP_EXTRACT_DIR, exist_ok=True)
 
 # Initialize processors
 vision_processor = None
 audio_processor = None
 batch_processor = None
+
 
 def init_processors():
     """Initialize processors with error handling"""
@@ -39,29 +43,84 @@ def init_processors():
         print(f"Error initializing processors: {e}")
         return False
 
-@app.route('/')
-def index():
-    """Render the main page"""
-    return render_template('index.html')
 
-@app.route('/upload', methods=['POST'])
-def upload_file():
-    """Handle file upload and processing"""
-    if 'file' not in request.files:
-        return jsonify({'success': False, 'error': 'No file provided'}), 400
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage application lifespan"""
+    # Startup
+    if init_processors():
+        print("✅ Processors initialized successfully")
+    else:
+        print("❌ Failed to initialize processors. Please check your configuration.")
     
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({'success': False, 'error': 'No file selected'}), 400
+    yield
+    
+    # Shutdown
+    # Add any cleanup code here if needed
+
+
+# Initialize FastAPI app
+app = FastAPI(
+    title="Markitdown MVP",
+    description="OCR and Speech-to-Text using Markitdown with OpenAI-compatible APIs",
+    version="0.1.0",
+    lifespan=lifespan
+)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Configure appropriately for production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Mount static files
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Setup templates
+templates = Jinja2Templates(directory="templates")
+
+# Create necessary directories
+os.makedirs(config.UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(config.TEMP_EXTRACT_DIR, exist_ok=True)
+
+
+def secure_filename(filename: str) -> str:
+    """Secure a filename by removing potentially dangerous characters"""
+    import re
+    # Remove any path separators
+    filename = filename.replace('/', '_').replace('\\', '_')
+    # Keep only alphanumeric, dash, underscore, and dot
+    filename = re.sub(r'[^a-zA-Z0-9._-]', '_', filename)
+    return filename
+
+
+
+
+@app.get("/", response_class=HTMLResponse)
+async def index(request: Request):
+    """Render the main page"""
+    return templates.TemplateResponse("index.html", {"request": request})
+
+
+@app.post("/upload")
+async def upload_file(file: UploadFile = File(...)):
+    """Handle file upload and processing"""
+    if not file or file.filename == '':
+        raise HTTPException(status_code=400, detail="No file provided")
     
     # Secure the filename
     filename = secure_filename(file.filename)
-    
-    # Save the file temporarily
     file_path = os.path.join(config.UPLOAD_FOLDER, filename)
-    file.save(file_path)
     
     try:
+        # Save the uploaded file
+        async with aiofiles.open(file_path, 'wb') as f:
+            content = await file.read()
+            await f.write(content)
+        
         # Determine which processor to use
         if vision_processor and vision_processor.is_supported_file(filename):
             result = vision_processor.process_file(file_path)
@@ -73,21 +132,23 @@ def upload_file():
                 'error': f'Unsupported file type: {filename}'
             }
         
-        # Clean up the uploaded file
-        os.remove(file_path)
-        
-        return jsonify(result)
+        return JSONResponse(content=result)
         
     except Exception as e:
-        # Clean up on error
+        return JSONResponse(
+            status_code=500,
+            content={'success': False, 'error': str(e)}
+        )
+    finally:
+        # Clean up the uploaded file
         if os.path.exists(file_path):
             os.remove(file_path)
-        return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/download', methods=['POST'])
-def download_markdown():
+
+@app.post("/download")
+async def download_markdown(request: Request):
     """Generate and download markdown file"""
-    data = request.get_json()
+    data = await request.json()
     content = data.get('content', '')
     filename = data.get('filename', 'output.md')
     
@@ -100,22 +161,18 @@ def download_markdown():
     base_name = os.path.splitext(filename)[0]
     download_name = f"{base_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
     
-    return send_file(
-        tmp_path,
-        as_attachment=True,
-        download_name=download_name,
-        mimetype='text/markdown'
+    return FileResponse(
+        path=tmp_path,
+        filename=download_name,
+        media_type='text/markdown'
     )
 
-@app.route('/upload-batch', methods=['POST'])
-def upload_batch():
+
+@app.post("/upload-batch")
+async def upload_batch(files: List[UploadFile] = File(...)):
     """Handle multiple file uploads and batch processing"""
-    if 'files' not in request.files:
-        return jsonify({'success': False, 'error': 'No files provided'}), 400
-    
-    files = request.files.getlist('files')
     if not files or all(f.filename == '' for f in files):
-        return jsonify({'success': False, 'error': 'No files selected'}), 400
+        raise HTTPException(status_code=400, detail="No files provided")
     
     # Save uploaded files temporarily
     saved_files = []
@@ -126,7 +183,12 @@ def upload_batch():
             if file.filename:
                 filename = secure_filename(file.filename)
                 file_path = os.path.join(config.UPLOAD_FOLDER, filename)
-                file.save(file_path)
+                
+                # Save file asynchronously
+                async with aiofiles.open(file_path, 'wb') as f:
+                    content = await file.read()
+                    await f.write(content)
+                
                 saved_files.append(file_path)
                 
                 # Check if it's a ZIP file
@@ -147,16 +209,16 @@ def upload_batch():
                     })
         
         # Process files asynchronously
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+        result = await batch_processor.process_multiple_files(files_info)
         
-        try:
-            result = loop.run_until_complete(
-                batch_processor.process_multiple_files(files_info)
-            )
-        finally:
-            loop.close()
+        return JSONResponse(content=result)
         
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={'success': False, 'error': str(e)}
+        )
+    finally:
         # Clean up uploaded files
         for file_path in saved_files:
             if os.path.exists(file_path):
@@ -164,27 +226,17 @@ def upload_batch():
         
         # Clean up extracted files
         batch_processor.cleanup_temp_dirs()
-        
-        return jsonify(result)
-        
-    except Exception as e:
-        # Clean up on error
-        for file_path in saved_files:
-            if os.path.exists(file_path):
-                os.remove(file_path)
-        batch_processor.cleanup_temp_dirs()
-        
-        return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/download-batch', methods=['POST'])
-def download_batch():
+
+@app.post("/download-batch")
+async def download_batch(request: Request):
     """Download batch processing results as combined markdown or ZIP"""
-    data = request.get_json()
+    data = await request.json()
     results = data.get('results', [])
-    format_type = data.get('format', 'markdown')  # 'markdown' or 'zip'
+    format_type = data.get('format', 'markdown')
     
     if not results:
-        return jsonify({'success': False, 'error': 'No results to download'}), 400
+        raise HTTPException(status_code=400, detail="No results to download")
     
     try:
         if format_type == 'zip':
@@ -193,11 +245,10 @@ def download_batch():
                 zip_path = batch_processor.create_zip_archive(results, tmp_file.name)
             
             download_name = f"markitdown_batch_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
-            return send_file(
-                zip_path,
-                as_attachment=True,
-                download_name=download_name,
-                mimetype='application/zip'
+            return FileResponse(
+                path=zip_path,
+                filename=download_name,
+                media_type='application/zip'
             )
         else:
             # Create combined markdown file
@@ -208,29 +259,44 @@ def download_batch():
                 tmp_path = tmp_file.name
             
             download_name = f"markitdown_combined_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
-            return send_file(
-                tmp_path,
-                as_attachment=True,
-                download_name=download_name,
-                mimetype='text/markdown'
+            return FileResponse(
+                path=tmp_path,
+                filename=download_name,
+                media_type='text/markdown'
             )
             
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.route('/health')
-def health_check():
+
+@app.get("/health")
+async def health_check():
     """Health check endpoint"""
-    return jsonify({
-        'status': 'healthy',
-        'processors_initialized': vision_processor is not None and audio_processor is not None
-    })
+    return {
+        "status": "healthy",
+        "processors_initialized": vision_processor is not None and audio_processor is not None,
+        "server": "FastAPI"
+    }
 
-if __name__ == '__main__':
-    # Initialize processors
-    if init_processors():
-        print("✅ Processors initialized successfully")
-        print(f"🚀 Starting server on http://localhost:{config.FLASK_PORT}")
-        app.run(debug=True, port=config.FLASK_PORT)
-    else:
-        print("❌ Failed to initialize processors. Please check your configuration.")
+
+# Custom exception handler for better error responses
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=500,
+        content={"success": False, "error": str(exc)}
+    )
+
+
+if __name__ == "__main__":
+    # Run the FastAPI app with Uvicorn
+    print(f"🚀 Starting server on http://localhost:{config.PORT}")
+    print(f"📚 API documentation available at http://localhost:{config.PORT}/docs")
+    
+    uvicorn.run(
+        "app:app",
+        host="0.0.0.0",
+        port=config.PORT,
+        reload=True,
+        log_level="info"
+    )

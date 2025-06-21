@@ -59,4 +59,4 @@ batch_processing:
 
 # Server Configuration
 server:
-  uvicorn_port: 8000
+  port: 8000

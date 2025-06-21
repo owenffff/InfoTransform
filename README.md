@@ -54,7 +54,12 @@ A web-based MVP that uses Microsoft's Markitdown library to convert images, docu
 
 5. **Open your browser** and navigate to:
    ```
-   http://localhost:5000
+   http://localhost:8000
+   ```
+
+   API documentation is available at:
+   ```
+   http://localhost:8000/docs
    ```
 
 ## 🔧 Configuration
@@ -71,7 +76,7 @@ A web-based MVP that uses Microsoft's Markitdown library to convert images, docu
 | `DOCINTEL_ENDPOINT` | Azure Document Intelligence endpoint | None (uses LLM-only mode) |
 | `MAX_CONCURRENT_PROCESSES` | Max files to process simultaneously | `5` |
 | `BATCH_TIMEOUT` | Timeout for batch processing (seconds) | `300` |
-| `FLASK_PORT` | Port to run the server on | `5000` |
+| `PORT` | Port to run the server on | `8000` |
 
 ### Vision Prompt Configuration
 
@@ -115,7 +120,7 @@ This MVP works with any OpenAI-compatible endpoint. Examples:
 
 ```
 markitdown-mvp/
-├── app.py              # Flask application
+├── app.py              # FastAPI application
 ├── config.py           # Configuration management
 ├── processors/         # File processing modules
 │   ├── vision.py       # Image/document processor
@@ -205,8 +210,8 @@ python app.py
 - Check that the `.env` file is in the same directory as `app.py`
 
 ### "Cannot connect to server" Error
-- Ensure the Flask server is running
-- Check if port 5000 is available
+- Ensure the FastAPI server is running
+- Check if port 8000 is available
 
 ### Processing Fails
 - Verify your API key is valid
