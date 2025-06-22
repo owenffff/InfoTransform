@@ -1,18 +1,29 @@
-# 📝 Markitdown MVP - OCR & Speech-to-Text
+# 🔄 Information Transformer
 
-A web-based MVP that uses Microsoft's Markitdown library to convert images, documents, and audio files to Markdown format. Supports any OpenAI-compatible API endpoint for maximum flexibility.
+A powerful web application that transforms any file type (images, documents, audio) into structured, actionable data using AI. Built with Microsoft's Markitdown library and Pydantic AI for intelligent data extraction.
 
 ## ✨ Features
 
+### Core Transformation Pipeline
+- **🔄 Two-Stage Processing**: Files → Markdown → Structured Data
+- **🤖 AI-Powered Analysis**: Uses Pydantic AI for intelligent data extraction
+- **📊 Multiple Analysis Models**: 
+  - Content Compliance: Policy violation detection
+  - Document Metadata: Extract titles, authors, summaries
+  - Technical Analysis: Code snippets, complexity assessment
+
+### File Processing Capabilities
 - **🖼️ Image OCR**: Extract text from images (JPG, PNG, GIF, BMP, WebP)
-- **📄 Document Processing**: Convert PDFs, DOCX, PPTX, and XLSX files to Markdown
+- **📄 Document Processing**: Convert PDFs, DOCX, PPTX, and XLSX files
 - **🎤 Speech-to-Text**: Transcribe audio files (MP3, WAV, M4A, FLAC, OGG, WebM)
 - **📦 Batch Processing**: Process multiple files at once or upload ZIP archives
-- **⚡ Async Processing**: Fast concurrent processing of multiple files
-- **🗂️ Structure Preservation**: Maintains directory structure from ZIP files
-- **🔌 OpenAI-Compatible**: Works with any OpenAI-compatible API endpoint
-- **💾 Flexible Downloads**: Save as combined Markdown or structured ZIP
-- **🎨 Clean Web Interface**: Simple drag-and-drop file upload with progress tracking
+- **⚡ Async Processing**: Fast concurrent processing with progress tracking
+
+### Output Options
+- **📋 Structured JSON**: Export analysis results as JSON
+- **📊 CSV Export**: Download results in spreadsheet format
+- **📈 Summary Statistics**: Aggregate insights across multiple files
+- **🎯 Custom Instructions**: Fine-tune analysis with specific requirements
 
 ## 🚀 Quick Start
 
@@ -64,19 +75,25 @@ A web-based MVP that uses Microsoft's Markitdown library to convert images, docu
 
 ## 🔧 Configuration
 
-### Environment Variables
+The application uses a unified `config.yaml` file for all settings, with sensitive data in `.env`.
+
+### Environment Variables (.env)
 
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `API_KEY` | Your OpenAI API key (required) | - |
 | `BASE_URL` | API endpoint URL | `https://api.openai.com/v1` |
-| `MODEL_NAME` | Vision model to use | `gpt-4-vision-preview` |
-| `WHISPER_MODEL` | Audio transcription model | `whisper-1` |
-| `VISION_PROMPT` | Custom prompt for image analysis | Smart OCR + description prompt |
-| `DOCINTEL_ENDPOINT` | Azure Document Intelligence endpoint | None (uses LLM-only mode) |
-| `MAX_CONCURRENT_PROCESSES` | Max files to process simultaneously | `5` |
-| `BATCH_TIMEOUT` | Timeout for batch processing (seconds) | `300` |
+| `OPENAI_BASE_URL` | Custom OpenAI endpoint (optional) | - |
+| `DOCINTEL_ENDPOINT` | Azure Document Intelligence endpoint | None |
 | `PORT` | Port to run the server on | `8000` |
+
+### Configuration File (config.yaml)
+
+The `config.yaml` file contains:
+- **AI Models**: Configure GPT-4, GPT-4-mini, or custom models
+- **Analysis Prompts**: Customize prompts for different analysis types
+- **Processing Settings**: Timeouts, concurrency, file size limits
+- **Feature Flags**: Enable/disable specific features
 
 ### Vision Prompt Configuration
 
@@ -119,38 +136,52 @@ This MVP works with any OpenAI-compatible endpoint. Examples:
 ## 📁 Project Structure
 
 ```
-markitdown-mvp/
-├── app.py              # FastAPI application
-├── config.py           # Configuration management
-├── processors/         # File processing modules
-│   ├── vision.py       # Image/document processor
-│   ├── audio.py        # Audio transcription
-│   └── batch.py        # Batch processing handler
-├── templates/          # HTML templates
-│   └── index.html      # Main web interface
-├── static/             # Static assets
-│   ├── style.css       # Styling
-│   └── script.js       # Frontend JavaScript
-├── uploads/            # Temporary file storage
-├── .env.example        # Example configuration
+information-transformer/
+├── app.py                    # FastAPI application
+├── config.yaml              # Unified configuration
+├── config.py                # Configuration loader
+├── processors/              # File processing modules
+│   ├── vision.py           # Image/document processor
+│   ├── audio.py            # Audio transcription
+│   ├── batch.py            # Batch processing handler
+│   ├── structured_analyzer.py  # Pydantic AI analyzer
+│   └── analysis_models.py  # Pydantic models for extraction
+├── templates/              # HTML templates
+│   └── index.html         # Main web interface
+├── static/                # Static assets
+│   ├── style.css         # Styling
+│   └── script.js         # Frontend JavaScript
+├── uploads/              # Temporary file storage
+├── .env.example         # Example environment variables
 └── README.md           # This file
 ```
 
 ## 🎯 Usage
 
-### Single File Processing
-1. **Upload a File**: Drag and drop or click to browse
-2. **Wait for Processing**: The file will be automatically processed
-3. **View Results**: See the Markdown output in the preview area
-4. **Download**: Click "Download Markdown" to save the result
+### Information Transformation Workflow
 
-### Batch Processing
-1. **Select Multiple Files**: Use Ctrl/Cmd+Click or drag multiple files
-2. **Or Upload a ZIP**: Upload a ZIP archive containing multiple files
-3. **View Summary**: See processing statistics and combined results
-4. **Download Options**:
-   - **Download Markdown**: Get all results in a single markdown file
-   - **Download as ZIP**: Get individual markdown files preserving folder structure
+1. **Upload Files**: 
+   - Drag and drop files or click to browse
+   - Support for single or multiple files
+   - ZIP archives automatically extracted
+
+2. **Configure Analysis**:
+   - Select an analysis model (Compliance, Metadata, Technical)
+   - Choose AI model (GPT-4, GPT-4-mini, etc.)
+   - Add custom instructions (optional)
+
+3. **Transform**:
+   - Click "Transform to Structured Data"
+   - Watch real-time progress for batch processing
+
+4. **View Results**:
+   - **Structured Data Tab**: Formatted, easy-to-read results
+   - **Raw Results Tab**: Complete JSON output
+   - **Summary Section**: Aggregate statistics for batch processing
+
+5. **Export**:
+   - **Download JSON**: Complete structured data
+   - **Download CSV**: Spreadsheet-compatible format
 
 ### Batch Processing Features
 - **Concurrent Processing**: Files are processed in parallel for speed

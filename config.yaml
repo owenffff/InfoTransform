@@ -1,10 +1,52 @@
+# Application Configuration
+app:
+  name: "Information Transformer"
+  version: "2.0.0"
+  description: "Transform any file type into structured, actionable data"
+  environment: "development"  # development, staging, production
+
+# API Configuration
+api:
+  host: "0.0.0.0"
+  port: 8000
+  cors:
+    allow_origins: ["*"]
+    allow_credentials: true
+    allow_methods: ["*"]
+    allow_headers: ["*"]
+
 # Model Configuration
 models:
-  vision: gpt-4-vision-preview
+  # Existing models for vision/audio
+  vision: azure.gpt-4o
   whisper: whisper-1
+  
+  # AI models for structured analysis
+  ai_models:
+    default_model: "azure.gpt-4o"
+    api_config:
+      base_url: "${OPENAI_BASE_URL}"  # Can be overridden by env var
+      api_key: "${OPENAI_API_KEY}"    # Must be set via env var
+      timeout: 120  # seconds
+      max_retries: 3
+      retry_delay: 1.0  # seconds
+    
+    models:
+      azure.gpt-4o:
+        temperature: 0.7
+        max_tokens: 4096
+        top_p: 1.0
+        frequency_penalty: 0.0
+        presence_penalty: 0.0
+        streaming:
+          enabled: true
+          debounce_by: 0.1
+      
+
 
 # Prompts
 prompts:
+  # Vision prompt for initial conversion
   vision: |
     Please analyze this image and provide output in the following format:
 
@@ -24,39 +66,141 @@ prompts:
        - Then provide a brief description of non-text elements
 
     Format your response as clean markdown.
+  
+  # System prompts for structured analysis
+  analysis:
+    default: |
+      You are an expert document analyzer. 
+      Your task is to analyze markdown content and extract structured information according to the provided schema.
+      Be accurate, thorough, and follow the schema exactly.
+    
+    model_specific:
+      content_compliance: |
+        You are a content compliance specialist. 
+        Analyze documents for policy violations with high accuracy.
+        Be thorough in identifying potential issues while avoiding false positives.
+      
+      document_metadata: |
+        You are a document metadata extraction expert.
+        Extract key information about documents including titles, authors, and summaries.
+        Be concise but comprehensive in your analysis.
+      
+      technical_analysis: |
+        You are a technical documentation analyst.
+        Focus on identifying technical content, code snippets, and documentation quality.
+        Assess complexity levels accurately based on content depth and prerequisites.
+    
+    templates:
+      analysis_prompt: |
+        Analyze the following content.
+        
+        Task: {model_description}
+        
+        You should extract information according to the {model_name} schema.
+        {custom_instructions}
+        
+        Content to analyze:
+        
+        {content}
 
-# Upload Configuration
-upload:
-  folder: uploads
-  max_file_size_mb: 16
-  allowed_extensions:
-    images:
-      - png
-      - jpg
-      - jpeg
-      - gif
-      - bmp
-      - webp
-    audio:
-      - mp3
-      - wav
-      - m4a
-      - flac
-      - ogg
-      - webm
-    documents:
-      - pdf
-      - docx
-      - pptx
-      - xlsx
+# Processing Configuration
+processing:
+  # Upload settings
+  upload:
+    folder: uploads
+    max_file_size_mb: 16
+    allowed_extensions:
+      images:
+        - png
+        - jpg
+        - jpeg
+        - gif
+        - bmp
+        - webp
+      audio:
+        - mp3
+        - wav
+        - m4a
+        - flac
+        - ogg
+        - webm
+      documents:
+        - pdf
+        - docx
+        - pptx
+        - xlsx
+  
+  # Analysis settings
+  analysis:
+    max_concurrent_analyses: 5
+    batch_size: 10
+    timeouts:
+      single_file: 60  # seconds
+      batch: 300      # seconds
+    retry:
+      max_attempts: 3
+      backoff_factor: 2.0
+      max_backoff: 30  # seconds
+  
+  # Batch processing
+  batch:
+    max_concurrent: 5
+    timeout_seconds: 300
+    max_zip_size_mb: 100
+    temp_extract_dir: temp_extracts
 
-# Batch Processing
-batch_processing:
-  max_concurrent: 5
-  timeout_seconds: 300
-  max_zip_size_mb: 100
-  temp_extract_dir: temp_extracts
+# Storage Configuration
+storage:
+  # Results storage
+  results:
+    type: "filesystem"  # filesystem, database, s3
+    path: "./analysis_results"
+    retention_days: 30
+  
+  # Cache configuration
+  cache:
+    enabled: true
+    type: "memory"  # memory, redis
+    ttl: 3600      # seconds
+    max_size: "100MB"
 
-# Server Configuration
-server:
-  port: 8000
+# Feature Flags
+features:
+  streaming_responses: true
+  batch_processing: true
+  result_caching: true
+  auto_retry: true
+  detailed_errors: true  # Only in development
+  
+  # Experimental features
+  experimental:
+    parallel_analysis: false
+    smart_batching: false
+    adaptive_prompts: false
+
+# Security Settings
+security:
+  # API key validation
+  api_key_required: false  # Set to true in production
+  api_key_header: "X-API-Key"
+  
+  # Input validation
+  input_validation:
+    max_custom_instructions_length: 1000
+    sanitize_filenames: true
+
+# Logging Configuration
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  
+  # File logging
+  file:
+    enabled: true
+    max_size: "10MB"
+    backup_count: 5
+  
+  # Console logging
+  console:
+    enabled: true
+    colorize: true
