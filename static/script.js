@@ -3,6 +3,10 @@
 // Global variables
 let selectedFiles = [];
 let transformResults = null;
+let currentView = 'table'; // Default to table view
+let eventSource = null;
+let streamingResults = [];
+let modelFields = [];
 
 // DOM elements
 const dropZone = document.getElementById('dropZone');
@@ -26,6 +30,11 @@ const errorDisplay = document.getElementById('errorDisplay');
 document.addEventListener('DOMContentLoaded', async () => {
     await loadAnalysisModels();
     setupEventListeners();
+    
+    // Load view preference from localStorage
+    const savedView = localStorage.getItem('preferredView') || 'table';
+    currentView = savedView;
+    updateViewToggle();
 });
 
 // Load available analysis models
@@ -73,14 +82,43 @@ function setupEventListeners() {
     // Transform button
     transformBtn.addEventListener('click', handleTransform);
     
-    // Download buttons
-    document.getElementById('downloadJsonBtn')?.addEventListener('click', () => downloadResults('json'));
+    // Download button
     document.getElementById('downloadCsvBtn')?.addEventListener('click', () => downloadResults('csv'));
     
-    // Tab switching
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => switchTab(e.target.dataset.tab));
-    });
+    // View toggle buttons
+    document.getElementById('tableViewBtn')?.addEventListener('click', () => switchView('table'));
+    document.getElementById('fileViewBtn')?.addEventListener('click', () => switchView('file'));
+}
+
+// View switching
+function switchView(view) {
+    currentView = view;
+    localStorage.setItem('preferredView', view);
+    updateViewToggle();
+    
+    // Re-display results in the new view if we have them
+    if (transformResults) {
+        displayResults(transformResults);
+    }
+}
+
+function updateViewToggle() {
+    const tableBtn = document.getElementById('tableViewBtn');
+    const fileBtn = document.getElementById('fileViewBtn');
+    const tableView = document.getElementById('tableView');
+    const fileView = document.getElementById('fileView');
+    
+    if (currentView === 'table') {
+        tableBtn?.classList.add('active');
+        fileBtn?.classList.remove('active');
+        tableView?.classList.remove('hidden');
+        fileView?.classList.add('hidden');
+    } else {
+        tableBtn?.classList.remove('active');
+        fileBtn?.classList.add('active');
+        tableView?.classList.add('hidden');
+        fileView?.classList.remove('hidden');
+    }
 }
 
 // File handling
@@ -155,113 +193,274 @@ async function handleTransform() {
     processingStatus.classList.remove('hidden');
     analysisOptions.classList.add('hidden');
     
-    // Prepare form data
-    const formData = new FormData();
+    // Reset streaming results
+    streamingResults = [];
+    modelFields = [];
     
-    // Determine endpoint based on file count
-    const endpoint = selectedFiles.length === 1 ? '/api/transform' : '/api/transform-batch';
-    
-    // Add files - use 'file' for single, 'files' for batch
-    if (selectedFiles.length === 1) {
-        formData.append('file', selectedFiles[0]);
+    // Use streaming for multiple files
+    if (selectedFiles.length > 1) {
+        await handleStreamingTransform();
     } else {
-        for (const file of selectedFiles) {
-            formData.append('files', file);
-        }
+        await handleSingleTransform();
     }
-    
-    // Add analysis options
-    console.log('Model key:', modelSelect.value);
-    console.log('Custom instructions:', customInstructions.value);
-    console.log('AI model:', aiModelSelect.value);
-    
+}
+
+// Handle single file transform (non-streaming)
+async function handleSingleTransform() {
+    const formData = new FormData();
+    formData.append('file', selectedFiles[0]);
     formData.append('model_key', modelSelect.value);
     formData.append('custom_instructions', customInstructions.value || '');
     if (aiModelSelect.value) {
         formData.append('ai_model', aiModelSelect.value);
     }
     
-    // Log FormData entries
-    console.log('FormData entries:');
-    for (let [key, value] of formData.entries()) {
-        if (value instanceof File) {
-            console.log(`  ${key}: File(${value.name}, ${value.size} bytes)`);
-        } else {
-            console.log(`  ${key}: ${value}`);
-        }
-    }
-    
     try {
-        // DEBUG: First send to debug endpoint
-        console.log('Sending to debug endpoint...');
-        const debugResponse = await fetch('/api/debug-form', {
+        const response = await fetch('/api/transform', {
             method: 'POST',
             body: formData
         });
-        console.log('Debug response status:', debugResponse.status);
-        const debugData = await debugResponse.json();
-        console.log('Debug form data:', debugData);
-        
-        // DEBUG: Test with simplified endpoint
-        if (selectedFiles.length === 1) {
-            console.log('Testing with simplified endpoint...');
-            const testFormData = new FormData();
-            testFormData.append('file', selectedFiles[0]);
-            testFormData.append('model_key', modelSelect.value);
-            
-            const testResponse = await fetch('/api/test-transform', {
-                method: 'POST',
-                body: testFormData
-            });
-            console.log('Test endpoint status:', testResponse.status);
-            if (testResponse.ok) {
-                const testData = await testResponse.json();
-                console.log('Test endpoint success:', testData);
-            } else {
-                const errorText = await testResponse.text();
-                console.log('Test endpoint error:', errorText);
-            }
-        }
-        
-        // Show progress for batch processing
-        if (selectedFiles.length > 1) {
-            progressContainer.classList.remove('hidden');
-            updateProgress(0, selectedFiles.length);
-        }
-        
-        console.log(`Sending to ${endpoint}...`);
-        const response = await fetch(endpoint, {
-            method: 'POST',
-            body: formData
-        });
-        
-        console.log('Response status:', response.status);
         
         if (!response.ok) {
-            // Try to get error details
             let errorDetail = '';
             try {
                 const errorData = await response.json();
-                console.error('Error response:', errorData);
-                errorDetail = JSON.stringify(errorData);
+                errorDetail = errorData.detail || JSON.stringify(errorData);
             } catch (e) {
                 errorDetail = await response.text();
             }
-            throw new Error(`HTTP error! status: ${response.status}, detail: ${errorDetail}`);
+            throw new Error(`Transform failed: ${errorDetail}`);
         }
         
         const data = await response.json();
         transformResults = data;
-        
-        // Display results
         displayResults(data);
         
     } catch (error) {
         console.error('Transform error:', error);
+        showError(`Failed to transform file: ${error.message}`);
+    } finally {
+        processingStatus.classList.add('hidden');
+        analysisOptions.classList.remove('hidden');
+    }
+}
+
+// Handle streaming transform for multiple files
+async function handleStreamingTransform() {
+    const formData = new FormData();
+    for (const file of selectedFiles) {
+        formData.append('files', file);
+    }
+    formData.append('model_key', modelSelect.value);
+    formData.append('custom_instructions', customInstructions.value || '');
+    if (aiModelSelect.value) {
+        formData.append('ai_model', aiModelSelect.value);
+    }
+    
+    // Show progress container
+    progressContainer.classList.remove('hidden');
+    updateProgress(0, selectedFiles.length);
+    
+    // Show results section immediately for streaming
+    resultsSection.classList.remove('hidden');
+    
+    try {
+        const response = await fetch('/api/transform-stream', {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Transform failed: ${response.statusText}`);
+        }
+        
+        // Handle the streaming response directly
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+            
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    const data = JSON.parse(line.slice(6));
+                    handleStreamingEvent(data);
+                }
+            }
+        }
+        
+    } catch (error) {
+        console.error('Streaming error:', error);
         showError(`Failed to transform files: ${error.message}`);
     } finally {
         processingStatus.classList.add('hidden');
         analysisOptions.classList.remove('hidden');
+    }
+}
+
+// Handle streaming events
+function handleStreamingEvent(data) {
+    switch (data.type) {
+        case 'init':
+            // Initialize table with model fields
+            modelFields = data.model_fields || [];
+            if (currentView === 'table') {
+                initializeTable(modelFields);
+            }
+            break;
+            
+        case 'progress':
+            // Update progress bar
+            updateProgress(data.current, data.total);
+            break;
+            
+        case 'result':
+            // Add result to table or file view
+            streamingResults.push(data);
+            if (data.status === 'success') {
+                if (currentView === 'table') {
+                    addTableRow(data);
+                } else {
+                    addFileResult(data);
+                }
+            }
+            // Update progress from result
+            if (data.progress) {
+                updateProgress(data.progress.current, data.progress.total);
+                updateSummaryStats(data.progress);
+            }
+            break;
+            
+        case 'complete':
+            // Transform complete
+            transformResults = {
+                model_used: data.model_used,
+                ai_model_used: data.ai_model_used,
+                total_files: data.total_files,
+                successful: data.successful,
+                failed: data.failed,
+                results: streamingResults.map(r => ({
+                    filename: r.filename,
+                    status: r.status,
+                    structured_data: r.structured_data,
+                    error: r.error
+                }))
+            };
+            break;
+    }
+}
+
+// Initialize table with headers
+function initializeTable(fields) {
+    const tableHeader = document.getElementById('tableHeader');
+    const tableBody = document.getElementById('tableBody');
+    
+    // Clear existing content
+    tableHeader.innerHTML = '';
+    tableBody.innerHTML = '';
+    
+    // Create header row
+    const headerRow = document.createElement('tr');
+    
+    // Filename column
+    const filenameHeader = document.createElement('th');
+    filenameHeader.textContent = 'Filename';
+    filenameHeader.className = 'sortable';
+    headerRow.appendChild(filenameHeader);
+    
+    // Dynamic field columns
+    fields.forEach(field => {
+        const th = document.createElement('th');
+        th.textContent = formatFieldName(field);
+        th.className = 'sortable';
+        th.dataset.field = field;
+        headerRow.appendChild(th);
+    });
+    
+    tableHeader.appendChild(headerRow);
+}
+
+// Add a row to the table
+function addTableRow(result) {
+    const tableBody = document.getElementById('tableBody');
+    const row = document.createElement('tr');
+    
+    // Filename cell
+    const filenameCell = document.createElement('td');
+    filenameCell.className = 'filename-cell';
+    filenameCell.textContent = result.filename;
+    row.appendChild(filenameCell);
+    
+    // Data cells
+    if (result.status === 'success' && result.structured_data) {
+        modelFields.forEach(field => {
+            const cell = document.createElement('td');
+            const value = result.structured_data[field];
+            
+            if (value === undefined || value === null) {
+                cell.textContent = '—';
+                cell.style.color = '#bdc3c7';
+            } else if (typeof value === 'boolean') {
+                cell.textContent = value ? '✓' : '✗';
+                cell.className = value ? 'boolean-true' : 'boolean-false';
+            } else if (Array.isArray(value)) {
+                cell.className = 'list-cell';
+                value.forEach(item => {
+                    const span = document.createElement('span');
+                    span.className = 'list-item';
+                    span.textContent = item;
+                    cell.appendChild(span);
+                });
+            } else {
+                cell.textContent = String(value);
+                if (String(value).length > 50) {
+                    cell.className = 'cell-tooltip';
+                    cell.setAttribute('data-tooltip', String(value));
+                    cell.textContent = String(value).substring(0, 47) + '...';
+                }
+            }
+            
+            row.appendChild(cell);
+        });
+    } else {
+        // Error row
+        const errorCell = document.createElement('td');
+        errorCell.colSpan = modelFields.length;
+        errorCell.textContent = result.error || 'Failed';
+        errorCell.style.color = '#e74c3c';
+        row.appendChild(errorCell);
+    }
+    
+    tableBody.appendChild(row);
+}
+
+// Add result to file view
+function addFileResult(result) {
+    const structuredResults = document.getElementById('structuredResults');
+    
+    if (result.status === 'success' && result.structured_data) {
+        const resultItem = createResultItem(result.filename, result.structured_data);
+        structuredResults.appendChild(resultItem);
+    } else {
+        const errorItem = createErrorItem(result.filename, result.error);
+        structuredResults.appendChild(errorItem);
+    }
+}
+
+// Update summary statistics
+function updateSummaryStats(progress) {
+    document.getElementById('totalFiles').textContent = progress.total;
+    document.getElementById('successfulFiles').textContent = progress.successful;
+    document.getElementById('failedFiles').textContent = progress.failed;
+    
+    if (progress.total > 1) {
+        document.getElementById('resultsSummary').classList.remove('hidden');
     }
 }
 
@@ -285,7 +484,37 @@ function displayResults(data) {
         resultsSummary.classList.add('hidden');
     }
     
-    // Display structured results
+    if (currentView === 'table') {
+        // Display table view
+        displayTableView(data);
+    } else {
+        // Display file view
+        displayFileView(data);
+    }
+}
+
+// Display table view
+function displayTableView(data) {
+    // Get model fields from first successful result
+    const firstSuccess = data.results.find(r => r.status === 'success' && r.structured_data);
+    if (firstSuccess) {
+        modelFields = Object.keys(firstSuccess.structured_data);
+        initializeTable(modelFields);
+        
+        // Add all results to table
+        data.results.forEach(result => {
+            addTableRow({
+                filename: result.filename,
+                status: result.status,
+                structured_data: result.structured_data,
+                error: result.error
+            });
+        });
+    }
+}
+
+// Display file view
+function displayFileView(data) {
     const structuredResults = document.getElementById('structuredResults');
     structuredResults.innerHTML = '';
     
@@ -298,10 +527,6 @@ function displayResults(data) {
             structuredResults.appendChild(errorItem);
         }
     }
-    
-    // Display raw JSON
-    const rawResults = document.getElementById('rawResults');
-    rawResults.textContent = JSON.stringify(data, null, 2);
 }
 
 // Create result item element
@@ -395,19 +620,6 @@ function formatSummary(summary) {
     return html;
 }
 
-// Tab switching
-function switchTab(tabName) {
-    // Update tab buttons
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.tab === tabName);
-    });
-    
-    // Update tab panes
-    document.querySelectorAll('.tab-pane').forEach(pane => {
-        pane.classList.toggle('active', pane.id === `${tabName}Tab`);
-    });
-}
-
 // Download results
 async function downloadResults(format) {
     if (!transformResults) return;
@@ -415,11 +627,7 @@ async function downloadResults(format) {
     try {
         let content, filename, mimeType;
         
-        if (format === 'json') {
-            content = JSON.stringify(transformResults, null, 2);
-            filename = `transform_results_${new Date().toISOString().slice(0, 10)}.json`;
-            mimeType = 'application/json';
-        } else if (format === 'csv') {
+        if (format === 'csv') {
             content = convertToCSV(transformResults);
             filename = `transform_results_${new Date().toISOString().slice(0, 10)}.csv`;
             mimeType = 'text/csv';

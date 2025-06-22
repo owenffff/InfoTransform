@@ -129,6 +129,9 @@ processing:
         - docx
         - pptx
         - xlsx
+        - txt
+        - md
+        - html
   
   # Analysis settings
   analysis:

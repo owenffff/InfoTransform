@@ -27,6 +27,8 @@ from infotransform.processors import VisionProcessor, AudioProcessor, BatchProce
 from infotransform.api.models import (
     TransformRequest, TransformBatchRequest, FileTransformResult, TransformResponse
 )
+from infotransform.api.streaming import generate_transform_stream
+from fastapi.responses import StreamingResponse
 
 
 # Initialize processors
@@ -390,6 +392,95 @@ async def transform_file(
         # Clean up the uploaded file
         if os.path.exists(file_path):
             os.remove(file_path)
+
+
+@app.post("/api/transform-stream")
+async def transform_stream(
+    files: List[UploadFile] = File(...),
+    model_key: str = Form(...),
+    custom_instructions: Optional[str] = Form(""),
+    ai_model: Optional[str] = Form(None)
+):
+    """Stream transformation results using Server-Sent Events"""
+    if not files or all(f.filename == '' for f in files):
+        raise HTTPException(status_code=400, detail="No files provided")
+    
+    # Save uploaded files temporarily
+    saved_files = []
+    files_info = []
+    
+    try:
+        for file in files:
+            if file.filename:
+                filename = secure_filename(file.filename)
+                file_path = os.path.join(config.UPLOAD_FOLDER, filename)
+                
+                # Save file asynchronously
+                async with aiofiles.open(file_path, 'wb') as f:
+                    content = await file.read()
+                    await f.write(content)
+                
+                saved_files.append(file_path)
+                files_info.append({
+                    'file_path': file_path,
+                    'filename': filename
+                })
+        
+        # Debug logging
+        print(f"Streaming transform - files_info: {files_info}")
+        print(f"Model key: {model_key}")
+        print(f"Saved files: {saved_files}")
+        
+        # Verify files exist before streaming
+        for file_info in files_info:
+            if not os.path.exists(file_info['file_path']):
+                print(f"ERROR: File does not exist: {file_info['file_path']}")
+            else:
+                print(f"File exists: {file_info['file_path']} (size: {os.path.getsize(file_info['file_path'])} bytes)")
+        
+        # Generate the stream
+        stream = generate_transform_stream(
+            files_info,
+            model_key,
+            custom_instructions or "",
+            ai_model,
+            vision_processor,
+            audio_processor,
+            structured_analyzer
+        )
+        
+        # Define cleanup function
+        async def cleanup():
+            # Wait a bit to ensure streaming is complete
+            await asyncio.sleep(5)
+            # Clean up uploaded files after streaming
+            for file_path in saved_files:
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                    print(f"Cleaned up: {file_path}")
+        
+        # Return streaming response
+        response = StreamingResponse(
+            stream,
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no"  # Disable nginx buffering
+            }
+        )
+        
+        # Schedule cleanup after response
+        asyncio.create_task(cleanup())
+        
+        return response
+        
+    except Exception as e:
+        # Clean up on error
+        for file_path in saved_files:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/api/transform-batch")

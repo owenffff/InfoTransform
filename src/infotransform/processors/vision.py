@@ -40,8 +40,15 @@ class VisionProcessor:
             dict: Processing result with text content and metadata
         """
         try:
+            print(f"VisionProcessor: Processing file {file_path}")
+            print(f"File exists: {os.path.exists(file_path)}")
+            print(f"File size: {os.path.getsize(file_path) if os.path.exists(file_path) else 'N/A'}")
+            
             # Convert the file using Markitdown with custom vision prompt
             result = self.md.convert(file_path, llm_prompt=config.VISION_PROMPT)
+            
+            print(f"Markitdown result type: {type(result)}")
+            print(f"Has text_content: {hasattr(result, 'text_content')}")
             
             return {
                 'success': True,
@@ -51,9 +58,12 @@ class VisionProcessor:
             }
             
         except Exception as e:
+            print(f"VisionProcessor error: {type(e).__name__}: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return {
                 'success': False,
-                'error': str(e),
+                'error': f"{type(e).__name__}: {str(e)}",
                 'filename': os.path.basename(file_path),
                 'type': 'vision'
             }
