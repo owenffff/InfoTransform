@@ -32,8 +32,7 @@ infotransform/
 │       └── utils/
 │           └── __init__.py
 ├── config/
-│   ├── config.yaml              # Main configuration
-│   └── .env.example             # Environment variables template
+│   └── config.yaml              # Main configuration
 ├── data/
 │   ├── uploads/                 # Uploaded files (gitignored)
 │   └── temp_extracts/           # Temporary extraction directory
@@ -48,6 +47,7 @@ infotransform/
 │   └── demo.py                  # Demo script
 ├── docs/                        # Documentation
 ├── app.py                       # Application entry point
+├── .env.example                 # Environment variables template
 ├── pyproject.toml               # Project dependencies
 └── README.md
 ```
@@ -75,7 +75,7 @@ pip install -e .
 ### 3. Configure environment variables
 
 ```bash
-cp config/.env.example .env
+cp .env.example .env
 # Edit .env and add your OpenAI API key
 ```
 
