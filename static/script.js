@@ -83,7 +83,7 @@ function setupEventListeners() {
     transformBtn.addEventListener('click', handleTransform);
     
     // Download button
-    document.getElementById('downloadCsvBtn')?.addEventListener('click', () => downloadResults('csv'));
+    document.getElementById('downloadBtn')?.addEventListener('click', handleDownload);
     
     // View toggle buttons
     document.getElementById('tableViewBtn')?.addEventListener('click', () => switchView('table'));
@@ -620,30 +620,59 @@ function formatSummary(summary) {
     return html;
 }
 
+// Handle download button click
+async function handleDownload() {
+    const formatSelect = document.getElementById('downloadFormat');
+    const format = formatSelect ? formatSelect.value : 'excel';
+    await downloadResults(format);
+}
+
 // Download results
 async function downloadResults(format) {
     if (!transformResults) return;
     
     try {
-        let content, filename, mimeType;
-        
         if (format === 'csv') {
-            content = convertToCSV(transformResults);
-            filename = `transform_results_${new Date().toISOString().slice(0, 10)}.csv`;
-            mimeType = 'text/csv';
+            // Client-side CSV generation
+            const content = convertToCSV(transformResults);
+            const filename = `transform_results_${new Date().toISOString().slice(0, 10)}.csv`;
+            const blob = new Blob([content], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } else if (format === 'excel') {
+            // Server-side Excel generation
+            const response = await fetch('/api/download-results', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    results: transformResults,
+                    format: 'excel'
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to generate Excel file');
+            }
+            
+            const blob = await response.blob();
+            const filename = `transform_results_${new Date().toISOString().slice(0, 10)}.xlsx`;
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
-        
-        // Create blob and download
-        const blob = new Blob([content], { type: mimeType });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        
     } catch (error) {
         console.error('Download error:', error);
         showError('Failed to download results');

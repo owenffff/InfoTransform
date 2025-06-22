@@ -10,10 +10,12 @@ import logging
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
+import pandas as pd
+from io import BytesIO
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Depends, status
-from fastapi.responses import FileResponse, JSONResponse, HTMLResponse
+from fastapi.responses import FileResponse, JSONResponse, HTMLResponse, StreamingResponse
 from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, Field, ValidationError
 from fastapi.staticfiles import StaticFiles
@@ -655,6 +657,106 @@ def generate_summary(data_list: List[dict]) -> dict:
             summary[f"{field_name}_unique_count"] = len(unique_items)
     
     return summary
+
+
+@app.post("/api/download-results")
+async def download_results(request: Request):
+    """Download transformation results as Excel or CSV"""
+    data = await request.json()
+    results_data = data.get('results', {})
+    format_type = data.get('format', 'excel')
+    
+    if not results_data:
+        raise HTTPException(status_code=400, detail="No results to download")
+    
+    try:
+        if format_type == 'excel':
+            # Extract successful results
+            results = results_data.get('results', [])
+            successful_results = [r for r in results if r.get('status') == 'success' and r.get('structured_data')]
+            
+            if not successful_results:
+                raise HTTPException(status_code=400, detail="No successful results to export")
+            
+            # Prepare data for DataFrame
+            rows = []
+            for result in successful_results:
+                row = {'filename': result['filename']}
+                row.update(result['structured_data'])
+                rows.append(row)
+            
+            # Create DataFrame
+            df = pd.DataFrame(rows)
+            
+            # Create Excel file in memory
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                df.to_excel(writer, sheet_name='Results', index=False)
+                
+                # Get the workbook and worksheet
+                workbook = writer.book
+                worksheet = writer.sheets['Results']
+                
+                # Format the header row
+                for cell in worksheet[1]:
+                    cell.font = cell.font.copy(bold=True)
+                    cell.fill = cell.fill.copy(fgColor="E0E0E0")
+                
+                # Auto-adjust column widths
+                for column in worksheet.columns:
+                    max_length = 0
+                    column_letter = column[0].column_letter
+                    for cell in column:
+                        try:
+                            if len(str(cell.value)) > max_length:
+                                max_length = len(str(cell.value))
+                        except:
+                            pass
+                    adjusted_width = min(max_length + 2, 50)
+                    worksheet.column_dimensions[column_letter].width = adjusted_width
+                
+                # Add summary sheet if multiple files
+                if len(successful_results) > 1 and results_data.get('summary'):
+                    summary_df = pd.DataFrame([results_data['summary']])
+                    summary_df.to_excel(writer, sheet_name='Summary', index=False)
+                    
+                    # Format summary sheet
+                    summary_sheet = writer.sheets['Summary']
+                    for cell in summary_sheet[1]:
+                        cell.font = cell.font.copy(bold=True)
+                        cell.fill = cell.fill.copy(fgColor="E0E0E0")
+                    
+                    # Auto-adjust summary columns
+                    for column in summary_sheet.columns:
+                        max_length = 0
+                        column_letter = column[0].column_letter
+                        for cell in column:
+                            try:
+                                if len(str(cell.value)) > max_length:
+                                    max_length = len(str(cell.value))
+                            except:
+                                pass
+                        adjusted_width = min(max_length + 2, 50)
+                        summary_sheet.column_dimensions[column_letter].width = adjusted_width
+            
+            output.seek(0)
+            
+            # Return Excel file
+            return StreamingResponse(
+                output,
+                media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                headers={
+                    'Content-Disposition': f'attachment; filename=transform_results_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+                }
+            )
+            
+        else:
+            # CSV format (fallback, though this is handled client-side)
+            raise HTTPException(status_code=400, detail="CSV format should be handled client-side")
+            
+    except Exception as e:
+        logger.error(f"Error generating download: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/health")
