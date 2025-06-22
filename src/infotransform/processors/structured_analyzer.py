@@ -12,7 +12,7 @@ from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIModel
 
 from infotransform.config import config
-from infotransform.processors.analysis_models import AVAILABLE_MODELS
+from config.analysis_schemas import AVAILABLE_MODELS
 
 logger = logging.getLogger(__name__)
 

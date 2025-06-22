@@ -1,8 +1,28 @@
 """
-pydantic_model_list.py
+analysis_schemas.py
 
-Simplified model registry - just the models themselves.
+Schema definitions for structured data analysis models.
+These Pydantic models define the structure of data extracted by the analysis system.
+
+Example flow:
+1. User selects "content_compliance" in the UI dropdown
+2. API receives model_key="content_compliance"
+3. System looks up AVAILABLE_MODELS["content_compliance"] → ContentCompliance_response class
+4. AI extracts data according to that class's schema
+5. Pydantic validates the extracted data matches the schema
+
+HOW TO ADD A NEW ANALYSIS MODEL:
+1. Create a new Pydantic model class below (inherit from BaseModel)
+2. Add descriptive docstring and Field descriptions
+3. Register it in AVAILABLE_MODELS at the bottom of this file
+   Example: "your_model_key": YourModelClass
+   - Choose a descriptive key (this is what users will see)
+   - The key can be different from the class name
+
+
+Note: The key you use in AVAILABLE_MODELS will be the model_key users select in the UI.
 """
+
 
 from enum import Enum
 from typing import Optional, List
