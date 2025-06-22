@@ -1,0 +1,82 @@
+# Performance Configuration for InfoTransform
+# This file contains technical performance tuning parameters
+# Modify with caution - incorrect values may impact system stability
+
+# Markdown Conversion Performance
+markdown_conversion:
+  max_workers: ${MARKDOWN_WORKERS:-10}          # Number of parallel conversion threads
+  worker_type: ${MARKDOWN_WORKER_TYPE:-thread}  # "thread" or "process"
+  queue_size: ${MARKDOWN_QUEUE_SIZE:-100}       # Maximum files in processing queue
+  timeout_per_file: ${MARKDOWN_TIMEOUT:-30}     # Seconds before timeout per file
+
+# AI Processing Performance  
+ai_processing:
+  batch_size: ${AI_BATCH_SIZE:-10}              # Files to process in one AI call
+  max_wait_time: ${AI_BATCH_WAIT:-2.0}         # Max seconds to wait for full batch
+  max_concurrent_batches: ${AI_CONCURRENT:-3}   # Parallel AI batch requests
+  timeout_per_batch: ${AI_BATCH_TIMEOUT:-60}    # Seconds before batch timeout
+  retry_attempts: ${AI_RETRY_ATTEMPTS:-3}       # Retries for failed batches
+  adaptive_batching:
+    enabled: ${ADAPTIVE_BATCHING:-true}         # Dynamically adjust batch size
+    min_batch_size: ${MIN_BATCH_SIZE:-5}        # Minimum batch size
+    max_batch_size: ${MAX_BATCH_SIZE:-20}       # Maximum batch size
+    target_response_time: ${TARGET_RESPONSE:-5.0} # Target seconds per batch
+
+# File Management Performance
+file_management:
+  cleanup_strategy: ${CLEANUP_STRATEGY:-stream_complete}  # "stream_complete" or "reference_counting"
+  max_file_retention: ${MAX_FILE_RETENTION:-300}          # Maximum seconds to keep files
+  cleanup_check_interval: ${CLEANUP_INTERVAL:-10}         # Seconds between cleanup checks
+  use_temp_directory: ${USE_TEMP_DIR:-true}               # Use system temp directory
+
+# System Resource Limits
+resource_limits:
+  max_memory_per_file_mb: ${MAX_MEMORY_PER_FILE:-100}    # MB limit per file
+  max_total_memory_mb: ${MAX_TOTAL_MEMORY:-1000}         # Total memory limit
+  cpu_limit_percentage: ${CPU_LIMIT:-80}                 # Max CPU usage percentage
+  max_concurrent_operations: ${MAX_CONCURRENT_OPS:-50}    # Total concurrent operations
+
+# Performance Monitoring
+monitoring:
+  enable_metrics: ${ENABLE_METRICS:-true}
+  metrics_interval: ${METRICS_INTERVAL:-60}              # Seconds between metric logs
+  slow_operation_threshold: ${SLOW_THRESHOLD:-5.0}       # Seconds to flag as slow
+  enable_profiling: ${ENABLE_PROFILING:-false}           # Detailed performance profiling
+  log_level: ${PERF_LOG_LEVEL:-INFO}                    # Performance logging level
+
+# Streaming Configuration
+streaming:
+  buffer_size: ${STREAM_BUFFER_SIZE:-8192}              # Bytes for streaming buffer
+  chunk_delay: ${STREAM_CHUNK_DELAY:-0.01}              # Seconds between chunks
+  enable_compression: ${STREAM_COMPRESSION:-false}       # Enable response compression
+  heartbeat_interval: ${HEARTBEAT_INTERVAL:-30}         # Seconds between keepalive messages
+
+# Performance Profiles (can be activated via PERFORMANCE_PROFILE env var)
+profiles:
+  # Conservative profile for limited resources
+  conservative:
+    markdown_conversion.max_workers: 5
+    ai_processing.batch_size: 5
+    ai_processing.max_concurrent_batches: 2
+    resource_limits.max_total_memory_mb: 500
+    
+  # Balanced profile (default)
+  balanced:
+    markdown_conversion.max_workers: 10
+    ai_processing.batch_size: 10
+    ai_processing.max_concurrent_batches: 3
+    resource_limits.max_total_memory_mb: 1000
+    
+  # High performance profile for powerful servers
+  high_performance:
+    markdown_conversion.max_workers: 20
+    ai_processing.batch_size: 15
+    ai_processing.max_concurrent_batches: 5
+    resource_limits.max_total_memory_mb: 2000
+    
+  # Ultra profile for maximum throughput
+  ultra:
+    markdown_conversion.max_workers: 50
+    ai_processing.batch_size: 25
+    ai_processing.max_concurrent_batches: 10
+    resource_limits.max_total_memory_mb: 4000

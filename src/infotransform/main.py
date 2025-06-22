@@ -6,6 +6,7 @@ import os
 import asyncio
 import tempfile
 import shutil
+import logging
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
@@ -28,8 +29,11 @@ from infotransform.api.models import (
     TransformRequest, TransformBatchRequest, FileTransformResult, TransformResponse
 )
 from infotransform.api.streaming import generate_transform_stream
+from infotransform.api.streaming_v2 import transform_stream_v2, shutdown_processor
 from fastapi.responses import StreamingResponse
 
+# Setup logger
+logger = logging.getLogger(__name__)
 
 # Initialize processors
 vision_processor = None
@@ -65,7 +69,8 @@ async def lifespan(app: FastAPI):
     yield
     
     # Shutdown
-    # Add any cleanup code here if needed
+    await shutdown_processor()  # Shutdown the optimized processor
+    print("✅ Cleanup completed")
 
 
 # Initialize FastAPI app
@@ -438,30 +443,33 @@ async def transform_stream(
             else:
                 print(f"File exists: {file_info['file_path']} (size: {os.path.getsize(file_info['file_path'])} bytes)")
         
-        # Generate the stream
-        stream = generate_transform_stream(
-            files_info,
-            model_key,
-            custom_instructions or "",
-            ai_model,
-            vision_processor,
-            audio_processor,
-            structured_analyzer
-        )
+        # Create a wrapper generator that handles cleanup after streaming completes
+        async def stream_with_cleanup():
+            try:
+                async for chunk in generate_transform_stream(
+                    files_info,
+                    model_key,
+                    custom_instructions or "",
+                    ai_model,
+                    vision_processor,
+                    audio_processor,
+                    structured_analyzer
+                ):
+                    yield chunk
+            finally:
+                # Clean up files only after streaming is complete
+                logger.info("Streaming complete, cleaning up files")
+                for file_path in saved_files:
+                    try:
+                        if os.path.exists(file_path):
+                            os.remove(file_path)
+                            logger.info(f"Cleaned up: {file_path}")
+                    except Exception as e:
+                        logger.error(f"Error cleaning up {file_path}: {e}")
         
-        # Define cleanup function
-        async def cleanup():
-            # Wait a bit to ensure streaming is complete
-            await asyncio.sleep(5)
-            # Clean up uploaded files after streaming
-            for file_path in saved_files:
-                if os.path.exists(file_path):
-                    os.remove(file_path)
-                    print(f"Cleaned up: {file_path}")
-        
-        # Return streaming response
-        response = StreamingResponse(
-            stream,
+        # Return streaming response with cleanup
+        return StreamingResponse(
+            stream_with_cleanup(),
             media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",
@@ -470,17 +478,16 @@ async def transform_stream(
             }
         )
         
-        # Schedule cleanup after response
-        asyncio.create_task(cleanup())
-        
-        return response
-        
     except Exception as e:
         # Clean up on error
         for file_path in saved_files:
             if os.path.exists(file_path):
                 os.remove(file_path)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# Add the new optimized streaming endpoint
+app.post("/api/transform-stream-v2")(transform_stream_v2)
 
 
 @app.post("/api/transform-batch")

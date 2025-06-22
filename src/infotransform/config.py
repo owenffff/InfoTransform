@@ -23,11 +23,24 @@ class Config:
         with open(config_path, 'r') as f:
             self.yaml_config = yaml.safe_load(f)
         
+        # Load performance configuration
+        perf_config_path = Path(__file__).parent.parent.parent / 'config' / 'performance.yaml'
+        if perf_config_path.exists():
+            with open(perf_config_path, 'r') as f:
+                self.performance_config = yaml.safe_load(f)
+        else:
+            logger.info("Performance config not found, using defaults")
+            self.performance_config = self._get_default_performance_config()
+        
         # Pattern for environment variable substitution
         self._env_pattern = re.compile(r'\$\{([^}]+)\}')
         
-        # Process environment variables in config
+        # Process environment variables in configs
         self.yaml_config = self._process_env_vars(self.yaml_config)
+        self.performance_config = self._process_env_vars(self.performance_config)
+        
+        # Apply performance profile if specified
+        self._apply_performance_profile()
         
         # Validate on initialization
         self.validate()
@@ -39,14 +52,26 @@ class Config:
         elif isinstance(config, list):
             return [self._process_env_vars(item) for item in config]
         elif isinstance(config, str):
-            # Replace ${VAR_NAME} with environment variable value
+            # Replace ${VAR_NAME} or ${VAR_NAME:-default} with environment variable value
             def replace_env_var(match):
-                var_name = match.group(1)
-                value = os.getenv(var_name)
-                if value is None and var_name in ['OPENAI_API_KEY', 'OPENAI_BASE_URL']:
-                    # Don't fail for optional env vars
-                    return None
-                return value if value is not None else match.group(0)
+                var_expr = match.group(1)
+                # Check if it has a default value (VAR:-default syntax)
+                if ':-' in var_expr:
+                    var_name, default_value = var_expr.split(':-', 1)
+                    value = os.getenv(var_name.strip())
+                    if value is None:
+                        # Use the default value
+                        return default_value
+                else:
+                    var_name = var_expr.strip()
+                    value = os.getenv(var_name)
+                    if value is None and var_name in ['OPENAI_API_KEY', 'OPENAI_BASE_URL']:
+                        # Don't fail for optional env vars
+                        return None
+                    if value is None:
+                        # Return the original expression if no value found
+                        return match.group(0)
+                return value
             
             result = self._env_pattern.sub(replace_env_var, config)
             return None if result is None else result
@@ -186,6 +211,89 @@ class Config:
         """Check if an experimental feature is enabled"""
         return self.get(f'features.experimental.{feature_name}', False)
     
+    def _get_default_performance_config(self) -> Dict[str, Any]:
+        """Get default performance configuration"""
+        return {
+            'markdown_conversion': {
+                'max_workers': 10,
+                'worker_type': 'thread',
+                'queue_size': 100,
+                'timeout_per_file': 30
+            },
+            'ai_processing': {
+                'batch_size': 10,
+                'max_wait_time': 2.0,
+                'max_concurrent_batches': 3,
+                'timeout_per_batch': 60,
+                'retry_attempts': 3
+            },
+            'file_management': {
+                'cleanup_strategy': 'stream_complete',
+                'max_file_retention': 300,
+                'cleanup_check_interval': 10
+            },
+            'resource_limits': {
+                'max_memory_per_file_mb': 100,
+                'max_total_memory_mb': 1000,
+                'cpu_limit_percentage': 80
+            },
+            'monitoring': {
+                'enable_metrics': True,
+                'metrics_interval': 60,
+                'slow_operation_threshold': 5.0,
+                'enable_profiling': False
+            }
+        }
+    
+    def _apply_performance_profile(self):
+        """Apply performance profile if specified"""
+        profile_name = os.getenv('PERFORMANCE_PROFILE')
+        if not profile_name:
+            return
+        
+        profiles = self.performance_config.get('profiles', {})
+        if profile_name not in profiles:
+            logger.warning(f"Performance profile '{profile_name}' not found")
+            return
+        
+        logger.info(f"Applying performance profile: {profile_name}")
+        profile = profiles[profile_name]
+        
+        # Apply profile settings
+        for key_path, value in profile.items():
+            keys = key_path.split('.')
+            target = self.performance_config
+            
+            # Navigate to the parent of the target key
+            for key in keys[:-1]:
+                if key not in target:
+                    target[key] = {}
+                target = target[key]
+            
+            # Set the value
+            target[keys[-1]] = value
+    
+    def get_performance(self, key_path: str, default: Any = None) -> Any:
+        """
+        Get performance configuration value using dot notation
+        
+        Args:
+            key_path: Dot-separated path to configuration value
+            default: Default value if key not found
+        
+        Returns:
+            Configuration value or default
+        """
+        keys = key_path.split('.')
+        value = self.performance_config
+        
+        for key in keys:
+            if isinstance(value, dict) and key in value:
+                value = value[key]
+            else:
+                return default
+        
+        return value
     
     def validate(self):
         """Validate required configuration"""
