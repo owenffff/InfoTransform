@@ -5,7 +5,7 @@ Vision processor for handling images and documents using Markitdown
 import os
 from markitdown import MarkItDown
 from openai import OpenAI
-from config import config
+from infotransform.config import config
 
 
 class VisionProcessor:

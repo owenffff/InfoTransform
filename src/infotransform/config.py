@@ -14,7 +14,12 @@ logger = logging.getLogger(__name__)
 class Config:
     def __init__(self):
         # Load YAML configuration
-        config_path = Path(__file__).parent / 'config.yaml'
+        # Look for config.yaml in the project root (two levels up from this file)
+        config_path = Path(__file__).parent.parent.parent / 'config' / 'config.yaml'
+        if not config_path.exists():
+            # Fallback to old location for backward compatibility
+            config_path = Path(__file__).parent.parent.parent / 'config.yaml'
+        
         with open(config_path, 'r') as f:
             self.yaml_config = yaml.safe_load(f)
         
@@ -133,7 +138,9 @@ class Config:
     # Upload settings from YAML
     @property
     def UPLOAD_FOLDER(self):
-        return self.get('processing.upload.folder', 'uploads')
+        # Use data directory in project root
+        folder = self.get('processing.upload.folder', 'uploads')
+        return str(Path(__file__).parent.parent.parent / 'data' / folder)
     
     @property
     def MAX_CONTENT_LENGTH(self):
@@ -166,7 +173,9 @@ class Config:
     
     @property
     def TEMP_EXTRACT_DIR(self):
-        return self.get('processing.batch.temp_extract_dir', 'temp_extracts')
+        # Use data directory in project root
+        folder = self.get('processing.batch.temp_extract_dir', 'temp_extracts')
+        return str(Path(__file__).parent.parent.parent / 'data' / folder)
     
     # Feature flags
     def is_feature_enabled(self, feature_name: str) -> bool:

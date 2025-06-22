@@ -10,7 +10,7 @@ import shutil
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime
-from config import config
+from infotransform.config import config
 
 
 class BatchProcessor:
@@ -38,7 +38,7 @@ class BatchProcessor:
         Returns:
             List of dicts with 'path' (relative) and 'full_path' (absolute)
         """
-        temp_dir = tempfile.mkdtemp(prefix='markitdown_', dir=config.TEMP_EXTRACT_DIR)
+        temp_dir = tempfile.mkdtemp(prefix='infotransform_', dir=config.TEMP_EXTRACT_DIR)
         self.temp_dirs.append(temp_dir)
         
         files_info = []
@@ -171,7 +171,7 @@ class BatchProcessor:
         markdown_parts = []
         
         # Add header
-        markdown_parts.append("# Markitdown Batch Processing Results")
+        markdown_parts.append("# InfoTransform Batch Processing Results")
         markdown_parts.append(f"\nGenerated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
         
         # Add table of contents

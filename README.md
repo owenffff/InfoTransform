@@ -1,259 +1,189 @@
-# 🔄 Information Transformer
+# InfoTransform
 
-A powerful web application that transforms any file type (images, documents, audio) into structured, actionable data using AI. Built with Microsoft's Markitdown library and Pydantic AI for intelligent data extraction.
+Transform any file type into structured, actionable data using AI-powered analysis.
 
-## ✨ Features
+## Features
 
-### Core Transformation Pipeline
-- **🔄 Two-Stage Processing**: Files → Markdown → Structured Data
-- **🤖 AI-Powered Analysis**: Uses Pydantic AI for intelligent data extraction
-- **📊 Multiple Analysis Models**: 
-  - Content Compliance: Policy violation detection
-  - Document Metadata: Extract titles, authors, summaries
-  - Technical Analysis: Code snippets, complexity assessment
+- **Multi-format Support**: Process images, PDFs, audio files, and documents
+- **AI-Powered Analysis**: Extract structured data using customizable Pydantic models
+- **Batch Processing**: Handle multiple files and ZIP archives efficiently
+- **RESTful API**: Easy integration with FastAPI backend
+- **Web Interface**: User-friendly interface for file uploads and downloads
 
-### File Processing Capabilities
-- **🖼️ Image OCR**: Extract text from images (JPG, PNG, GIF, BMP, WebP)
-- **📄 Document Processing**: Convert PDFs, DOCX, PPTX, and XLSX files
-- **🎤 Speech-to-Text**: Transcribe audio files (MP3, WAV, M4A, FLAC, OGG, WebM)
-- **📦 Batch Processing**: Process multiple files at once or upload ZIP archives
-- **⚡ Async Processing**: Fast concurrent processing with progress tracking
-
-### Output Options
-- **📋 Structured JSON**: Export analysis results as JSON
-- **📊 CSV Export**: Download results in spreadsheet format
-- **📈 Summary Statistics**: Aggregate insights across multiple files
-- **🎯 Custom Instructions**: Fine-tune analysis with specific requirements
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Python 3.11 or higher
-- An OpenAI API key (or compatible service credentials)
-
-### Installation
-
-1. **Clone or download this project**
-
-2. **Install dependencies using uv (recommended)**:
-   ```bash
-   uv sync
-   ```
-
-   Or using pip:
-   ```bash
-   pip install -e .
-   ```
-
-3. **Configure your API credentials**:
-   ```bash
-   cp .env.example .env
-   ```
-
-   Edit `.env` and add your credentials:
-   ```env
-   API_KEY=your-api-key-here
-   BASE_URL=https://api.openai.com/v1  # Or your custom endpoint
-   MODEL_NAME=gpt-4-vision-preview     # Or your preferred model
-   ```
-
-4. **Run the application**:
-   ```bash
-   python app.py
-   ```
-
-5. **Open your browser** and navigate to:
-   ```
-   http://localhost:8000
-   ```
-
-   API documentation is available at:
-   ```
-   http://localhost:8000/docs
-   ```
-
-## 🔧 Configuration
-
-The application uses a unified `config.yaml` file for all settings, with sensitive data in `.env`.
-
-### Environment Variables (.env)
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `API_KEY` | Your OpenAI API key (required) | - |
-| `BASE_URL` | API endpoint URL | `https://api.openai.com/v1` |
-| `OPENAI_BASE_URL` | Custom OpenAI endpoint (optional) | - |
-| `DOCINTEL_ENDPOINT` | Azure Document Intelligence endpoint | None |
-| `PORT` | Port to run the server on | `8000` |
-
-### Configuration File (config.yaml)
-
-The `config.yaml` file contains:
-- **AI Models**: Configure GPT-4, GPT-4-mini, or custom models
-- **Analysis Prompts**: Customize prompts for different analysis types
-- **Processing Settings**: Timeouts, concurrency, file size limits
-- **Feature Flags**: Enable/disable specific features
-
-### Vision Prompt Configuration
-
-The default vision prompt is optimized to:
-- Extract all text from screenshots, documents, and text-heavy images
-- Provide detailed descriptions for images without text
-- Handle mixed content (both text and visual elements)
-
-You can customize the vision prompt by setting the `VISION_PROMPT` environment variable in your `.env` file. The default prompt intelligently handles both OCR and image description tasks.
-
-### Azure Document Intelligence (Optional)
-
-For advanced document processing, you can optionally configure Azure Document Intelligence:
-
-1. **Set up Azure Document Intelligence**:
-   - Create an Azure Cognitive Services resource
-   - Get your endpoint URL (e.g., `https://your-resource.cognitiveservices.azure.com`)
-
-2. **Configure in `.env`**:
-   ```env
-   DOCINTEL_ENDPOINT=https://your-resource.cognitiveservices.azure.com
-   ```
-
-3. **Benefits**:
-   - Better structured data extraction from PDFs
-   - Advanced table recognition
-   - Form field extraction
-   - Layout analysis for complex documents
-
-When configured, Markitdown will automatically use Document Intelligence for supported document types while still using the LLM for images and other content.
-
-### Using Alternative API Providers
-
-This MVP works with any OpenAI-compatible endpoint. Examples:
-
-- **Local Models (Ollama, LM Studio)**: Set `BASE_URL` to your local endpoint
-- **Alternative Providers**: Many services offer OpenAI-compatible endpoints
-- **Proxy Services**: Use services that provide OpenAI-compatible interfaces for other models
-
-## 📁 Project Structure
+## Project Structure
 
 ```
-information-transformer/
-├── app.py                    # FastAPI application
-├── config.yaml              # Unified configuration
-├── config.py                # Configuration loader
-├── processors/              # File processing modules
-│   ├── vision.py           # Image/document processor
-│   ├── audio.py            # Audio transcription
-│   ├── batch.py            # Batch processing handler
-│   ├── structured_analyzer.py  # Pydantic AI analyzer
-│   └── analysis_models.py  # Pydantic models for extraction
-├── templates/              # HTML templates
-│   └── index.html         # Main web interface
-├── static/                # Static assets
-│   ├── style.css         # Styling
-│   └── script.js         # Frontend JavaScript
-├── uploads/              # Temporary file storage
-├── .env.example         # Example environment variables
-└── README.md           # This file
+infotransform/
+├── src/
+│   └── infotransform/
+│       ├── __init__.py
+│       ├── main.py              # FastAPI application
+│       ├── config.py            # Configuration management
+│       ├── api/
+│       │   ├── __init__.py
+│       │   └── models.py        # Pydantic API models
+│       ├── processors/
+│       │   ├── __init__.py
+│       │   ├── vision.py        # Vision/document processor
+│       │   ├── audio.py         # Audio processor
+│       │   ├── batch.py         # Batch processing
+│       │   ├── structured_analyzer.py  # AI analysis
+│       │   └── analysis_models.py      # Data extraction models
+│       └── utils/
+│           └── __init__.py
+├── config/
+│   ├── config.yaml              # Main configuration
+│   └── .env.example             # Environment variables template
+├── data/
+│   ├── uploads/                 # Uploaded files (gitignored)
+│   └── temp_extracts/           # Temporary extraction directory
+├── static/                      # Frontend assets
+│   ├── script.js
+│   └── style.css
+├── templates/
+│   └── index.html               # Web interface
+├── tests/
+│   └── test_env_config.py       # Configuration tests
+├── scripts/
+│   └── demo.py                  # Demo script
+├── docs/                        # Documentation
+├── app.py                       # Application entry point
+├── pyproject.toml               # Project dependencies
+└── README.md
 ```
 
-## 🎯 Usage
+## Quick Start
 
-### Information Transformation Workflow
+### 1. Clone the repository
 
-1. **Upload Files**: 
-   - Drag and drop files or click to browse
-   - Support for single or multiple files
-   - ZIP archives automatically extracted
+```bash
+git clone <repository-url>
+cd infotransform
+```
 
-2. **Configure Analysis**:
-   - Select an analysis model (Compliance, Metadata, Technical)
-   - Choose AI model (GPT-4, GPT-4-mini, etc.)
-   - Add custom instructions (optional)
+### 2. Set up environment
 
-3. **Transform**:
-   - Click "Transform to Structured Data"
-   - Watch real-time progress for batch processing
+```bash
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-4. **View Results**:
-   - **Structured Data Tab**: Formatted, easy-to-read results
-   - **Raw Results Tab**: Complete JSON output
-   - **Summary Section**: Aggregate statistics for batch processing
+# Install dependencies
+pip install -e .
+```
 
-5. **Export**:
-   - **Download JSON**: Complete structured data
-   - **Download CSV**: Spreadsheet-compatible format
+### 3. Configure environment variables
 
-### Batch Processing Features
-- **Concurrent Processing**: Files are processed in parallel for speed
-- **Progress Tracking**: See real-time progress during batch operations
-- **Structure Preservation**: ZIP file directory structure is maintained
-- **Mixed File Types**: Process images, documents, and audio in one batch
-- **Error Handling**: Failed files don't stop the batch; see summary of successes/failures
+```bash
+cp config/.env.example .env
+# Edit .env and add your OpenAI API key
+```
 
-### Supported File Types
-
-- **Images**: JPG, PNG, GIF, BMP, WebP
-- **Documents**: PDF, DOCX, PPTX, XLSX
-- **Audio**: MP3, WAV, M4A, FLAC, OGG, WebM
-- **Archives**: ZIP (for batch processing)
-
-## 🛠️ Development
-
-### Running in Development Mode
-
-The app runs in development mode by default with auto-reload enabled:
+### 4. Run the application
 
 ```bash
 python app.py
 ```
 
-### Adding New File Types
+The application will be available at `http://localhost:8000`
 
-1. Update `Config.ALLOWED_*_EXTENSIONS` in `config.py`
-2. Modify the processor's `is_supported_file` method
-3. Update the file input accept attribute in `index.html`
+## Configuration
 
-### Customizing the UI
+### Environment Variables
 
-- Styles are in `static/style.css`
-- JavaScript logic is in `static/script.js`
-- HTML template is in `templates/index.html`
+Create a `.env` file in the project root:
 
-## ⚠️ Limitations
+```env
+# Required
+OPENAI_API_KEY=your-api-key-here
 
-- Maximum file size: 16MB per file
-- Maximum ZIP size: 100MB for batch uploads
-- Processing time depends on file size and API response time
-- API rate limits apply based on your provider
-- Some complex layouts may not convert perfectly
-- Concurrent processing limited to 5 files at a time (configurable)
+# Optional
+OPENAI_BASE_URL=https://api.openai.com/v1
+AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT=your-azure-endpoint
+PORT=8000
+```
 
-## 🔒 Security Notes
+### Configuration File
 
-- API keys are stored locally in `.env` (never commit this file)
-- Files are temporarily stored and immediately deleted after processing
-- No data is permanently stored on the server
+Edit `config/config.yaml` to customize:
+- Model settings
+- Processing limits
+- File type restrictions
+- Analysis prompts
 
-## 🐛 Troubleshooting
+## API Documentation
 
-### "API_KEY is required" Error
-- Make sure you've created a `.env` file with your API key
-- Check that the `.env` file is in the same directory as `app.py`
+Once the server is running, visit:
+- Interactive API docs: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
 
-### "Cannot connect to server" Error
-- Ensure the FastAPI server is running
-- Check if port 8000 is available
+## Usage Examples
 
-### Processing Fails
-- Verify your API key is valid
-- Check if the BASE_URL is correct
-- Ensure you have credits/quota with your API provider
+### Web Interface
 
-## 📝 License
+1. Open `http://localhost:8000` in your browser
+2. Select files to upload
+3. Choose an analysis model
+4. Download results as Markdown or structured JSON
 
-This is an MVP project for demonstration purposes. Please ensure you comply with the terms of service of your API provider.
+### API Usage
 
-## 🙏 Acknowledgments
+```python
+import requests
 
-- Built with [Markitdown](https://github.com/microsoft/markitdown) by Microsoft
-- Uses OpenAI's GPT-4 Vision and Whisper APIs (or compatible alternatives)
+# Transform a single file
+with open('document.pdf', 'rb') as f:
+    response = requests.post(
+        'http://localhost:8000/api/transform',
+        files={'file': f},
+        data={
+            'model_key': 'content_compliance',
+            'custom_instructions': 'Focus on regulatory requirements'
+        }
+    )
+    result = response.json()
+```
+
+### Command Line Demo
+
+```bash
+python scripts/demo.py
+```
+
+## Development
+
+### Running Tests
+
+```bash
+python tests/test_env_config.py
+```
+
+### Adding New Analysis Models
+
+1. Define your Pydantic model in `src/infotransform/processors/analysis_models.py`
+2. Add it to the `AVAILABLE_MODELS` dictionary
+3. Optionally add a custom prompt in `config/config.yaml`
+
+## Troubleshooting
+
+### Common Issues
+
+1. **"OpenAIModel.__init__() got an unexpected keyword argument 'model'"**
+   - This error indicates the pydantic-ai library needs to be updated
+   - The model name should be passed to OpenAIModel directly, not as a keyword argument
+
+2. **File upload errors**
+   - Check file size limits in `config/config.yaml`
+   - Ensure the file type is supported
+
+3. **API key errors**
+   - Verify your OpenAI API key is set correctly in `.env`
+   - Check if you need to set a custom base URL
+
+## License
+
+[Your License Here]
+
+## Contributing
+
+[Contributing guidelines]

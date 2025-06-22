@@ -23,10 +23,15 @@ print(f"OPENAI_BASE_URL: {openai_base or 'Not set (will use default)'}")
 azure_endpoint = os.getenv('AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT')
 print(f"AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT: {'✓ Set' if azure_endpoint else '✗ Not set (optional)'}")
 
+# Add the src directory to the Python path
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
+
 # Test config module
 print("\nTesting config module...")
 try:
-    from config import config
+    from infotransform.config import config
     print(f"config.API_KEY: {'✓ Available' if config.API_KEY else '✗ Not available'}")
     print(f"config.BASE_URL: {config.BASE_URL}")
     print(f"config.DOCINTEL_ENDPOINT: {'✓ Set' if config.DOCINTEL_ENDPOINT else '✗ Not set (optional)'}")
@@ -37,7 +42,7 @@ except Exception as e:
 # Test processors
 print("\nTesting processors...")
 try:
-    from processors import VisionProcessor, AudioProcessor, StructuredAnalyzer
+    from infotransform.processors import VisionProcessor, AudioProcessor, StructuredAnalyzer
     
     # Test Vision Processor
     vision = VisionProcessor()

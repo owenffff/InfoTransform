@@ -1,7 +1,7 @@
 [project]
-name = "markitdown-mvp"
+name = "infotransform"
 version = "0.1.0"
-description = "MVP for OCR and Speech-to-Text using Markitdown with OpenAI-compatible APIs"
+description = "Transform any file type into structured, actionable data using AI-powered analysis"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

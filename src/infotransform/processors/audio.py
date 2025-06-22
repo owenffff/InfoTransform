@@ -4,7 +4,7 @@ Audio processor for handling speech-to-text using OpenAI Whisper API
 
 import os
 from openai import OpenAI
-from config import config
+from infotransform.config import config
 
 
 class AudioProcessor:

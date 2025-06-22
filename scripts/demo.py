@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
 """
-Demo script showing how to use the Markitdown MVP processors directly
+Demo script showing how to use the InfoTransform processors directly
 """
 
 import os
 from dotenv import load_dotenv
-from processors import VisionProcessor, AudioProcessor
+import sys
+from pathlib import Path
+
+# Add the src directory to the Python path
+sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
+
+from infotransform.processors import VisionProcessor, AudioProcessor
 
 # Load environment variables
 load_dotenv()
@@ -21,7 +27,7 @@ def demo_vision_processing():
         f.write("""
 # Sample Document
 
-This is a test document to demonstrate Markitdown processing.
+This is a test document to demonstrate InfoTransform processing.
 
 ## Features
 - Converts documents to Markdown
@@ -31,7 +37,7 @@ This is a test document to demonstrate Markitdown processing.
 ## Code Example
 ```python
 def hello_world():
-    print("Hello from Markitdown!")
+    print("Hello from InfoTransform!")
 ```
 
 Visit https://github.com/microsoft/markitdown for more info.
@@ -60,7 +66,7 @@ Visit https://github.com/microsoft/markitdown for more info.
             os.remove(sample_file)
 
 def main():
-    print("🚀 Markitdown MVP Demo\n")
+    print("🚀 InfoTransform Demo\n")
     
     # Check if API key is set
     if not os.getenv('API_KEY'):
@@ -76,7 +82,7 @@ def main():
     print("\n" + "="*50)
     print("✨ Demo complete!")
     print("\nTo use the web interface, run: python app.py")
-    print("Then open http://localhost:5000 in your browser")
+    print("Then open http://localhost:8000 in your browser")
 
 if __name__ == "__main__":
     main()

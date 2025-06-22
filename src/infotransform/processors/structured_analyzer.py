@@ -11,8 +11,8 @@ from pydantic import BaseModel
 from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIModel
 
-from config import config
-from processors.analysis_models import AVAILABLE_MODELS
+from infotransform.config import config
+from infotransform.processors.analysis_models import AVAILABLE_MODELS
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ class StructuredAnalyzer:
         if cache_key in self.agents:
             return self.agents[cache_key]
         
-        # Initialize AI model - pydantic_ai will use env vars automatically
+        # Initialize AI model - pass model name directly to OpenAIModel
         model = OpenAIModel(ai_model_name)
         
         # Get system prompt
