@@ -132,6 +132,7 @@ processing:
         - txt
         - md
         - html
+        - msg
   
   # Analysis settings
   analysis:
