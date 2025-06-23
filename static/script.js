@@ -7,6 +7,7 @@ let currentView = 'table'; // Default to table view
 let eventSource = null;
 let streamingResults = [];
 let modelFields = [];
+window.modelsData = null;
 
 // DOM elements
 const dropZone = document.getElementById('dropZone');
@@ -42,6 +43,9 @@ async function loadAnalysisModels() {
     try {
         const response = await fetch('/api/models');
         const data = await response.json();
+        
+        // Store the data globally
+        window.modelsData = data;
         
         // Populate analysis models
         modelSelect.innerHTML = '<option value="">Select an analysis model...</option>';
@@ -168,10 +172,82 @@ function handleModelChange(e) {
     if (selectedOption && selectedOption.dataset.description) {
         modelDescription.textContent = selectedOption.dataset.description;
         modelDescription.style.display = 'block';
+        
+        // Show schema preview
+        showSchemaPreview(e.target.value);
     } else {
         modelDescription.style.display = 'none';
+        document.getElementById('schemaPreview').classList.add('hidden');
     }
 }
+
+function showSchemaPreview(modelKey) {
+    const schemaPreview = document.getElementById('schemaPreview');
+    const chipsContainer = document.getElementById('schemaChipsContainer');
+    
+    const modelInfo = window.modelsData?.models[modelKey];
+    
+    if (modelInfo && modelInfo.fields) {
+        chipsContainer.innerHTML = '';
+        
+        Object.entries(modelInfo.fields).forEach(([fieldName, fieldInfo]) => {
+            const chip = createFieldChip(fieldName, fieldInfo);
+            chipsContainer.appendChild(chip);
+        });
+        
+        schemaPreview.classList.remove('hidden');
+    }
+}
+
+function createFieldChip(fieldName, fieldInfo) {
+    const chip = document.createElement('div');
+    chip.className = 'field-chip';
+    if (!fieldInfo.required) {
+        chip.className += ' optional';
+    }
+    
+    // Chip text
+    chip.innerHTML = `<span>${fieldName}${!fieldInfo.required ? '?' : ''}</span>`;
+    
+    // Create popover
+    const popover = document.createElement('div');
+    popover.className = 'field-details-popover';
+    popover.innerHTML = `
+        <div style="font-weight: 600; margin-bottom: 8px;">${fieldName}</div>
+        <div style="margin: 4px 0;">
+            <strong>Type:</strong> ${fieldInfo.type}
+        </div>
+        <div style="margin: 4px 0;">
+            <strong>Required:</strong> ${fieldInfo.required ? 'Yes' : 'No'}
+        </div>
+        ${fieldInfo.description ? `
+        <div style="margin: 4px 0;">
+            <strong>Description:</strong> ${fieldInfo.description}
+        </div>
+        ` : ''}
+    `;
+    
+    chip.appendChild(popover);
+    
+    // Click handler
+    chip.addEventListener('click', (e) => {
+        e.stopPropagation();
+        // Close others
+        document.querySelectorAll('.field-chip').forEach(c => {
+            if (c !== chip) c.classList.remove('active');
+        });
+        chip.classList.toggle('active');
+    });
+    
+    return chip;
+}
+
+// Close popovers when clicking outside
+document.addEventListener('click', () => {
+    document.querySelectorAll('.field-chip.active').forEach(chip => {
+        chip.classList.remove('active');
+    });
+});
 
 // Transform files
 async function handleTransform() {

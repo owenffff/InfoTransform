@@ -221,15 +221,36 @@ Content to analyze:
             raise TimeoutError("Batch analysis timeout")
     
     def get_available_models(self) -> Dict[str, Dict[str, Any]]:
-        """Get information about available analysis models"""
-        return {
-            key: {
-                "name": model.__name__,
-                "description": model.__doc__ or "No description",
-                "fields": list(model.model_fields.keys())
+        """Get information about available analysis models with detailed field info"""
+        models_info = {}
+        
+        for key, model_class in AVAILABLE_MODELS.items():
+            fields_info = {}
+            for field_name, field in model_class.model_fields.items():
+                # Get clean field type
+                field_type = str(field.annotation).replace('typing.', '')
+                
+                # Extract constraints if it's a list field
+                constraints = None
+                if hasattr(field, 'metadata'):
+                    for meta in field.metadata:
+                        if hasattr(meta, 'min_length') or hasattr(meta, 'max_length'):
+                            constraints = f"{getattr(meta, 'min_length', 0)}-{getattr(meta, 'max_length', 'unlimited')} items"
+                
+                fields_info[field_name] = {
+                    'type': field_type,
+                    'description': field.description or '',
+                    'required': field.is_required(),
+                    'constraints': constraints
+                }
+            
+            models_info[key] = {
+                "name": model_class.__name__,
+                "description": model_class.__doc__ or "No description",
+                "fields": fields_info
             }
-            for key, model in AVAILABLE_MODELS.items()
-        }
+        
+        return models_info
     
     def get_available_ai_models(self) -> Dict[str, Any]:
         """Get available AI models and their configurations"""
