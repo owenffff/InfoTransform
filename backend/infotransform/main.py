@@ -96,11 +96,11 @@ app.add_middleware(
 project_root = Path(__file__).parent.parent.parent
 
 # Mount static files
-static_path = project_root / "static"
+static_path = project_root / "frontend" / "dist"
 app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
 
 # Setup templates
-templates_path = project_root / "templates"
+templates_path = project_root / "frontend" / "templates"
 templates = Jinja2Templates(directory=str(templates_path))
 
 # Create necessary directories

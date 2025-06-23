@@ -1,0 +1,38 @@
+{
+  "name": "infotransform",
+  "version": "1.0.0",
+  "description": "Transform any file type into structured, actionable data using AI-powered analysis.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "build:css": "tailwindcss -i ./frontend/src/css/input.css -o ./frontend/dist/css/style.css --minify",
+    "watch:css": "tailwindcss -i ./frontend/src/css/input.css -o ./frontend/dist/css/style.css --watch",
+    "build:js": "esbuild frontend/src/js/main.js --bundle --minify --outfile=frontend/dist/js/script.js",
+    "watch:js": "esbuild frontend/src/js/main.js --bundle --outfile=frontend/dist/js/script.js --watch",
+    "build": "npm run build:css && npm run build:js",
+    "dev": "concurrently \"npm run watch:css\" \"npm run watch:js\" \"python app.py\"",
+    "dev:frontend": "concurrently \"npm run watch:css\" \"npm run watch:js\"",
+    "clean": "rm -rf frontend/dist/*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/owenffff/InfoTransform.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/owenffff/InfoTransform/issues"
+  },
+  "homepage": "https://github.com/owenffff/InfoTransform#readme",
+  "devDependencies": {
+    "autoprefixer": "^10.4.21",
+    "concurrently": "^9.2.0",
+    "esbuild": "^0.25.5",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17"
+  }
+}

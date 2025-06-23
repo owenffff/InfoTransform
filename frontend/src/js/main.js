@@ -113,13 +113,17 @@ function updateViewToggle() {
     const fileView = document.getElementById('fileView');
     
     if (currentView === 'table') {
-        tableBtn?.classList.add('active');
-        fileBtn?.classList.remove('active');
+        tableBtn?.classList.add('bg-blue-500', 'text-white', 'border-blue-500');
+        tableBtn?.classList.remove('bg-white', 'text-gray-700', 'border-gray-400');
+        fileBtn?.classList.remove('bg-blue-500', 'text-white', 'border-blue-500');
+        fileBtn?.classList.add('bg-white', 'text-gray-700', 'border-gray-400');
         tableView?.classList.remove('hidden');
         fileView?.classList.add('hidden');
     } else {
-        tableBtn?.classList.remove('active');
-        fileBtn?.classList.add('active');
+        tableBtn?.classList.remove('bg-blue-500', 'text-white', 'border-blue-500');
+        tableBtn?.classList.add('bg-white', 'text-gray-700', 'border-gray-400');
+        fileBtn?.classList.add('bg-blue-500', 'text-white', 'border-blue-500');
+        fileBtn?.classList.remove('bg-white', 'text-gray-700', 'border-gray-400');
         tableView?.classList.add('hidden');
         fileView?.classList.remove('hidden');
     }
@@ -128,17 +132,20 @@ function updateViewToggle() {
 // File handling
 function handleDragOver(e) {
     e.preventDefault();
-    dropZone.classList.add('drag-over');
+    dropZone.classList.add('border-blue-500', 'bg-blue-50');
+    dropZone.classList.remove('border-gray-400', 'bg-gray-100');
 }
 
 function handleDragLeave(e) {
     e.preventDefault();
-    dropZone.classList.remove('drag-over');
+    dropZone.classList.remove('border-blue-500', 'bg-blue-50');
+    dropZone.classList.add('border-gray-400', 'bg-gray-100');
 }
 
 function handleDrop(e) {
     e.preventDefault();
-    dropZone.classList.remove('drag-over');
+    dropZone.classList.remove('border-blue-500', 'bg-blue-50');
+    dropZone.classList.add('border-gray-400', 'bg-gray-100');
     
     const files = Array.from(e.dataTransfer.files);
     handleFiles(files);
@@ -440,6 +447,12 @@ function initializeTable(fields) {
     // Clear existing content
     tableHeader.innerHTML = '';
     tableBody.innerHTML = '';
+    
+    // Ensure fields is an array
+    if (!Array.isArray(fields)) {
+        console.error('Expected fields to be an array, got:', fields);
+        fields = [];
+    }
     
     // Create header row
     const headerRow = document.createElement('tr');

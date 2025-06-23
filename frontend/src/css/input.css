@@ -1,0 +1,113 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom component styles can be added here */
+@layer components {
+  .view-btn.active {
+    @apply bg-blue-500 text-white border-blue-500;
+  }
+  
+  .drop-zone.drag-over {
+    @apply border-blue-500 bg-blue-50;
+  }
+  
+  .field-chip {
+    @apply inline-block px-3.5 py-1.5 m-1 bg-blue-500 text-white rounded-full text-sm cursor-pointer relative transition-all duration-200 hover:bg-blue-700 hover:-translate-y-0.5;
+  }
+  
+  .field-chip.optional {
+    @apply bg-gray-500;
+  }
+  
+  .field-details-popover {
+    @apply absolute bottom-full left-1/2 transform -translate-x-1/2 bg-white text-gray-800 border border-gray-300 rounded-lg p-3 shadow-lg min-w-[220px] hidden z-50 mb-2.5;
+  }
+  
+  .field-chip.active .field-details-popover {
+    @apply block;
+  }
+  
+  /* Arrow pointing down */
+  .field-details-popover::after {
+    content: '';
+    @apply absolute top-full left-1/2 transform -translate-x-1/2 border-[6px] border-transparent border-t-white;
+  }
+  
+  /* Table styles */
+  .results-table th,
+  .results-table td {
+    @apply p-3 text-left border-b border-gray-200;
+  }
+  
+  .results-table th {
+    @apply bg-gray-100 font-semibold;
+  }
+  
+  .results-table tr:hover {
+    @apply bg-gray-50;
+  }
+  
+  .filename-cell {
+    @apply font-medium;
+  }
+  
+  .boolean-true {
+    @apply text-green-600;
+  }
+  
+  .boolean-false {
+    @apply text-red-600;
+  }
+  
+  .list-cell {
+    @apply flex flex-wrap gap-1.5;
+  }
+  
+  .list-item {
+    @apply bg-gray-100 px-2 py-0.5 rounded text-sm;
+  }
+  
+  .cell-tooltip {
+    @apply relative cursor-help;
+  }
+  
+  .cell-tooltip[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    @apply absolute left-0 top-full bg-gray-800 text-white p-1.5 rounded z-10 whitespace-pre-wrap w-[300px] text-sm;
+  }
+  
+  /* Result item styles */
+  .result-item {
+    @apply bg-white border border-gray-200 rounded-lg p-4;
+  }
+  
+  .result-item.error {
+    @apply border-red-600;
+  }
+  
+  .result-item h4 {
+    @apply mt-0 text-gray-800 font-semibold mb-3;
+  }
+  
+  .result-field {
+    @apply flex justify-between py-1.5 border-b border-gray-100;
+  }
+  
+  .field-name {
+    @apply font-medium;
+  }
+  
+  .field-value.list {
+    @apply flex flex-col items-end;
+  }
+  
+  .field-value.list span {
+    @apply bg-gray-100 px-1.5 py-0.5 rounded text-sm mt-0.5;
+  }
+}
+
+/* Custom utilities can be added here */
+@layer utilities {
+  /* We'll add any custom utility classes here if needed */
+}

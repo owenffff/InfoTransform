@@ -74,12 +74,16 @@ class OptimizedStreamingProcessor:
         model_info = self.structured_analyzer.get_available_models().get(model_key, {})
         
         # Send initial event
+        # Convert fields dict to array of field names for JavaScript
+        fields_dict = model_info.get("fields", {})
+        model_fields = list(fields_dict.keys()) if isinstance(fields_dict, dict) else []
+        
         initial_event = {
             "type": "init",
             "total_files": total_files,
             "model_key": model_key,
             "model_name": model_info.get("name", model_key),
-            "model_fields": model_info.get("fields", []),
+            "model_fields": model_fields,
             "ai_model": ai_model or config.get('models.ai_models.default_model'),
             "optimization": {
                 "parallel_conversion": True,

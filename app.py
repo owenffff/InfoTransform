@@ -6,8 +6,8 @@ Entry point for the InfoTransform application
 import sys
 from pathlib import Path
 
-# Add the src directory to the Python path
-sys.path.insert(0, str(Path(__file__).parent / 'src'))
+# Add the backend directory to the Python path
+sys.path.insert(0, str(Path(__file__).parent / 'backend'))
 
 # Import and run the FastAPI app
 from infotransform.main import app
