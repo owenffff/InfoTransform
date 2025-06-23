@@ -1,7 +1,7 @@
 # Application Configuration
 app:
   name: "Information Transformer"
-  version: "2.0.0"
+  version: "1.0.0"
   description: "Transform any file type into structured, actionable data"
   environment: "development"  # development, staging, production
 
@@ -147,7 +147,7 @@ processing:
   
   # Batch processing
   batch:
-    max_concurrent: 5
+    max_concurrent: 10
     timeout_seconds: 300
     max_zip_size_mb: 100
     temp_extract_dir: temp_extracts
