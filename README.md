@@ -281,3 +281,22 @@ export RUST_LOG=debug
 - Use ESLint for JavaScript
 - Write tests for new features
 - Update documentation as needed
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Built with [FastAPI](https://fastapi.tiangolo.com/)
+- UI powered by [Tailwind CSS](https://tailwindcss.com/)
+- AI capabilities via [OpenAI](https://openai.com/) and [Pydantic AI](https://ai.pydantic.dev/)
+- Document processing with [markitdown](https://github.com/microsoft/markitdown)
+
+## 📞 Support
+
+For issues and feature requests, please use the [GitHub Issues](https://github.com/yourusername/InfoTransform/issues) page.
+
+---
+
+Made with ❤️ by the InfoTransform team
