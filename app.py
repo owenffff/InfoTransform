@@ -22,7 +22,6 @@ else:
     setup_logging()
 
 # Import and run the FastAPI app
-from infotransform.main import app
 
 if __name__ == "__main__":
     import uvicorn

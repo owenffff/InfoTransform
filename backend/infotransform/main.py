@@ -17,7 +17,6 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Depends, status
 from fastapi.responses import FileResponse, JSONResponse, HTMLResponse, StreamingResponse
 from fastapi.exceptions import RequestValidationError
-from pydantic import BaseModel, Field, ValidationError
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
@@ -27,9 +26,8 @@ import uvicorn
 
 from infotransform.config import config
 from infotransform.processors import VisionProcessor, AudioProcessor, BatchProcessor, StructuredAnalyzer
-
+from infotransform.api.models import FileTransformResult, TransformResponse
 from infotransform.api.streaming_v2 import transform_stream_v2, shutdown_processor
-from fastapi.responses import StreamingResponse
 
 # Setup logger
 logger = logging.getLogger(__name__)

@@ -98,13 +98,13 @@ async def test_v2_endpoint():
                                         print(f"✗ {event['filename']} - Failed: {event.get('error')}")
                                 
                                 elif event.get('type') == 'complete':
-                                    print(f"\n📊 Processing complete:")
+                                    print("\n📊 Processing complete:")
                                     print(f"   Total files: {event['total_files']}")
                                     print(f"   Successful: {event['successful']}")
                                     print(f"   Failed: {event['failed']}")
                                     if 'performance' in event:
                                         perf = event['performance']
-                                        print(f"\n⚡ Performance metrics:")
+                                        print("\n⚡ Performance metrics:")
                                         print(f"   Total duration: {perf['total_duration']:.2f}s")
                                         print(f"   Files per second: {perf['files_per_second']:.2f}")
                                         

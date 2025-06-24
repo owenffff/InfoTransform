@@ -4,7 +4,6 @@ Enhanced logging configuration for InfoTransform
 
 import logging
 import logging.handlers
-import os
 import sys
 from pathlib import Path
 from typing import Dict, Any, Optional

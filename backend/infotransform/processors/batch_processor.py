@@ -7,7 +7,6 @@ import logging
 import time
 from typing import List, Dict, Any, Optional, AsyncGenerator
 from dataclasses import dataclass
-from datetime import datetime
 
 from infotransform.config import config
 from infotransform.processors.structured_analyzer import StructuredAnalyzer
@@ -286,7 +285,7 @@ class BatchProcessor:
                     await self.result_queue.put(BatchResult(
                         filename=item.filename,
                         success=False,
-                        error=f"Batch processing timeout"
+                        error="Batch processing timeout"
                     ))
             
             except Exception as e:

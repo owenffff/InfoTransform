@@ -6,7 +6,6 @@ import asyncio
 import logging
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from typing import List, Dict, Any, Optional
-from pathlib import Path
 
 from infotransform.config import config
 from infotransform.processors import VisionProcessor, AudioProcessor

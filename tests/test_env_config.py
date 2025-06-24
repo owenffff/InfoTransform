@@ -5,6 +5,8 @@ Test script to verify environment configuration
 
 import os
 from dotenv import load_dotenv
+import sys
+from pathlib import Path
 
 # Load environment variables
 load_dotenv()
@@ -24,8 +26,7 @@ azure_endpoint = os.getenv('AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT')
 print(f"AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT: {'✓ Set' if azure_endpoint else '✗ Not set (optional)'}")
 
 # Add the src directory to the Python path
-import sys
-from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
 # Test config module

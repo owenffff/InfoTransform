@@ -4,11 +4,9 @@ Test script for Information Transformer functionality
 
 import asyncio
 import os
-from pathlib import Path
 
 from processors.structured_analyzer import StructuredAnalyzer
 from processors.vision import VisionProcessor
-from config import config
 
 
 async def test_transformer():
@@ -66,7 +64,7 @@ async def test_transformer():
             )
             
             if analysis_result['success']:
-                print(f"   ✅ Analysis successful!")
+                print("   ✅ Analysis successful!")
                 print(f"   Model used: {analysis_result['model_used']}")
                 print(f"   AI model: {analysis_result['ai_model_used']}")
                 print("\n   Extracted Data:")

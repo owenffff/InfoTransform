@@ -2,7 +2,6 @@
 Test script to verify token counting functionality
 """
 
-import asyncio
 import logging
 import sys
 import os
