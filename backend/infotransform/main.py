@@ -27,10 +27,7 @@ import uvicorn
 
 from infotransform.config import config
 from infotransform.processors import VisionProcessor, AudioProcessor, BatchProcessor, StructuredAnalyzer
-from infotransform.api.models import (
-    TransformRequest, TransformBatchRequest, FileTransformResult, TransformResponse
-)
-from infotransform.api.streaming import generate_transform_stream
+
 from infotransform.api.streaming_v2 import transform_stream_v2, shutdown_processor
 from fastapi.responses import StreamingResponse
 
@@ -448,7 +445,7 @@ async def transform_stream(
         # Create a wrapper generator that handles cleanup after streaming completes
         async def stream_with_cleanup():
             try:
-                async for chunk in generate_transform_stream(
+                async for chunk in transform_stream_v2(
                     files_info,
                     model_key,
                     custom_instructions or "",

@@ -3,9 +3,13 @@ Vision processor for handling images and documents using Markitdown
 """
 
 import os
+import logging
 from markitdown import MarkItDown
 from openai import OpenAI
 from infotransform.config import config
+from infotransform.utils.token_counter import log_token_count
+
+logger = logging.getLogger(__name__)
 
 
 class VisionProcessor:
@@ -39,32 +43,51 @@ class VisionProcessor:
         Returns:
             dict: Processing result with text content and metadata
         """
+        filename = os.path.basename(file_path)
+        
         try:
-            print(f"VisionProcessor: Processing file {file_path}")
-            print(f"File exists: {os.path.exists(file_path)}")
-            print(f"File size: {os.path.getsize(file_path) if os.path.exists(file_path) else 'N/A'}")
+            logger.debug(f"Processing file: {filename}")
+            
+            # Validate file exists and get basic info
+            if not os.path.exists(file_path):
+                raise FileNotFoundError(f"File not found: {file_path}")
+            
+            file_size = os.path.getsize(file_path)
+            logger.debug(f"File size: {file_size} bytes")
             
             # Convert the file using Markitdown with custom vision prompt
+            logger.debug(f"Converting {filename} using Markitdown")
             result = self.md.convert(file_path, llm_prompt=config.VISION_PROMPT)
             
-            print(f"Markitdown result type: {type(result)}")
-            print(f"Has text_content: {hasattr(result, 'text_content')}")
+            if not hasattr(result, 'text_content') or not result.text_content:
+                logger.warning(f"No text content extracted from {filename}")
+                return {
+                    'success': False,
+                    'error': "No text content could be extracted",
+                    'filename': filename,
+                    'type': 'vision'
+                }
+            
+            # Log token count for the converted content (now at DEBUG level)
+            log_token_count(filename, result.text_content, context='vision_processing')
+            
+            logger.info(f"Successfully processed {filename} ({file_size} bytes)")
             
             return {
                 'success': True,
                 'content': result.text_content,
-                'filename': os.path.basename(file_path),
+                'filename': filename,
                 'type': 'vision'
             }
             
         except Exception as e:
-            print(f"VisionProcessor error: {type(e).__name__}: {str(e)}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"Error processing {filename}: {type(e).__name__}: {str(e)}")
+            logger.debug(f"Full traceback for {filename}:", exc_info=True)
+            
             return {
                 'success': False,
                 'error': f"{type(e).__name__}: {str(e)}",
-                'filename': os.path.basename(file_path),
+                'filename': filename,
                 'type': 'vision'
             }
     

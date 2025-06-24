@@ -11,6 +11,7 @@ from datetime import datetime
 
 from infotransform.config import config
 from infotransform.processors.structured_analyzer import StructuredAnalyzer
+from infotransform.utils.token_counter import log_token_count
 
 logger = logging.getLogger(__name__)
 
@@ -91,18 +92,15 @@ class BatchProcessor:
         if not self._running:
             self._running = True
             
-            # Start batch collector
-            self.batch_collector_task = asyncio.create_task(self._batch_collector())
-            
-            # Start multiple batch processors
-            for i in range(self.max_concurrent_batches):
-                task = asyncio.create_task(self._batch_processor(i))
-                self.batch_processor_tasks.append(task)
-            
-            logger.info(
-                f"BatchProcessor started with {self.max_concurrent_batches} workers, "
-                f"batch size: {self.batch_size}"
-            )
+        # Start batch collector
+        self.batch_collector_task = asyncio.create_task(self._batch_collector())
+        
+        # Start multiple batch processors
+        for i in range(self.max_concurrent_batches):
+            task = asyncio.create_task(self._batch_processor(i))
+            self.batch_processor_tasks.append(task)
+        
+        logger.info(f"BatchProcessor started with {self.max_concurrent_batches} workers")
     
     async def stop(self):
         """Stop the batch processor"""
@@ -225,7 +223,7 @@ class BatchProcessor:
     
     async def _batch_processor(self, worker_id: int):
         """Process batches of items"""
-        logger.info(f"Batch processor {worker_id} started")
+        logger.debug(f"Batch processor {worker_id} started")
         
         while self._running:
             try:
@@ -236,7 +234,7 @@ class BatchProcessor:
             except Exception as e:
                 logger.error(f"Error in batch processor {worker_id}: {e}")
         
-        logger.info(f"Batch processor {worker_id} stopped")
+        logger.debug(f"Batch processor {worker_id} stopped")
     
     async def _process_batch(self, batch: List[BatchItem]):
         """Process a batch of items"""
@@ -313,6 +311,9 @@ class BatchProcessor:
             model_key = getattr(self, '_current_model_key', 'content_compliance')
             custom_instructions = getattr(self, '_current_custom_instructions', '')
             ai_model = getattr(self, '_current_ai_model', None)
+            
+            # Log token count for the markdown content with context
+            log_token_count(item.filename, item.markdown_content, context='batch_analysis')
             
             # Use the actual analyzer
             result = await self.analyzer.analyze_content(

@@ -16,6 +16,7 @@ from infotransform.processors import StructuredAnalyzer
 from infotransform.processors.async_converter import AsyncMarkdownConverter
 from infotransform.processors.batch_processor import BatchProcessor
 from infotransform.utils.file_lifecycle import get_file_manager, ManagedStreamingResponse
+from infotransform.utils.token_counter import log_token_count
 
 logger = logging.getLogger(__name__)
 
@@ -119,6 +120,9 @@ class OptimizedStreamingProcessor:
             
             for i, result in enumerate(markdown_results):
                 if result['success'] and result['markdown_content']:
+                    # Log token count for the converted markdown
+                    log_token_count(result['filename'], result['markdown_content'])
+                    
                     successful_conversions.append({
                         'filename': result['filename'],
                         'markdown_content': result['markdown_content'],

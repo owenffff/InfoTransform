@@ -280,55 +280,11 @@ async function handleTransform() {
     streamingResults = [];
     modelFields = [];
     
-    // Use streaming for multiple files
-    if (selectedFiles.length > 1) {
-        await handleStreamingTransform();
-    } else {
-        await handleSingleTransform();
-    }
+    // Always use streaming endpoint (v2) for both single and multiple files
+    await handleStreamingTransform();
 }
 
-// Handle single file transform (non-streaming)
-async function handleSingleTransform() {
-    const formData = new FormData();
-    formData.append('file', selectedFiles[0]);
-    formData.append('model_key', modelSelect.value);
-    formData.append('custom_instructions', customInstructions.value || '');
-    if (aiModelSelect.value) {
-        formData.append('ai_model', aiModelSelect.value);
-    }
-    
-    try {
-        const response = await fetch('/api/transform', {
-            method: 'POST',
-            body: formData
-        });
-        
-        if (!response.ok) {
-            let errorDetail = '';
-            try {
-                const errorData = await response.json();
-                errorDetail = errorData.detail || JSON.stringify(errorData);
-            } catch (e) {
-                errorDetail = await response.text();
-            }
-            throw new Error(`Transform failed: ${errorDetail}`);
-        }
-        
-        const data = await response.json();
-        transformResults = data;
-        displayResults(data);
-        
-    } catch (error) {
-        console.error('Transform error:', error);
-        showError(`Failed to transform file: ${error.message}`);
-    } finally {
-        processingStatus.classList.add('hidden');
-        analysisOptions.classList.remove('hidden');
-    }
-}
-
-// Handle streaming transform for multiple files
+// Handle streaming transform for all files
 async function handleStreamingTransform() {
     const formData = new FormData();
     for (const file of selectedFiles) {

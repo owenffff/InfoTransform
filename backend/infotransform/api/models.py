@@ -6,16 +6,6 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
-class TransformRequest(BaseModel):
-    model_key: str = Field(description="Which analysis model to use")
-    custom_instructions: Optional[str] = Field(default="", description="Additional instructions")
-    ai_model: Optional[str] = Field(default=None, description="AI model to use (e.g., gpt-4o-mini, gpt-4)")
-
-
-class TransformBatchRequest(BaseModel):
-    model_key: str = Field(description="Which analysis model to use")
-    custom_instructions: Optional[str] = Field(default="", description="Additional instructions")
-    ai_model: Optional[str] = Field(default=None, description="AI model to use")
 
 
 class FileTransformResult(BaseModel):
