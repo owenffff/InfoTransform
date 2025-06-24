@@ -5,166 +5,242 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Information Transformer</title>
     <link rel="stylesheet" href="/static/css/style.css">
+    <!-- Add Tailwind Forms plugin for better form styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-50 text-gray-800 m-0 p-5 leading-relaxed font-sans">
-    <div class="max-w-7xl mx-auto bg-white p-8 rounded-xl shadow-lg">
-        <header class="text-center mb-8 border-b border-gray-200 pb-5">
-            <h1 class="text-4xl text-gray-800 m-0 font-bold">🔄 Information Transformer</h1>
-            <p class="text-lg text-gray-600 mt-2">Transform any file type into structured, actionable data</p>
-        </header>
-
-        <main class="flex flex-col gap-8">
-            <!-- Upload Section -->
-            <div class="upload-section">
-                <h2 class="text-2xl text-gray-700 mb-4 font-semibold">Step 1: Upload Files</h2>
-                <div id="dropZone" class="border-2 border-dashed border-gray-400 rounded-lg p-10 text-center cursor-pointer transition-all duration-300 bg-gray-100 hover:border-blue-500 hover:bg-blue-50">
-                    <svg class="w-12 h-12 text-gray-500 mb-4 mx-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                        <polyline points="7 10 12 15 17 10"></polyline>
-                        <line x1="12" y1="15" x2="12" y2="3"></line>
-                    </svg>
-                    <p class="text-xl font-medium text-gray-700 drop-text">Drop files here or click to browse</p>
-                    <p class="text-sm text-gray-500 mt-2">Supported: Images, PDFs, Documents, Audio, ZIP archives</p>
-                    <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.pdf,.docx,.pptx,.xlsx,.mp3,.wav,.m4a,.flac,.ogg,.webm,.zip,.md,.txt" multiple hidden>
+<body class="bg-gray-50 text-gray-900 antialiased">
+    <div class="min-h-screen py-8 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto">
+            <!-- Header Card -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-8">
+                <div class="px-6 py-8 text-center">
+                    <h1 class="text-4xl font-bold text-gray-900 flex items-center justify-center gap-3">
+                        <span class="text-5xl">🔄</span>
+                        Information Transformer
+                    </h1>
+                    <p class="mt-3 text-lg text-gray-600">Transform any file type into structured, actionable data</p>
                 </div>
             </div>
 
-            <!-- Analysis Options -->
-            <div id="analysisOptions" class="bg-gray-50 p-5 rounded-lg border border-gray-200 hidden">
-                <h2 class="text-2xl text-gray-700 mb-4 font-semibold">Step 2: Configure Analysis</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div class="flex flex-col">
-                        <label for="modelSelect" class="font-semibold mb-2 text-gray-800">Analysis Model:</label>
-                        <select id="modelSelect" class="w-full p-2.5 border border-gray-300 rounded-md text-base bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            <option value="">Loading models...</option>
-                        </select>
-                        <p class="text-sm text-gray-600 mt-2 p-2 bg-gray-50 rounded border-l-4 border-blue-500 hidden" id="modelDescription"></p>
-                        <div id="schemaPreview" class="mt-4 animate-fadeIn hidden">
-                            <div class="text-gray-800 text-sm font-semibold mb-2">📋 Schema Preview</div>
-                            <div id="schemaChipsContainer" class="p-3 bg-gray-50 rounded-lg border border-gray-200 leading-relaxed">
-                                <!-- Chips will be dynamically inserted here -->
+            <main class="space-y-6">
+                <!-- Upload Section Card -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <h2 class="text-2xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
+                        <span class="text-blue-500">1.</span>
+                        Upload Files
+                    </h2>
+                    <div id="dropZone" class="relative border-2 border-dashed border-gray-300 rounded-lg p-12 text-center cursor-pointer transition-all duration-200 hover:border-blue-400 hover:bg-blue-50 group">
+                        <svg class="w-16 h-16 text-gray-400 mb-4 mx-auto group-hover:text-blue-500 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        <p class="text-xl font-medium text-gray-700 drop-text mb-2">Drop files here or click to browse</p>
+                        <p class="text-sm text-gray-500">Supported: Images, PDFs, Documents, Audio, ZIP archives</p>
+                        <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.pdf,.docx,.pptx,.xlsx,.mp3,.wav,.m4a,.flac,.ogg,.webm,.zip,.md,.txt" multiple hidden>
+                    </div>
+                </div>
+
+                <!-- Analysis Options Card -->
+                <div id="analysisOptions" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hidden">
+                    <h2 class="text-2xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
+                        <span class="text-blue-500">2.</span>
+                        Configure Analysis
+                    </h2>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- Left Column: Analysis Model -->
+                        <div class="bg-gray-50 rounded-lg p-5 border border-gray-200">
+                            <label for="modelSelect" class="block text-sm font-semibold text-gray-800 mb-3">
+                                Analysis Model
+                            </label>
+                            <select id="modelSelect" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                                <option value="">Select an analysis model...</option>
+                            </select>
+                            <div id="modelDescription" class="mt-4 p-3 bg-blue-50 border-l-4 border-blue-400 text-sm text-gray-700 rounded hidden"></div>
+                            
+                            <!-- Schema Preview -->
+                            <div id="schemaPreview" class="mt-5 hidden">
+                                <h3 class="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                                    <span>📋</span>
+                                    Schema Preview
+                                </h3>
+                                <div id="schemaChipsContainer" class="p-4 bg-white rounded-lg border border-gray-200 shadow-inner">
+                                    <!-- Chips will be dynamically inserted here -->
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Right Column: AI Model & Custom Instructions -->
+                        <div class="bg-gray-50 rounded-lg p-5 border border-gray-200">
+                            <label for="aiModelSelect" class="block text-sm font-semibold text-gray-800 mb-3">
+                                AI Model (Optional)
+                            </label>
+                            <select id="aiModelSelect" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm mb-6">
+                                <option value="">Default</option>
+                            </select>
+                            
+                            <div class="border-t border-gray-200 pt-5">
+                                <label for="customInstructions" class="block text-sm font-semibold text-gray-800 mb-3">
+                                    Custom Instructions (Optional)
+                                </label>
+                                <textarea id="customInstructions" rows="4" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm resize-none" placeholder="Add any specific instructions for the analysis..."></textarea>
+                                <p class="mt-2 text-xs text-gray-500">Provide additional context or specific requirements for the analysis</p>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="flex flex-col">
-                        <label for="aiModelSelect" class="font-semibold mb-2 text-gray-800">AI Model (Optional):</label>
-                        <select id="aiModelSelect" class="w-full p-2.5 border border-gray-300 rounded-md text-base bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            <option value="">Default</option>
-                        </select>
+                    <div class="mt-8 flex justify-center">
+                        <button id="transformBtn" class="inline-flex items-center px-8 py-3 border border-transparent text-base font-medium rounded-md shadow-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 transform hover:scale-105">
+                            <svg class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 2v20m0-20l-3 3m3-3l3 3m-3 17l-3-3m3 3l3-3"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                            Transform to Structured Data
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Processing Status -->
+                <div id="processingStatus" class="bg-white rounded-lg shadow-sm border border-gray-200 p-8 hidden">
+                    <div class="text-center">
+                        <div class="inline-flex items-center justify-center w-16 h-16 mb-4">
+                            <div class="w-full h-full border-4 border-gray-200 border-t-blue-500 rounded-full animate-spin"></div>
+                        </div>
+                        <p id="processingText" class="text-lg font-medium text-gray-900">Transforming your files...</p>
+                        <div id="progressContainer" class="mt-6 max-w-md mx-auto hidden">
+                            <div class="bg-gray-200 rounded-full h-2 overflow-hidden">
+                                <div id="progressBar" class="bg-blue-600 h-full transition-all duration-300 ease-out" style="width: 0%"></div>
+                            </div>
+                            <p id="progressText" class="mt-2 text-sm text-gray-600">0 / 0 files</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results Section -->
+                <div id="resultsSection" class="bg-white rounded-lg shadow-sm border border-gray-200 hidden">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                            <h2 class="text-2xl font-semibold text-gray-900 flex items-center gap-2">
+                                <span class="text-green-500">📊</span>
+                                Transformation Results
+                            </h2>
+                            <div class="flex flex-wrap gap-3">
+                                <!-- View Toggle -->
+                                <div class="inline-flex rounded-md shadow-sm" role="group">
+                                    <button id="tableViewBtn" type="button" class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-l-md hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-2 focus:ring-blue-700 focus:text-blue-700">
+                                        <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                            <line x1="3" y1="9" x2="21" y2="9"></line>
+                                            <line x1="9" y1="21" x2="9" y2="9"></line>
+                                        </svg>
+                                        Table
+                                    </button>
+                                    <button id="fileViewBtn" type="button" class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-r-md hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-2 focus:ring-blue-700 focus:text-blue-700">
+                                        <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+                                            <polyline points="13 2 13 9 20 9"></polyline>
+                                        </svg>
+                                        Cards
+                                    </button>
+                                </div>
+                                
+                                <!-- Actions -->
+                                <div class="flex items-center gap-2">
+                                    <select id="downloadFormat" class="text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                        <option value="excel">Excel (.xlsx)</option>
+                                        <option value="csv">CSV (.csv)</option>
+                                    </select>
+                                    <button id="downloadBtn" class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                        <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                            <polyline points="7 10 12 15 17 10"></polyline>
+                                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                                        </svg>
+                                        Download
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     
-                    <div class="flex flex-col md:col-span-2">
-                        <label for="customInstructions" class="font-semibold mb-2 text-gray-800">Custom Instructions (Optional):</label>
-                        <textarea id="customInstructions" class="w-full p-2.5 border border-gray-300 rounded-md text-base bg-white resize-y focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" rows="3" placeholder="Add any specific instructions for the analysis..."></textarea>
-                    </div>
-                </div>
-                
-                <button id="transformBtn" class="inline-flex items-center justify-center px-6 py-3 text-lg font-semibold text-white bg-green-600 rounded-md cursor-pointer transition-all duration-300 mt-5 hover:bg-green-700 hover:-translate-y-0.5 hover:shadow-lg">
-                    <svg class="w-5 h-5 mr-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 2v20m0-20l-3 3m3-3l3 3m-3 17l-3-3m3 3l3-3"></path>
-                        <circle cx="12" cy="12" r="3"></circle>
-                    </svg>
-                    Transform to Structured Data
-                </button>
-            </div>
-
-            <!-- Processing Status -->
-            <div id="processingStatus" class="text-center py-10 hidden">
-                <div class="w-12 h-12 border-4 border-gray-200 border-t-blue-500 rounded-full animate-spin mx-auto mb-5"></div>
-                <p id="processingText" class="text-lg">Transforming your files...</p>
-                <div id="progressContainer" class="w-4/5 mx-auto mt-5 hidden">
-                    <div class="bg-gray-200 rounded-full overflow-hidden">
-                        <div id="progressBar" class="h-2.5 bg-green-600 w-0 transition-all duration-300"></div>
-                    </div>
-                    <p id="progressText" class="mt-2.5 text-sm text-gray-600">0 / 0 files</p>
-                </div>
-            </div>
-
-            <!-- Results Section -->
-            <div id="resultsSection" class="bg-gray-50 p-5 rounded-lg border border-gray-200 hidden">
-                <div class="flex justify-between items-center mb-5">
-                    <h2 class="text-2xl text-gray-700 font-semibold">📊 Transformation Results</h2>
-                    <div class="flex gap-5">
-                        <div class="flex items-center gap-2.5">
-                            <button id="tableViewBtn" class="inline-flex items-center px-4 py-2 border border-gray-400 bg-white rounded-md cursor-pointer transition-all duration-200 hover:bg-blue-500 hover:text-white hover:border-blue-500 active">
-                                <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                                    <line x1="3" y1="9" x2="21" y2="9"></line>
-                                    <line x1="9" y1="21" x2="9" y2="9"></line>
-                                </svg>
-                                Table View
-                            </button>
-                            <button id="fileViewBtn" class="inline-flex items-center px-4 py-2 border border-gray-400 bg-white rounded-md cursor-pointer transition-all duration-200 hover:bg-blue-500 hover:text-white hover:border-blue-500">
-                                <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
-                                    <polyline points="13 2 13 9 20 9"></polyline>
-                                </svg>
-                                File View
-                            </button>
-                        </div>
-                        <div class="flex items-center gap-2.5">
-                            <div class="flex items-center gap-2">
-                                <label for="downloadFormat" class="text-sm">Format:</label>
-                                <select id="downloadFormat" class="px-2 py-1.5 rounded-md border border-gray-300 text-sm">
-                                    <option value="excel" selected>Excel (.xlsx)</option>
-                                    <option value="csv">CSV (.csv)</option>
-                                </select>
+                    <!-- Results Summary -->
+                    <div id="resultsSummary" class="px-6 py-4 bg-gray-50 border-b border-gray-200 hidden">
+                        <h3 class="text-lg font-medium text-gray-900 mb-3">Analysis Summary</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-3">
+                            <div class="bg-white rounded-lg border border-gray-200 px-4 py-3">
+                                <p class="text-sm font-medium text-gray-500">Total Files</p>
+                                <p class="text-2xl font-semibold text-gray-900" id="totalFiles">0</p>
                             </div>
-                            <button id="downloadBtn" class="inline-flex items-center px-4 py-2 border border-gray-400 bg-white rounded-md cursor-pointer transition-all duration-200 hover:bg-blue-500 hover:text-white hover:border-blue-500">
+                            <div class="bg-white rounded-lg border border-green-200 px-4 py-3">
+                                <p class="text-sm font-medium text-green-600">Successful</p>
+                                <p class="text-2xl font-semibold text-green-600" id="successfulFiles">0</p>
+                            </div>
+                            <div class="bg-white rounded-lg border border-red-200 px-4 py-3">
+                                <p class="text-sm font-medium text-red-600">Failed</p>
+                                <p class="text-2xl font-semibold text-red-600" id="failedFiles">0</p>
+                            </div>
+                        </div>
+                        <div id="summaryContent" class="text-sm text-gray-600"></div>
+                    </div>
+                    
+                    <div class="p-6">
+                        <!-- Search/Filter Bar -->
+                        <div class="mb-4 flex flex-col sm:flex-row gap-3">
+                            <div class="flex-1">
+                                <input type="text" id="searchInput" placeholder="Search results..." class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                            </div>
+                            <button id="clearEditsBtn" class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 hidden">
                                 <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                    <polyline points="7 10 12 15 17 10"></polyline>
-                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                                    <path d="M3 3v5h5"></path>
                                 </svg>
-                                Download
+                                Clear Edits
                             </button>
+                        </div>
+                        
+                        <!-- Table View -->
+                        <div id="tableView" class="overflow-hidden">
+                            <div class="overflow-x-auto">
+                                <table id="resultsTable" class="min-w-full divide-y divide-gray-200">
+                                    <thead id="tableHeader" class="bg-gray-50"></thead>
+                                    <tbody id="tableBody" class="bg-white divide-y divide-gray-200"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- File View (Card View) -->
+                        <div id="fileView" class="hidden">
+                            <div id="structuredResults" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
                         </div>
                     </div>
                 </div>
-                
-                <!-- Results Summary -->
-                <div id="resultsSummary" class="bg-gray-50 p-4 rounded-md mb-5 hidden">
-                    <h3 class="text-xl font-semibold mb-2">📈 Analysis Summary</h3>
-                    <div class="flex gap-5 mb-2.5">
-                        <span class="text-base">
-                            <strong>Total:</strong> <span id="totalFiles">0</span> files
-                        </span>
-                        <span class="text-green-600">
-                            <strong>✓ Successful:</strong> <span id="successfulFiles">0</span>
-                        </span>
-                        <span class="text-red-600">
-                            <strong>✗ Failed:</strong> <span id="failedFiles">0</span>
-                        </span>
+
+                <!-- Error Display -->
+                <div id="errorDisplay" class="hidden">
+                    <div class="bg-red-50 border-l-4 border-red-400 p-4 rounded-lg">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-red-700 error-message"></p>
+                            </div>
+                        </div>
                     </div>
-                    <div id="summaryContent" class="text-sm"></div>
                 </div>
-                
-                <!-- Table View -->
-                <div id="tableView" class="overflow-x-auto">
-                    <table id="resultsTable" class="w-full border-collapse">
-                        <thead id="tableHeader" class="bg-gray-100"></thead>
-                        <tbody id="tableBody"></tbody>
-                    </table>
-                </div>
-                
-                <!-- File View (current view) -->
-                <div id="fileView" class="hidden">
-                    <h3 class="text-xl font-semibold mb-4">Extracted Information</h3>
-                    <div id="structuredResults" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
-                </div>
-            </div>
+            </main>
 
-            <!-- Error Display -->
-            <div id="errorDisplay" class="bg-red-50 text-red-800 p-4 rounded-md border border-red-600 hidden">
-                <p class="error-message"></p>
-            </div>
-        </main>
-
-        <footer class="text-center mt-8 pt-5 border-t border-gray-200">
-            <p class="text-gray-600">Powered by Pydantic AI & OpenAI</p>
-        </footer>
+            <!-- Footer -->
+            <footer class="mt-12 text-center text-sm text-gray-500">
+                <p>Powered by Pydantic AI & OpenAI</p>
+            </footer>
+        </div>
     </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed bottom-0 right-0 p-6 space-y-4 pointer-events-none z-50"></div>
 
     <script src="/static/js/script.js"></script>
 </body>

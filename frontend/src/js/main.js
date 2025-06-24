@@ -1,4 +1,4 @@
-// Information Transformer JavaScript
+// Information Transformer JavaScript - Enhanced with Sorting and Editing
 
 // Global variables
 let selectedFiles = [];
@@ -7,6 +7,8 @@ let currentView = 'table'; // Default to table view
 let eventSource = null;
 let streamingResults = [];
 let modelFields = [];
+let editedData = {}; // Track edited values
+let sortState = { column: null, direction: null }; // Track sort state
 window.modelsData = null;
 
 // DOM elements
@@ -26,6 +28,9 @@ const progressText = document.getElementById('progressText');
 const resultsSection = document.getElementById('resultsSection');
 const resultsSummary = document.getElementById('resultsSummary');
 const errorDisplay = document.getElementById('errorDisplay');
+const searchInput = document.getElementById('searchInput');
+const clearEditsBtn = document.getElementById('clearEditsBtn');
+const toastContainer = document.getElementById('toastContainer');
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', async () => {
@@ -92,6 +97,25 @@ function setupEventListeners() {
     // View toggle buttons
     document.getElementById('tableViewBtn')?.addEventListener('click', () => switchView('table'));
     document.getElementById('fileViewBtn')?.addEventListener('click', () => switchView('file'));
+    
+    // Search functionality
+    searchInput?.addEventListener('input', debounce(handleSearch, 300));
+    
+    // Clear edits button
+    clearEditsBtn?.addEventListener('click', clearAllEdits);
+}
+
+// Utility function for debouncing
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
 }
 
 // View switching
@@ -112,18 +136,15 @@ function updateViewToggle() {
     const tableView = document.getElementById('tableView');
     const fileView = document.getElementById('fileView');
     
+    // Update button states
     if (currentView === 'table') {
-        tableBtn?.classList.add('bg-blue-500', 'text-white', 'border-blue-500');
-        tableBtn?.classList.remove('bg-white', 'text-gray-700', 'border-gray-400');
-        fileBtn?.classList.remove('bg-blue-500', 'text-white', 'border-blue-500');
-        fileBtn?.classList.add('bg-white', 'text-gray-700', 'border-gray-400');
+        tableBtn?.classList.add('active');
+        fileBtn?.classList.remove('active');
         tableView?.classList.remove('hidden');
         fileView?.classList.add('hidden');
     } else {
-        tableBtn?.classList.remove('bg-blue-500', 'text-white', 'border-blue-500');
-        tableBtn?.classList.add('bg-white', 'text-gray-700', 'border-gray-400');
-        fileBtn?.classList.add('bg-blue-500', 'text-white', 'border-blue-500');
-        fileBtn?.classList.remove('bg-white', 'text-gray-700', 'border-gray-400');
+        tableBtn?.classList.remove('active');
+        fileBtn?.classList.add('active');
         tableView?.classList.add('hidden');
         fileView?.classList.remove('hidden');
     }
@@ -132,20 +153,17 @@ function updateViewToggle() {
 // File handling
 function handleDragOver(e) {
     e.preventDefault();
-    dropZone.classList.add('border-blue-500', 'bg-blue-50');
-    dropZone.classList.remove('border-gray-400', 'bg-gray-100');
+    dropZone.classList.add('drop-zone-active');
 }
 
 function handleDragLeave(e) {
     e.preventDefault();
-    dropZone.classList.remove('border-blue-500', 'bg-blue-50');
-    dropZone.classList.add('border-gray-400', 'bg-gray-100');
+    dropZone.classList.remove('drop-zone-active');
 }
 
 function handleDrop(e) {
     e.preventDefault();
-    dropZone.classList.remove('border-blue-500', 'bg-blue-50');
-    dropZone.classList.add('border-gray-400', 'bg-gray-100');
+    dropZone.classList.remove('drop-zone-active');
     
     const files = Array.from(e.dataTransfer.files);
     handleFiles(files);
@@ -170,6 +188,8 @@ function handleFiles(files) {
         // Reset results
         resultsSection.classList.add('hidden');
         errorDisplay.classList.add('hidden');
+        editedData = {};
+        sortState = { column: null, direction: null };
     }
 }
 
@@ -178,12 +198,12 @@ function handleModelChange(e) {
     const selectedOption = e.target.selectedOptions[0];
     if (selectedOption && selectedOption.dataset.description) {
         modelDescription.textContent = selectedOption.dataset.description;
-        modelDescription.style.display = 'block';
+        modelDescription.classList.remove('hidden');
         
         // Show schema preview
         showSchemaPreview(e.target.value);
     } else {
-        modelDescription.style.display = 'none';
+        modelDescription.classList.add('hidden');
         document.getElementById('schemaPreview').classList.add('hidden');
     }
 }
@@ -220,18 +240,12 @@ function createFieldChip(fieldName, fieldInfo) {
     const popover = document.createElement('div');
     popover.className = 'field-details-popover';
     popover.innerHTML = `
-        <div style="font-weight: 600; margin-bottom: 8px;">${fieldName}</div>
-        <div style="margin: 4px 0;">
-            <strong>Type:</strong> ${fieldInfo.type}
+        <div class="font-semibold mb-2">${fieldName}</div>
+        <div class="space-y-1 text-sm">
+            <div><span class="font-medium">Type:</span> ${fieldInfo.type}</div>
+            <div><span class="font-medium">Required:</span> ${fieldInfo.required ? 'Yes' : 'No'}</div>
+            ${fieldInfo.description ? `<div><span class="font-medium">Description:</span> ${fieldInfo.description}</div>` : ''}
         </div>
-        <div style="margin: 4px 0;">
-            <strong>Required:</strong> ${fieldInfo.required ? 'Yes' : 'No'}
-        </div>
-        ${fieldInfo.description ? `
-        <div style="margin: 4px 0;">
-            <strong>Description:</strong> ${fieldInfo.description}
-        </div>
-        ` : ''}
     `;
     
     chip.appendChild(popover);
@@ -279,6 +293,8 @@ async function handleTransform() {
     // Reset streaming results
     streamingResults = [];
     modelFields = [];
+    editedData = {};
+    sortState = { column: null, direction: null };
     
     // Always use streaming endpoint (v2) for both single and multiple files
     await handleStreamingTransform();
@@ -391,6 +407,7 @@ function handleStreamingEvent(data) {
                     error: r.error
                 }))
             };
+            showToast('Transformation complete!', 'success');
             break;
     }
 }
@@ -417,6 +434,8 @@ function initializeTable(fields) {
     const filenameHeader = document.createElement('th');
     filenameHeader.textContent = 'Filename';
     filenameHeader.className = 'sortable';
+    filenameHeader.dataset.column = 'filename';
+    filenameHeader.addEventListener('click', () => handleSort('filename'));
     headerRow.appendChild(filenameHeader);
     
     // Dynamic field columns
@@ -424,17 +443,90 @@ function initializeTable(fields) {
         const th = document.createElement('th');
         th.textContent = formatFieldName(field);
         th.className = 'sortable';
-        th.dataset.field = field;
+        th.dataset.column = field;
+        th.addEventListener('click', () => handleSort(field));
         headerRow.appendChild(th);
     });
     
     tableHeader.appendChild(headerRow);
 }
 
+// Handle column sorting
+function handleSort(column) {
+    // Update sort state
+    if (sortState.column === column) {
+        // Toggle direction
+        if (sortState.direction === 'asc') {
+            sortState.direction = 'desc';
+        } else if (sortState.direction === 'desc') {
+            sortState.direction = null;
+            sortState.column = null;
+        } else {
+            sortState.direction = 'asc';
+        }
+    } else {
+        sortState.column = column;
+        sortState.direction = 'asc';
+    }
+    
+    // Update header classes
+    document.querySelectorAll('#tableHeader th').forEach(th => {
+        th.classList.remove('sort-asc', 'sort-desc');
+        if (th.dataset.column === sortState.column) {
+            if (sortState.direction === 'asc') {
+                th.classList.add('sort-asc');
+            } else if (sortState.direction === 'desc') {
+                th.classList.add('sort-desc');
+            }
+        }
+    });
+    
+    // Re-render the table with sorted data
+    renderSortedTable();
+}
+
+// Render sorted table
+function renderSortedTable() {
+    const tableBody = document.getElementById('tableBody');
+    const rows = Array.from(tableBody.querySelectorAll('tr'));
+    
+    if (sortState.column && sortState.direction) {
+        rows.sort((a, b) => {
+            let aValue, bValue;
+            
+            if (sortState.column === 'filename') {
+                aValue = a.querySelector('.filename-cell').textContent;
+                bValue = b.querySelector('.filename-cell').textContent;
+            } else {
+                const aCell = a.querySelector(`[data-field="${sortState.column}"]`);
+                const bCell = b.querySelector(`[data-field="${sortState.column}"]`);
+                aValue = aCell ? aCell.textContent : '';
+                bValue = bCell ? bCell.textContent : '';
+            }
+            
+            // Handle numeric values
+            const aNum = parseFloat(aValue);
+            const bNum = parseFloat(bValue);
+            if (!isNaN(aNum) && !isNaN(bNum)) {
+                return sortState.direction === 'asc' ? aNum - bNum : bNum - aNum;
+            }
+            
+            // Handle string values
+            const comparison = aValue.localeCompare(bValue);
+            return sortState.direction === 'asc' ? comparison : -comparison;
+        });
+    }
+    
+    // Clear and re-append sorted rows
+    tableBody.innerHTML = '';
+    rows.forEach(row => tableBody.appendChild(row));
+}
+
 // Add a row to the table
 function addTableRow(result) {
     const tableBody = document.getElementById('tableBody');
     const row = document.createElement('tr');
+    row.dataset.filename = result.filename;
     
     // Filename cell
     const filenameCell = document.createElement('td');
@@ -446,31 +538,14 @@ function addTableRow(result) {
     if (result.status === 'success' && result.structured_data) {
         modelFields.forEach(field => {
             const cell = document.createElement('td');
-            const value = result.structured_data[field];
+            cell.dataset.field = field;
+            const value = getEditedValue(result.filename, field) ?? result.structured_data[field];
             
-            if (value === undefined || value === null) {
-                cell.textContent = '—';
-                cell.style.color = '#bdc3c7';
-            } else if (typeof value === 'boolean') {
-                cell.textContent = value ? '✓' : '✗';
-                cell.className = value ? 'boolean-true' : 'boolean-false';
-            } else if (Array.isArray(value)) {
-                cell.className = 'list-cell';
-                value.forEach(item => {
-                    const span = document.createElement('span');
-                    span.className = 'list-item';
-                    span.textContent = item;
-                    cell.appendChild(span);
-                });
-            } else {
-                cell.textContent = String(value);
-                if (String(value).length > 50) {
-                    cell.className = 'cell-tooltip';
-                    cell.setAttribute('data-tooltip', String(value));
-                    cell.textContent = String(value).substring(0, 47) + '...';
-                }
-            }
+            // Make cell editable
+            cell.className = 'cell-editable';
+            cell.addEventListener('dblclick', () => makeEditable(cell, result.filename, field, value));
             
+            renderCellValue(cell, value);
             row.appendChild(cell);
         });
     } else {
@@ -478,11 +553,166 @@ function addTableRow(result) {
         const errorCell = document.createElement('td');
         errorCell.colSpan = modelFields.length;
         errorCell.textContent = result.error || 'Failed';
-        errorCell.style.color = '#e74c3c';
+        errorCell.className = 'text-red-600';
         row.appendChild(errorCell);
     }
     
     tableBody.appendChild(row);
+}
+
+// Get edited value if exists
+function getEditedValue(filename, field) {
+    return editedData[`${filename}_${field}`];
+}
+
+// Make cell editable
+function makeEditable(cell, filename, field, originalValue) {
+    if (cell.classList.contains('cell-editing')) return;
+    
+    cell.classList.add('cell-editing');
+    const currentValue = getEditedValue(filename, field) ?? originalValue;
+    
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'cell-input';
+    input.value = Array.isArray(currentValue) ? currentValue.join(', ') : String(currentValue || '');
+    
+    // Handle save on blur or enter
+    const saveEdit = () => {
+        const newValue = input.value.trim();
+        if (newValue !== String(currentValue || '')) {
+            saveEditedValue(filename, field, newValue);
+            showToast('Value updated', 'success');
+        }
+        cell.classList.remove('cell-editing');
+        renderCellValue(cell, newValue || originalValue);
+    };
+    
+    // Handle cancel on escape
+    const cancelEdit = () => {
+        cell.classList.remove('cell-editing');
+        renderCellValue(cell, currentValue);
+    };
+    
+    input.addEventListener('blur', saveEdit);
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            saveEdit();
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            input.removeEventListener('blur', saveEdit);
+            cancelEdit();
+        }
+    });
+    
+    cell.innerHTML = '';
+    cell.appendChild(input);
+    input.focus();
+    input.select();
+}
+
+// Save edited value
+function saveEditedValue(filename, field, value) {
+    const key = `${filename}_${field}`;
+    editedData[key] = value;
+    
+    // Mark row as edited
+    const row = document.querySelector(`tr[data-filename="${filename}"]`);
+    if (row) {
+        row.classList.add('edited');
+    }
+    
+    // Show clear edits button
+    if (Object.keys(editedData).length > 0) {
+        clearEditsBtn?.classList.remove('hidden');
+    }
+}
+
+// Clear all edits
+function clearAllEdits() {
+    editedData = {};
+    
+    // Remove edited class from all rows
+    document.querySelectorAll('tr.edited').forEach(row => {
+        row.classList.remove('edited');
+    });
+    
+    // Re-render table to show original values
+    if (transformResults) {
+        displayResults(transformResults);
+    }
+    
+    clearEditsBtn?.classList.add('hidden');
+    showToast('All edits cleared', 'info');
+}
+
+// Render cell value
+function renderCellValue(cell, value) {
+    cell.innerHTML = '';
+    
+    if (value === undefined || value === null || value === '') {
+        cell.textContent = '—';
+        cell.className = 'cell-editable text-gray-400';
+    } else if (typeof value === 'boolean') {
+        cell.textContent = value ? '✓' : '✗';
+        cell.className = `cell-editable ${value ? 'boolean-true' : 'boolean-false'}`;
+    } else if (Array.isArray(value)) {
+        cell.className = 'cell-editable list-cell';
+        value.forEach(item => {
+            const span = document.createElement('span');
+            span.className = 'list-item';
+            span.textContent = item;
+            cell.appendChild(span);
+        });
+    } else {
+        cell.textContent = String(value);
+        cell.className = 'cell-editable';
+        if (String(value).length > 50) {
+            cell.classList.add('cell-tooltip');
+            cell.setAttribute('data-tooltip', String(value));
+            cell.textContent = String(value).substring(0, 47) + '...';
+        }
+    }
+}
+
+// Search functionality
+function handleSearch() {
+    const searchTerm = searchInput.value.toLowerCase();
+    const rows = document.querySelectorAll('#tableBody tr');
+    
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        const shouldShow = text.includes(searchTerm);
+        row.style.display = shouldShow ? '' : 'none';
+        
+        // Highlight matching text
+        if (shouldShow && searchTerm) {
+            highlightSearchTerm(row, searchTerm);
+        } else {
+            removeHighlights(row);
+        }
+    });
+}
+
+// Highlight search term in row
+function highlightSearchTerm(row, term) {
+    row.querySelectorAll('td').forEach(cell => {
+        if (cell.classList.contains('cell-editing')) return;
+        
+        const text = cell.textContent;
+        const regex = new RegExp(`(${term})`, 'gi');
+        if (regex.test(text)) {
+            cell.innerHTML = text.replace(regex, '<span class="search-highlight">$1</span>');
+        }
+    });
+}
+
+// Remove search highlights
+function removeHighlights(row) {
+    row.querySelectorAll('.search-highlight').forEach(span => {
+        span.replaceWith(span.textContent);
+    });
 }
 
 // Add result to file view
@@ -555,6 +785,24 @@ function displayTableView(data) {
                 error: result.error
             });
         });
+        
+        // Apply any existing edits
+        Object.keys(editedData).forEach(key => {
+            const [filename, field] = key.split('_');
+            const row = document.querySelector(`tr[data-filename="${filename}"]`);
+            if (row) {
+                row.classList.add('edited');
+                const cell = row.querySelector(`td[data-field="${field}"]`);
+                if (cell) {
+                    renderCellValue(cell, editedData[key]);
+                }
+            }
+        });
+        
+        // Show clear edits button if there are edits
+        if (Object.keys(editedData).length > 0) {
+            clearEditsBtn?.classList.remove('hidden');
+        }
     }
 }
 
@@ -577,7 +825,7 @@ function displayFileView(data) {
 // Create result item element
 function createResultItem(filename, data) {
     const item = document.createElement('div');
-    item.className = 'result-item';
+    item.className = 'result-card';
     
     const title = document.createElement('h4');
     title.textContent = filename;
@@ -595,18 +843,22 @@ function createResultItem(filename, data) {
         const fieldValue = document.createElement('span');
         fieldValue.className = 'field-value';
         
-        if (Array.isArray(value)) {
+        // Check for edited value
+        const editedValue = getEditedValue(filename, key);
+        const displayValue = editedValue ?? value;
+        
+        if (Array.isArray(displayValue)) {
             fieldValue.className += ' list';
-            value.forEach(item => {
+            displayValue.forEach(item => {
                 const span = document.createElement('span');
                 span.textContent = item;
                 fieldValue.appendChild(span);
             });
-        } else if (typeof value === 'boolean') {
-            fieldValue.textContent = value ? '✓ Yes' : '✗ No';
-            fieldValue.style.color = value ? '#27ae60' : '#e74c3c';
+        } else if (typeof displayValue === 'boolean') {
+            fieldValue.textContent = displayValue ? '✓ Yes' : '✗ No';
+            fieldValue.className = displayValue ? 'field-value text-green-600' : 'field-value text-red-600';
         } else {
-            fieldValue.textContent = value || 'N/A';
+            fieldValue.textContent = displayValue || 'N/A';
         }
         
         field.appendChild(fieldValue);
@@ -619,17 +871,16 @@ function createResultItem(filename, data) {
 // Create error item element
 function createErrorItem(filename, error) {
     const item = document.createElement('div');
-    item.className = 'result-item error';
-    item.style.borderColor = '#e74c3c';
+    item.className = 'result-card error';
     
     const title = document.createElement('h4');
     title.textContent = filename + ' (Failed)';
-    title.style.color = '#e74c3c';
+    title.className = 'text-red-600';
     item.appendChild(title);
     
     const errorText = document.createElement('p');
     errorText.textContent = error;
-    errorText.style.color = '#c0392b';
+    errorText.className = 'text-sm text-red-600';
     item.appendChild(errorText);
     
     return item;
@@ -676,10 +927,34 @@ async function handleDownload() {
 async function downloadResults(format) {
     if (!transformResults) return;
     
+    // Include edited data in the download
+    const resultsWithEdits = {
+        ...transformResults,
+        results: transformResults.results.map(result => {
+            if (result.status === 'success' && result.structured_data) {
+                const editedStructuredData = { ...result.structured_data };
+                
+                // Apply any edits
+                Object.keys(editedData).forEach(key => {
+                    const [filename, field] = key.split('_');
+                    if (filename === result.filename) {
+                        editedStructuredData[field] = editedData[key];
+                    }
+                });
+                
+                return {
+                    ...result,
+                    structured_data: editedStructuredData
+                };
+            }
+            return result;
+        })
+    };
+    
     try {
         if (format === 'csv') {
             // Client-side CSV generation
-            const content = convertToCSV(transformResults);
+            const content = convertToCSV(resultsWithEdits);
             const filename = `transform_results_${new Date().toISOString().slice(0, 10)}.csv`;
             const blob = new Blob([content], { type: 'text/csv' });
             const url = URL.createObjectURL(blob);
@@ -690,6 +965,7 @@ async function downloadResults(format) {
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
+            showToast('CSV downloaded successfully', 'success');
         } else if (format === 'excel') {
             // Server-side Excel generation
             const response = await fetch('/api/download-results', {
@@ -698,7 +974,7 @@ async function downloadResults(format) {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    results: transformResults,
+                    results: resultsWithEdits,
                     format: 'excel'
                 })
             });
@@ -717,6 +993,7 @@ async function downloadResults(format) {
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
+            showToast('Excel downloaded successfully', 'success');
         }
     } catch (error) {
         console.error('Download error:', error);
@@ -754,8 +1031,8 @@ function convertToCSV(data) {
             if (Array.isArray(value)) {
                 return `"${value.join('; ')}"`;
             }
-            if (typeof value === 'string' && value.includes(',')) {
-                return `"${value}"`;
+            if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
+                return `"${value.replace(/"/g, '""')}"`;
             }
             return value;
         });
@@ -782,4 +1059,58 @@ function showError(message) {
 // Clear error message
 function clearError() {
     errorDisplay.classList.add('hidden');
+}
+
+// Show toast notification
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    
+    const icon = document.createElement('div');
+    icon.className = 'flex-shrink-0';
+    
+    // Set icon based on type
+    let iconSvg = '';
+    switch (type) {
+        case 'success':
+            iconSvg = '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>';
+            break;
+        case 'error':
+            iconSvg = '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>';
+            break;
+        case 'warning':
+            iconSvg = '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>';
+            break;
+        default:
+            iconSvg = '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>';
+    }
+    
+    icon.innerHTML = iconSvg;
+    toast.appendChild(icon);
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'ml-3 text-sm font-medium';
+    messageDiv.textContent = message;
+    toast.appendChild(messageDiv);
+    
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'ml-auto -mx-1.5 -my-1.5 rounded-lg p-1.5 inline-flex h-8 w-8 hover:bg-gray-100 hover:bg-opacity-25 focus:outline-none focus:ring-2 focus:ring-gray-300';
+    closeBtn.innerHTML = '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>';
+    closeBtn.addEventListener('click', () => removeToast(toast));
+    toast.appendChild(closeBtn);
+    
+    toastContainer.appendChild(toast);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => removeToast(toast), 5000);
+}
+
+// Remove toast notification
+function removeToast(toast) {
+    toast.classList.add('fade-out');
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.parentNode.removeChild(toast);
+        }
+    }, 300);
 }
