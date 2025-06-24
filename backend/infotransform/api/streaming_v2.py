@@ -11,11 +11,11 @@ from fastapi import UploadFile, Form, HTTPException
 from fastapi.responses import StreamingResponse
 
 from infotransform.config import config
-from infotransform.processors import StructuredAnalyzer
+from infotransform.processors import StructuredAnalyzerAgent, SummarizationAgent
 from infotransform.processors.async_converter import AsyncMarkdownConverter
 from infotransform.processors.batch_processor import BatchProcessor
 from infotransform.utils.file_lifecycle import get_file_manager, ManagedStreamingResponse
-from infotransform.utils.token_counter import log_token_count
+from infotransform.utils.token_counter import log_token_count, count_tokens_quiet
 
 logger = logging.getLogger(__name__)
 
@@ -24,9 +24,10 @@ class OptimizedStreamingProcessor:
     """Handles optimized file processing with parallel conversion and batch AI"""
     
     def __init__(self):
-        self.structured_analyzer = StructuredAnalyzer()
+        self.structured_analyzer_agent = StructuredAnalyzerAgent()
+        self.summarization_agent = SummarizationAgent()
         self.markdown_converter = AsyncMarkdownConverter()
-        self.batch_processor = BatchProcessor(self.structured_analyzer)
+        self.batch_processor = BatchProcessor(self.structured_analyzer_agent)
         self.file_manager = get_file_manager()
         
         # Performance monitoring
@@ -71,7 +72,7 @@ class OptimizedStreamingProcessor:
         start_time = time.time()
         
         # Get model information
-        model_info = self.structured_analyzer.get_available_models().get(model_key, {})
+        model_info = self.structured_analyzer_agent.get_available_models().get(model_key, {})
         
         # Send initial event
         # Convert fields dict to array of field names for JavaScript
@@ -143,8 +144,54 @@ class OptimizedStreamingProcessor:
             }
             yield f"data: {json.dumps(conversion_summary)}\n\n"
             
-            # Phase 2: Batch AI processing
+            # Phase 2: Summarization (if needed) and AI processing
             if successful_conversions:
+                # Check which files need summarization
+                summarization_start = time.time()
+                files_to_summarize = []
+                files_to_analyze_directly = []
+                
+                for item in successful_conversions:
+                    if self.summarization_agent.should_summarize(item['markdown_content']):
+                        files_to_summarize.append(item)
+                    else:
+                        files_to_analyze_directly.append(item)
+                
+                # Send summarization phase event if needed
+                if files_to_summarize:
+                    yield f"data: {json.dumps({'type': 'phase', 'phase': 'summarization', 'status': 'started', 'files_to_summarize': len(files_to_summarize)})}\n\n"
+                    
+                    # Process summarizations
+                    for item in files_to_summarize:
+                        summary_result = await self.summarization_agent.summarize_content(
+                            item['markdown_content'],
+                            model_fields,
+                            item['filename']
+                        )
+                        
+                        if summary_result['success']:
+                            # Replace markdown content with summary for analysis
+                            item['original_markdown_content'] = item['markdown_content']
+                            item['markdown_content'] = summary_result['summary']
+                            item['was_summarized'] = True
+                            item['summarization_metrics'] = {
+                                'original_length': summary_result['original_length'],
+                                'summary_length': summary_result['summary_length'],
+                                'compression_ratio': summary_result['compression_ratio']
+                            }
+                        else:
+                            # Log error but continue with original content
+                            logger.warning(f"Summarization failed for {item['filename']}: {summary_result.get('error')}")
+                            item['was_summarized'] = False
+                    
+                    summarization_time = time.time() - summarization_start
+                    yield f"data: {json.dumps({'type': 'phase', 'phase': 'summarization', 'status': 'completed', 'duration': summarization_time})}\n\n"
+                else:
+                    # Mark all files as not summarized
+                    for item in files_to_analyze_directly:
+                        item['was_summarized'] = False
+                
+                # Phase 3: Structured Analysis
                 ai_start = time.time()
                 yield f"data: {json.dumps({'type': 'phase', 'phase': 'ai_processing', 'status': 'started'})}\n\n"
                 
@@ -182,10 +229,12 @@ class OptimizedStreamingProcessor:
                                 "type": "result",
                                 "filename": ai_result['filename'],
                                 "status": "success",
-                                "markdown_content": original_item['markdown_content'],
+                                "markdown_content": original_item.get('original_markdown_content', original_item['markdown_content']),
                                 "structured_data": ai_result['structured_data'],
                                 "model_fields": list(ai_result['structured_data'].keys()),
                                 "processing_time": ai_result.get('processing_time', 0),
+                                "was_summarized": original_item.get('was_summarized', False),
+                                "summarization_metrics": original_item.get('summarization_metrics', None),
                                 "progress": {
                                     "current": processed_count + len(failed_conversions),
                                     "total": total_files,
@@ -239,6 +288,11 @@ class OptimizedStreamingProcessor:
             
             # Send completion event with metrics
             total_time = time.time() - start_time
+            
+            # Calculate summarization statistics
+            summarized_count = sum(1 for item in successful_conversions if item.get('was_summarized', False))
+            summarization_time = summarization_time if 'summarization_time' in locals() else 0
+            
             completion_event = {
                 "type": "complete",
                 "total_files": total_files,
@@ -246,9 +300,16 @@ class OptimizedStreamingProcessor:
                 "failed": failed_ai + len(failed_conversions),
                 "model_used": model_key,
                 "ai_model_used": ai_model or config.get('models.ai_models.default_model'),
+                "summarization": {
+                    "files_summarized": summarized_count,
+                    "summarization_duration": summarization_time,
+                    "token_threshold": self.summarization_agent.token_threshold,
+                    "summary_model": self.summarization_agent.summary_model
+                },
                 "performance": {
                     "total_duration": total_time,
                     "conversion_duration": conversion_time,
+                    "summarization_duration": summarization_time,
                     "ai_duration": ai_time if successful_conversions else 0,
                     "files_per_second": total_files / total_time if total_time > 0 else 0,
                     "conversion_metrics": self.markdown_converter.get_metrics(),
@@ -296,7 +357,7 @@ async def transform_stream_v2(
         raise HTTPException(status_code=400, detail="No files provided")
     
     # Check if model exists
-    available_models = processor.structured_analyzer.get_available_models()
+    available_models = processor.structured_analyzer_agent.get_available_models()
     if model_key not in available_models:
         raise HTTPException(
             status_code=400,

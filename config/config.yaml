@@ -41,8 +41,20 @@ models:
         streaming:
           enabled: true
           debounce_by: 0.1
-      
 
+
+# Summarization Agent Configuration
+summarization_agent:
+  token_threshold: 200000  # if the token count is greater than this threshold, the file will be processed by summarization agent
+  summary_temperature: 0.1
+  summarizing_prompt: |
+    You are a helpful admin expert who excels at summarising long documents. 
+    Your job is to produce a condensed version that still preserves all data points necessary 
+    for extraction according to the following fields: {fields}.
+    
+    Ensure the summary retains specific details, numbers, dates, and any other critical information 
+    that might be needed for data extraction. Your output should be in a report format.
+  summary_model: vertex_ai.gemini-1.5-pro
 
 # Prompts
 prompts:

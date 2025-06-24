@@ -9,7 +9,7 @@ from typing import List, Dict, Any, Optional, AsyncGenerator
 from dataclasses import dataclass
 
 from infotransform.config import config
-from infotransform.processors.structured_analyzer import StructuredAnalyzer
+from infotransform.processors.structured_analyzer_agent import StructuredAnalyzerAgent
 from infotransform.utils.token_counter import log_token_count
 
 logger = logging.getLogger(__name__)
@@ -40,8 +40,8 @@ class BatchResult:
 class BatchProcessor:
     """Handles batch processing of markdown content for AI analysis"""
     
-    def __init__(self, structured_analyzer: StructuredAnalyzer):
-        self.analyzer = structured_analyzer
+    def __init__(self, structured_analyzer_agent: StructuredAnalyzerAgent):
+        self.analyzer = structured_analyzer_agent
         
         # Load configuration
         self.batch_size = int(config.get_performance('ai_processing.batch_size', 10))

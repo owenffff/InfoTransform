@@ -18,7 +18,7 @@ from infotransform.utils.token_counter import log_token_count
 logger = logging.getLogger(__name__)
 
 
-class StructuredAnalyzer:
+class StructuredAnalyzerAgent:
     """Analyzes markdown content and extracts structured data using Pydantic AI"""
     
     def __init__(self):

@@ -25,7 +25,7 @@ import aiofiles
 import uvicorn
 
 from infotransform.config import config
-from infotransform.processors import VisionProcessor, AudioProcessor, BatchProcessor, StructuredAnalyzer
+from infotransform.processors import VisionProcessor, AudioProcessor, BatchProcessor, StructuredAnalyzerAgent
 from infotransform.api.models import FileTransformResult, TransformResponse
 from infotransform.api.streaming_v2 import transform_stream_v2, shutdown_processor
 
@@ -47,7 +47,7 @@ def init_processors():
         vision_processor = VisionProcessor()
         audio_processor = AudioProcessor()
         batch_processor = BatchProcessor(vision_processor, audio_processor)
-        structured_analyzer = StructuredAnalyzer()
+        structured_analyzer = StructuredAnalyzerAgent()
         return True
     except Exception as e:
         print(f"Error initializing processors: {e}")
