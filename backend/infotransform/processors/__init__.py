@@ -4,7 +4,7 @@ Processors for handling different file types
 
 from .vision import VisionProcessor
 from .audio import AudioProcessor
-from .batch import BatchProcessor
+from .file_batch_handler import BatchProcessor
 from .structured_analyzer_agent import StructuredAnalyzerAgent
 from .summarization_agent import SummarizationAgent
 

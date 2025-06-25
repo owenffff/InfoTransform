@@ -1,89 +1,82 @@
-# Application Configuration
-app:
-  name: "Information Transformer"
-  version: "1.0.0"
-  description: "Transform any file type into structured, actionable data"
-  environment: "development"  # development, staging, production
+# ============================================================================
+# AI PIPELINE CONFIGURATION
+# ============================================================================
+# This section controls the 3-step AI transformation pipeline:
+# 1. File-to-Markdown Conversion → 2. Content Summarization → 3. Structured Analysis
 
-# API Configuration
-api:
-  host: "0.0.0.0"
-  port: 8000
-  cors:
-    allow_origins: ["*"]
-    allow_credentials: true
-    allow_methods: ["*"]
-    allow_headers: ["*"]
-
-# Model Configuration
-models:
-  # Existing models for MARKITDOWN vision/audio 
-  vision: azure.gpt-4o
-  whisper: whisper-1
+ai_pipeline:
   
-  # AI models for structured analysis
-  ai_models:
-    default_model: "azure.gpt-4o"
-    api_config:
-      base_url: "${OPENAI_BASE_URL}"  # Can be overridden by env var
-      api_key: "${OPENAI_API_KEY}"    # Must be set via env var
-      timeout: 120  # seconds
-      max_retries: 3
-      retry_delay: 1.0  # seconds
+  # Step 1: File-to-Markdown Conversion
+  # Converts uploaded files (images, audio, documents) into markdown text
+  markdown_conversion:
+    vision_model: "azure.gpt-4o"      # Model for processing images/documents
+    audio_model: "whisper-1"          # Model for processing audio files
     
-    models:
-      azure.gpt-4o:
+    # Prompt for vision processing (how to extract text from images)
+    vision_prompt: |
+      Please analyze this image and provide output in the following format:
+
+      1. If the image contains text (documents, screenshots, signs, etc.):
+         - Extract ALL visible text exactly as it appears
+         - Preserve the original formatting, line breaks, and structure
+         - Include any headers, bullet points, or special formatting
+         - If there are multiple columns, process them in reading order
+
+      2. If the image contains no text or minimal text:
+         - Provide a detailed description of the image content
+         - Mention key visual elements, objects, people, or scenes
+         - Note any important details or context
+
+      3. If the image contains both text and visual elements:
+         - First extract all text content
+         - Then provide a brief description of non-text elements
+
+      Format your response as clean markdown.
+  
+  # Step 2: Content Summarization (for large files)
+  # Automatically summarizes files that exceed the token threshold
+  summarization:
+    model: "vertex_ai.gemini-1.5-pro"  # Model used for summarization
+    token_threshold: 200000             # Files over this size get summarized (set to 0 to disable)
+    temperature: 0.1                    # Lower = more focused, higher = more creative
+    
+    # Prompt for summarization (how to condense long documents)
+    prompt: |
+      You are a helpful admin expert who excels at summarising long documents. 
+      Your job is to produce a condensed version that still preserves all data points necessary 
+      for extraction according to the following fields: {fields}.
+      
+      Ensure the summary retains specific details, numbers, dates, and any other critical information 
+      that might be needed for data extraction. Your output should be in a report format.
+  
+  # Step 3: Structured Data Extraction
+  # Extracts structured information from markdown content using AI analysis
+  structured_analysis:
+    default_model: "azure.gpt-4o"      # Default AI model for analysis
+    temperature: 0.7                   # Balance between creativity and consistency
+    seed: 42                           # For reproducible results
+    
+    # Models available for user selection in frontend
+    available_models:
+      "azure.gpt-4o":
+        display_name: "gpt-4o"
         temperature: 0.7
         seed: 42
-        streaming:
-          enabled: true
-          debounce_by: 0.1
-
-
-# Summarization Agent Configuration
-summarization_agent:
-  token_threshold: 200000  # if the token count is greater than this threshold, the file will be processed by summarization agent
-  summary_temperature: 0.1
-  summarizing_prompt: |
-    You are a helpful admin expert who excels at summarising long documents. 
-    Your job is to produce a condensed version that still preserves all data points necessary 
-    for extraction according to the following fields: {fields}.
     
-    Ensure the summary retains specific details, numbers, dates, and any other critical information 
-    that might be needed for data extraction. Your output should be in a report format.
-  summary_model: vertex_ai.gemini-1.5-pro
-
-# Prompts
-prompts:
-  # Vision prompt for initial conversion
-  vision: |
-    Please analyze this image and provide output in the following format:
-
-    1. If the image contains text (documents, screenshots, signs, etc.):
-       - Extract ALL visible text exactly as it appears
-       - Preserve the original formatting, line breaks, and structure
-       - Include any headers, bullet points, or special formatting
-       - If there are multiple columns, process them in reading order
-
-    2. If the image contains no text or minimal text:
-       - Provide a detailed description of the image content
-       - Mention key visual elements, objects, people, or scenes
-       - Note any important details or context
-
-    3. If the image contains both text and visual elements:
-       - First extract all text content
-       - Then provide a brief description of non-text elements
-
-    Format your response as clean markdown.
-  
-  # System prompts for structured analysis
-  analysis:
-    default: |
-      You are an expert document analyzer. 
-      Your task is to analyze markdown content and extract structured information according to the provided schema.
-      Be accurate, thorough, and follow the schema exactly.
+    # Streaming configuration
+    streaming:
+      enabled: true                    # Enable real-time streaming of results
+      debounce_by: 0.1                # Delay between streaming updates (seconds)
     
-    model_specific:
+    # Analysis prompts for different types of content
+    prompts:
+      # Default prompt used for all analysis types
+      default: |
+        You are an expert document analyzer. 
+        Your task is to analyze markdown content and extract structured information according to the provided schema.
+        Be accurate, thorough, and follow the schema exactly.
+      
+      # Specialized prompts for specific analysis models
       content_compliance: |
         You are a content compliance specialist. 
         Analyze documents for policy violations with high accuracy.
@@ -99,22 +92,60 @@ prompts:
         Focus on identifying technical content, code snippets, and documentation quality.
         Assess complexity levels accurately based on content depth and prerequisites.
     
-    templates:
-      analysis_prompt: |
-        Analyze the following content.
-        
-        Task: {model_description}
-        
-        You should extract information according to the {model_name} schema.
-        {custom_instructions}
-        
-        Content to analyze:
-        
-        {content}
+    # Template for analysis prompts (how custom instructions are integrated)
+    prompt_template: |
+      Analyze the following content.
+      
+      Task: {model_description}
+      
+      You should extract information according to the {model_name} schema.
+      {custom_instructions}
+      
+      Content to analyze:
+      
+      {content}
 
-# Processing Configuration
+# ============================================================================
+# AI MODEL CONNECTION SETTINGS
+# ============================================================================
+# Technical configuration for connecting to AI services
+
+ai_connection:
+  api_config:
+    base_url: "${OPENAI_BASE_URL}"     # Can be overridden by environment variable
+    api_key: "${OPENAI_API_KEY}"       # Must be set via environment variable
+    timeout: 120                       # Request timeout in seconds
+    max_retries: 3                     # Number of retry attempts
+    retry_delay: 1.0                   # Delay between retries in seconds
+
+# ============================================================================
+# APPLICATION SETTINGS
+# ============================================================================
+# Basic application configuration
+
+app:
+  name: "Information Transformer"
+  version: "1.0.0"
+  description: "Transform any file type into structured, actionable data"
+  environment: "development"          # development, staging, production
+
+# API server configuration
+api:
+  host: "0.0.0.0"
+  port: 8000
+  cors:
+    allow_origins: ["*"]
+    allow_credentials: true
+    allow_methods: ["*"]
+    allow_headers: ["*"]
+
+# ============================================================================
+# PROCESSING CONFIGURATION
+# ============================================================================
+# Settings that control how files are processed
+
 processing:
-  # Upload settings
+  # File upload settings
   upload:
     folder: uploads
     max_file_size_mb: 16
@@ -143,58 +174,68 @@ processing:
         - html
         - msg
   
-  # Analysis settings
+  # Analysis performance settings
   analysis:
-    max_concurrent_analyses: 5
-    batch_size: 10
+    max_concurrent_analyses: 5         # How many files to analyze simultaneously
+    batch_size: 10                     # Files processed in each batch
     timeouts:
-      single_file: 60  # seconds
-      batch: 300      # seconds
+      single_file: 60                  # Timeout for single file analysis (seconds)
+      batch: 300                       # Timeout for batch analysis (seconds)
     retry:
-      max_attempts: 3
-      backoff_factor: 2.0
-      max_backoff: 30  # seconds
+      max_attempts: 3                  # Retry failed analyses
+      backoff_factor: 2.0              # Exponential backoff multiplier
+      max_backoff: 30                  # Maximum backoff delay (seconds)
   
-  # Batch processing
+  # Batch processing settings
   batch:
-    max_concurrent: 10
-    timeout_seconds: 300
-    max_zip_size_mb: 100
-    temp_extract_dir: temp_extracts
+    max_concurrent: 10                 # Maximum concurrent batch operations
+    timeout_seconds: 300               # Batch operation timeout
+    max_zip_size_mb: 100              # Maximum ZIP file size
+    temp_extract_dir: temp_extracts    # Directory for extracting ZIP files
 
-# Storage Configuration
+# ============================================================================
+# STORAGE & CACHING
+# ============================================================================
+
 storage:
   # Results storage
   results:
-    type: "filesystem"  # filesystem, database, s3
+    type: "filesystem"                 # filesystem, database, s3
     path: "./analysis_results"
     retention_days: 30
   
   # Cache configuration
   cache:
     enabled: true
-    type: "memory"  # memory, redis
-    ttl: 3600      # seconds
-    max_size: "100MB"
+    type: "memory"                     # memory, redis
+    ttl: 3600                         # Cache lifetime in seconds
+    max_size: "1000MB"
 
-# Feature Flags
+# ============================================================================
+# FEATURE FLAGS
+# ============================================================================
+# Enable/disable specific features
+
 features:
-  streaming_responses: true
-  batch_processing: true
-  result_caching: true
-  auto_retry: true
-  detailed_errors: true  # Only in development
+  streaming_responses: true            # Stream results in real-time
+  batch_processing: true               # Allow processing multiple files
+  result_caching: true                 # Cache analysis results
+  auto_retry: true                     # Automatically retry failed operations
+  detailed_errors: true                # Show detailed error messages (development only)
   
-  # Experimental features
+  # Experimental features (use with caution)
   experimental:
-    parallel_analysis: false
-    smart_batching: false
-    adaptive_prompts: false
+    parallel_analysis: false           # Parallel processing of analyses
+    smart_batching: false              # Intelligent batch size adjustment
+    adaptive_prompts: false            # Dynamic prompt optimization
 
-# Security Settings
+# ============================================================================
+# SECURITY & LOGGING
+# ============================================================================
+
 security:
-  # API key validation
-  api_key_required: false  # Set to true in production
+  # API security
+  api_key_required: false              # Set to true in production
   api_key_header: "X-API-Key"
   
   # Input validation
@@ -202,9 +243,8 @@ security:
     max_custom_instructions_length: 1000
     sanitize_filenames: true
 
-# Logging Configuration
 logging:
-  level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  level: "INFO"                        # DEBUG, INFO, WARNING, ERROR, CRITICAL
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
   
   # File logging

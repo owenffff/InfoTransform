@@ -42,7 +42,7 @@ class StructuredAnalyzerAgent:
         """Get or create a Pydantic AI agent for the specified model"""
         # Use provided AI model or default
         if ai_model_name is None:
-            ai_model_name = self.config.get('models.ai_models.default_model', 'azure.gpt-4o')
+            ai_model_name = self.config.get('ai_pipeline.structured_analysis.default_model', 'azure.gpt-4o')
         
         # Create cache key
         cache_key = f"{model_key}_{ai_model_name}"
@@ -102,7 +102,7 @@ class StructuredAnalyzerAgent:
             agent = self._get_or_create_agent(model_class, model_key, ai_model)
             
             # Get model configuration and extract only temperature and seed
-            model_name = ai_model or self.config.get('models.ai_models.default_model')
+            model_name = ai_model or self.config.get('ai_pipeline.structured_analysis.default_model')
             model_config = self.config.get_ai_model_config(model_name)
             
             # Build model settings with only temperature and seed
@@ -178,7 +178,7 @@ Content to analyze:
                 'success': False,
                 'error': str(e),
                 'model_used': model_key,
-                'ai_model_used': ai_model or self.config.get('models.ai_models.default_model')
+                'ai_model_used': ai_model or self.config.get('ai_pipeline.structured_analysis.default_model')
             }
     
     def _convert_enums_to_strings(self, data: Any) -> Any:
@@ -275,16 +275,25 @@ Content to analyze:
         return models_info
     
     def get_available_ai_models(self) -> Dict[str, Any]:
-        """Get available AI models and their configurations"""
-        models = self.config.get('models.ai_models.models', {})
-        return {
-            "default_model": self.config.get('models.ai_models.default_model'),
-            "models": {
-                name: {
-                    "temperature": cfg.get('temperature'),
-                    "seed": cfg.get('seed'),
-                    "streaming_enabled": cfg.get('streaming', {}).get('enabled', False)
-                }
-                for name, cfg in models.items()
+        """Get available AI models for structured analysis only"""
+        # Get available models from config (only for structured analysis)
+        available_models = self.config.get('ai_pipeline.structured_analysis.available_models', {})
+        default_model = self.config.get('ai_pipeline.structured_analysis.default_model')
+        
+        # Create models dict with display names for frontend
+        models = {}
+        
+        for model_id, model_config in available_models.items():
+            # Use display_name for the key that frontend shows
+            display_name = model_config.get('display_name', model_id)
+            models[model_id] = {
+                "display_name": display_name,
+                "temperature": model_config.get('temperature', 0.7),
+                "seed": model_config.get('seed', 42),
+                "streaming_enabled": self.config.get('ai_pipeline.structured_analysis.streaming.enabled', False)
             }
+        
+        return {
+            "default_model": default_model,
+            "models": models
         }

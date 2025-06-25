@@ -13,7 +13,7 @@ from fastapi.responses import StreamingResponse
 from infotransform.config import config
 from infotransform.processors import StructuredAnalyzerAgent, SummarizationAgent
 from infotransform.processors.async_converter import AsyncMarkdownConverter
-from infotransform.processors.batch_processor import BatchProcessor
+from infotransform.processors.ai_batch_processor import BatchProcessor
 from infotransform.utils.file_lifecycle import get_file_manager, ManagedStreamingResponse
 from infotransform.utils.token_counter import log_token_count, count_tokens_quiet
 

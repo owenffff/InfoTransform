@@ -125,40 +125,52 @@ class Config:
     def PORT(self):
         return int(os.getenv('PORT', self.get('api.port', 8000)))
     
-    # Model settings from YAML
+    # Model settings from YAML - updated for new structure
     @property
     def MODEL_NAME(self):
-        return self.get('models.vision', 'gpt-4-vision-preview')
+        return self.get('ai_pipeline.markdown_conversion.vision_model', 'azure.gpt-4o')
     
     @property
     def WHISPER_MODEL(self):
-        return self.get('models.whisper', 'whisper-1')
+        return self.get('ai_pipeline.markdown_conversion.audio_model', 'whisper-1')
     
     @property
     def VISION_PROMPT(self):
-        return self.get('prompts.vision', '')
+        return self.get('ai_pipeline.markdown_conversion.vision_prompt', '')
     
-    # AI Model Configuration
+    # AI Model Configuration - updated for new structure
     def get_ai_model_config(self, model_name: Optional[str] = None) -> Dict[str, Any]:
         """Get configuration for a specific AI model"""
         if model_name is None:
-            model_name = self.get('models.ai_models.default_model', 'gpt-4o-mini')
+            model_name = self.get('ai_pipeline.structured_analysis.default_model', 'azure.gpt-4o')
         
-        models = self.get('models.ai_models.models', {})
-        return models.get(model_name, {})
+        # Return structured analysis config for the model
+        config = {
+            'temperature': self.get('ai_pipeline.structured_analysis.temperature', 0.7),
+            'seed': self.get('ai_pipeline.structured_analysis.seed', 42),
+            'streaming': self.get('ai_pipeline.structured_analysis.streaming', {}),
+        }
+        
+        # Add connection settings
+        connection_config = self.get('ai_connection.api_config', {})
+        config.update(connection_config)
+        
+        return config
     
     def get_analysis_prompt(self, model_key: Optional[str] = None) -> str:
         """Get system prompt for analysis"""
         if model_key:
-            model_prompt = self.get(f'prompts.analysis.model_specific.{model_key}')
+            model_prompt = self.get(f'ai_pipeline.structured_analysis.prompts.{model_key}')
             if model_prompt:
                 return model_prompt
         
-        return self.get('prompts.analysis.default', '')
+        return self.get('ai_pipeline.structured_analysis.prompts.default', '')
     
     def get_prompt_template(self, template_name: str) -> Optional[str]:
         """Get a specific prompt template"""
-        return self.get(f'prompts.analysis.templates.{template_name}')
+        if template_name == 'analysis_prompt':
+            return self.get('ai_pipeline.structured_analysis.prompt_template')
+        return None
     
     # Upload settings from YAML
     @property
@@ -301,10 +313,17 @@ class Config:
             raise ValueError("OPENAI_API_KEY is required. Please set it in your .env file")
         
         # Validate YAML structure - updated for new structure
-        required_sections = ['app', 'models', 'prompts', 'processing']
+        required_sections = ['app', 'ai_pipeline', 'processing']
         for section in required_sections:
             if section not in self.yaml_config:
                 raise ValueError(f"Missing required section '{section}' in config.yaml")
+        
+        # Validate AI pipeline structure
+        ai_pipeline = self.yaml_config.get('ai_pipeline', {})
+        required_ai_sections = ['markdown_conversion', 'summarization', 'structured_analysis']
+        for section in required_ai_sections:
+            if section not in ai_pipeline:
+                raise ValueError(f"Missing required AI pipeline section '{section}' in config.yaml")
         
         return True
 

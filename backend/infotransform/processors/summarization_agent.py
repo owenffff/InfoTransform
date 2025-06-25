@@ -27,11 +27,11 @@ class SummarizationAgent:
         self.config = config
         self.agents = {}  # Cache for agents by model
         
-        # Get summarization config
-        self.token_threshold = self.config.get('summarization_agent.token_threshold', 200000)
-        self.summary_temperature = self.config.get('summarization_agent.summary_temperature', 0.1)
-        self.summarizing_prompt = self.config.get('summarization_agent.summarizing_prompt', '')
-        self.summary_model = self.config.get('summarization_agent.summary_model', 'vertex_ai.gemini-1.5-pro')
+        # Get summarization config from new structure
+        self.token_threshold = self.config.get('ai_pipeline.summarization.token_threshold', 200000)
+        self.summary_temperature = self.config.get('ai_pipeline.summarization.temperature', 0.1)
+        self.summarizing_prompt = self.config.get('ai_pipeline.summarization.prompt', '')
+        self.summary_model = self.config.get('ai_pipeline.summarization.model', 'vertex_ai.gemini-1.5-pro')
     
     def _get_or_create_agent(self, fields: List[str]) -> Agent:
         """Get or create a Pydantic AI agent for summarization"""

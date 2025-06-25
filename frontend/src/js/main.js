@@ -64,15 +64,11 @@ async function loadAnalysisModels() {
         
         // Populate AI models
         aiModelSelect.innerHTML = '<option value="">Default</option>';
-        for (const [name, config] of Object.entries(data.ai_models.models)) {
+        for (const [modelId, config] of Object.entries(data.ai_models.models)) {
             const option = document.createElement('option');
-            option.value = name;
-            // Show temperature if available, otherwise just the model name
-            if (config.temperature !== undefined) {
-                option.textContent = `${name} (temp: ${config.temperature})`;
-            } else {
-                option.textContent = name;
-            }
+            option.value = modelId;
+            // Use display_name if available, otherwise use model ID
+            option.textContent = config.display_name || modelId;
             aiModelSelect.appendChild(option);
         }
     } catch (error) {
