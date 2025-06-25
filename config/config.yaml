@@ -230,7 +230,7 @@ features:
     adaptive_prompts: false            # Dynamic prompt optimization
 
 # ============================================================================
-# SECURITY & LOGGING
+# SECURITY
 # ============================================================================
 
 security:
@@ -242,18 +242,3 @@ security:
   input_validation:
     max_custom_instructions_length: 1000
     sanitize_filenames: true
-
-logging:
-  level: "INFO"                        # DEBUG, INFO, WARNING, ERROR, CRITICAL
-  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-  
-  # File logging
-  file:
-    enabled: true
-    max_size: "10MB"
-    backup_count: 5
-  
-  # Console logging
-  console:
-    enabled: true
-    colorize: true

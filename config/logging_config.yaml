@@ -1,0 +1,55 @@
+# ============================================================================
+# LOGGING CONFIGURATION
+# ============================================================================
+# Simple, environment-based logging configuration
+
+# Environment-specific logging settings
+environments:
+  development:
+    level: INFO
+    console: true
+    file: true
+    file_max_size: 10MB
+    file_backup_count: 5
+    
+  staging:
+    level: WARNING
+    console: true
+    file: true
+    file_max_size: 50MB
+    file_backup_count: 10
+    
+  production:
+    level: ERROR
+    console: false  # No console logging in production
+    file: true
+    file_max_size: 100MB
+    file_backup_count: 20
+
+# Fine-tune specific components (optional)
+component_overrides:
+  development:
+    "infotransform.processors": INFO
+    "infotransform.utils.token_counter": INFO
+    "httpx": WARNING
+    "uvicorn.access": WARNING
+    "watchfiles": WARNING
+  
+  staging:
+    "infotransform.processors": WARNING
+    "infotransform.utils.token_counter": ERROR
+    "httpx": ERROR
+    "uvicorn.access": ERROR
+    "watchfiles": ERROR
+  
+  production:
+    "infotransform.processors": ERROR
+    "infotransform.utils.token_counter": ERROR
+    "httpx": ERROR
+    "uvicorn.access": ERROR
+    "watchfiles": ERROR
+
+# Log format (same for all environments)
+format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+log_file_name: "infotransform.log"
+log_directory: "logs"
