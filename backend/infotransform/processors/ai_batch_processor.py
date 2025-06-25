@@ -16,15 +16,36 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
+class ProcessingContext:
+    """Processing parameters for a batch"""
+    model_key: str
+    custom_instructions: str
+    ai_model: str
+
+
+@dataclass
 class BatchItem:
     """Item to be processed in a batch"""
     filename: str
     markdown_content: str
+    context: ProcessingContext
     timestamp: float = None
     
     def __post_init__(self):
         if self.timestamp is None:
             self.timestamp = time.time()
+
+
+@dataclass
+class Batch:
+    """A batch of items with shared processing context"""
+    items: List['BatchItem']
+    context: ProcessingContext
+    created_at: float = None
+    
+    def __post_init__(self):
+        if self.created_at is None:
+            self.created_at = time.time()
 
 
 @dataclass
@@ -68,8 +89,8 @@ class BatchProcessor:
         ))
         
         # Batch queue and processing state
-        self.batch_queue: asyncio.Queue = asyncio.Queue()
-        self.result_queue: asyncio.Queue = asyncio.Queue()
+        self.batch_queue: asyncio.Queue[BatchItem] = asyncio.Queue()
+        self.result_queue: asyncio.Queue[BatchResult] = asyncio.Queue()
         self.processing_semaphore = asyncio.Semaphore(self.max_concurrent_batches)
         
         # Metrics for adaptive batching
@@ -118,15 +139,16 @@ class BatchProcessor:
         
         logger.info("BatchProcessor stopped")
     
-    async def add_item(self, filename: str, markdown_content: str) -> None:
+    async def add_item(self, filename: str, markdown_content: str, context: ProcessingContext) -> None:
         """
         Add an item for batch processing
         
         Args:
             filename: Name of the file
             markdown_content: Markdown content to process
+            context: Processing context with model parameters
         """
-        item = BatchItem(filename=filename, markdown_content=markdown_content)
+        item = BatchItem(filename=filename, markdown_content=markdown_content, context=context)
         await self.batch_queue.put(item)
     
     async def get_result(self) -> BatchResult:
@@ -152,14 +174,16 @@ class BatchProcessor:
         Yields:
             Processing results as they complete
         """
-        # Store processing parameters for the batch
-        self._current_model_key = model_key
-        self._current_custom_instructions = custom_instructions
-        self._current_ai_model = ai_model
+        # Create processing context
+        context = ProcessingContext(
+            model_key=model_key,
+            custom_instructions=custom_instructions,
+            ai_model=ai_model
+        )
         
-        # Add all items to the queue
+        # Add all items to the queue with context
         for item in items:
-            await self.add_item(item['filename'], item['markdown_content'])
+            await self.add_item(item['filename'], item['markdown_content'], context)
         
         # Collect results
         results_received = 0
@@ -241,7 +265,9 @@ class BatchProcessor:
             start_time = time.time()
             batch_size = len(batch)
             
-            logger.info(f"Processing batch of {batch_size} items")
+            # Get model key from first item for logging (all items in batch should have same context)
+            model_key = batch[0].context.model_key if batch else "unknown"
+            logger.info(f"Processing batch of {batch_size} items with model: {model_key}")
             
             try:
                 # Process all items in the batch concurrently
@@ -300,26 +326,22 @@ class BatchProcessor:
                     ))
     
     async def _process_single_item(self, item: BatchItem) -> BatchResult:
-        """Process a single item"""
+        """Process a single item with its processing context"""
         start_time = time.time()
         
         try:
-            # Get the current processing parameters from the batch context
-            # Note: In a full implementation, these would be passed through the batch
-            # For now, we'll use defaults
-            model_key = getattr(self, '_current_model_key', 'content_compliance')
-            custom_instructions = getattr(self, '_current_custom_instructions', '')
-            ai_model = getattr(self, '_current_ai_model', None)
+            # Extract processing parameters from the item's context
+            context = item.context
             
             # Log token count for the markdown content with context
             log_token_count(item.filename, item.markdown_content, context='batch_analysis')
             
-            # Use the actual analyzer
+            # Use the actual analyzer with context parameters
             result = await self.analyzer.analyze_content(
                 item.markdown_content,
-                model_key,
-                custom_instructions,
-                ai_model
+                context.model_key,
+                context.custom_instructions,
+                context.ai_model
             )
             
             processing_time = time.time() - start_time
