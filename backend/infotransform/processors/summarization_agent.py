@@ -97,8 +97,15 @@ Document content:
             # Get model config for temperature
             model_config = self.config.get_ai_model_config(self.summary_model)
             
+            # Get model settings (temperature and seed if available)
+            model_settings = {}
+            if model_config and 'temperature' in model_config:
+                model_settings['temperature'] = model_config['temperature']
+            if model_config and 'seed' in model_config:
+                model_settings['seed'] = model_config['seed']
+            
             # Run summarization
-            result = await agent.run(prompt)
+            result = await agent.run(prompt, model_settings=model_settings)
             summary_text = result.data.summary
             
             # Log token count for the output

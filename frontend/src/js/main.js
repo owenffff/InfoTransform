@@ -67,7 +67,12 @@ async function loadAnalysisModels() {
         for (const [name, config] of Object.entries(data.ai_models.models)) {
             const option = document.createElement('option');
             option.value = name;
-            option.textContent = `${name} (${config.max_tokens} tokens)`;
+            // Show temperature if available, otherwise just the model name
+            if (config.temperature !== undefined) {
+                option.textContent = `${name} (temp: ${config.temperature})`;
+            } else {
+                option.textContent = name;
+            }
             aiModelSelect.appendChild(option);
         }
     } catch (error) {

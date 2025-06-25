@@ -12,8 +12,15 @@ from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIModel
 
 from infotransform.config import config
-from config.analysis_schemas import AVAILABLE_MODELS
 from infotransform.utils.token_counter import log_token_count
+
+# Import from the correct path - add project root to path
+import sys
+from pathlib import Path
+project_root = Path(__file__).parent.parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+from config.analysis_schemas import AVAILABLE_MODELS
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +42,7 @@ class StructuredAnalyzerAgent:
         """Get or create a Pydantic AI agent for the specified model"""
         # Use provided AI model or default
         if ai_model_name is None:
-            ai_model_name = self.config.get('models.ai_models.default_model', 'gpt-4o-mini')
+            ai_model_name = self.config.get('models.ai_models.default_model', 'azure.gpt-4o')
         
         # Create cache key
         cache_key = f"{model_key}_{ai_model_name}"
@@ -94,6 +101,17 @@ class StructuredAnalyzerAgent:
             # Get or create agent
             agent = self._get_or_create_agent(model_class, model_key, ai_model)
             
+            # Get model configuration and extract only temperature and seed
+            model_name = ai_model or self.config.get('models.ai_models.default_model')
+            model_config = self.config.get_ai_model_config(model_name)
+            
+            # Build model settings with only temperature and seed
+            model_settings = {}
+            if 'temperature' in model_config:
+                model_settings['temperature'] = model_config['temperature']
+            if 'seed' in model_config:
+                model_settings['seed'] = model_config['seed']
+            
             # Prepare prompt
             model_description = model_class.__doc__ or f"Analysis using {model_class.__name__}"
             
@@ -124,7 +142,7 @@ Content to analyze:
             
             if streaming_enabled:
                 # Streaming mode
-                async with agent.run_stream(prompt) as result:
+                async with agent.run_stream(prompt, model_settings=model_settings) as result:
                     async for message, last in result.stream_structured(debounce_by=0.1):
                         if last:
                             validated_result = await result.validate_structured_output(message)
@@ -136,13 +154,13 @@ Content to analyze:
                             return {
                                 'success': True,
                                 'model_used': model_class.__name__,
-                                'ai_model_used': ai_model or self.config.get('models.ai_models.default_model'),
+                                'ai_model_used': model_name,
                                 'result': result_dict
                             }
             else:
                 # Non-streaming mode
-                result = await agent.run(prompt)
-                result_dict = result.data.model_dump()
+                result = await agent.run(prompt, model_settings=model_settings)
+                result_dict = result.output.model_dump()
                 
                 # Convert Enums to strings
                 result_dict = self._convert_enums_to_strings(result_dict)
@@ -150,7 +168,7 @@ Content to analyze:
                 return {
                     'success': True,
                     'model_used': model_class.__name__,
-                    'ai_model_used': ai_model or self.config.get('models.ai_models.default_model'),
+                    'ai_model_used': model_name,
                     'result': result_dict
                 }
                 
@@ -264,7 +282,7 @@ Content to analyze:
             "models": {
                 name: {
                     "temperature": cfg.get('temperature'),
-                    "max_tokens": cfg.get('max_tokens'),
+                    "seed": cfg.get('seed'),
                     "streaming_enabled": cfg.get('streaming', {}).get('enabled', False)
                 }
                 for name, cfg in models.items()
