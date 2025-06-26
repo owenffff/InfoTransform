@@ -5,6 +5,14 @@ Vision processor for handling images and documents using Markitdown
 import os
 import logging
 from markitdown import MarkItDown
+# Attempt to import a specific exception raised for password-protected PDFs.
+# Older/newer MarkItDown versions might not expose it, so fall back gracefully.
+try:
+    from markitdown.exceptions import PDFPasswordIncorrect  # type: ignore
+except Exception:  # pragma: no cover
+    class PDFPasswordIncorrect(Exception):
+        """Fallback placeholder when MarkItDown does not expose PDFPasswordIncorrect."""
+        pass
 from openai import OpenAI
 from infotransform.config import config
 from infotransform.utils.token_counter import log_token_count
@@ -81,10 +89,25 @@ class VisionProcessor:
         except Exception as e:
             logger.error(f"Error processing {filename}: {type(e).__name__}: {str(e)}")
             logger.debug(f"Full traceback for {filename}:", exc_info=True)
-            
+
+            # Categorise common error types so upper layers can react properly
+            error_type = (
+                'password_required'
+                if isinstance(e, PDFPasswordIncorrect) or 'password' in str(e).lower()
+                else 'generic'
+            )
+
+            # Provide concise, user-friendly message
+            pretty_msg = (
+                "PDF is password-protected. Please remove the password and try again."
+                if error_type == 'password_required'
+                else f"{type(e).__name__}: {str(e)}"
+            )
+
             return {
                 'success': False,
-                'error': f"{type(e).__name__}: {str(e)}",
+                'error': pretty_msg,
+                'error_type': error_type,
                 'filename': filename,
                 'type': 'vision'
             }

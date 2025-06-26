@@ -3,6 +3,19 @@ import * as state from './state.js';
 import { addStreamingResult, setModelFields, setTransformResults } from './state.js';
 import { handleSort } from './events.js';
 
+/* ------------------------------------------------------------------ */
+/*  Error-rendering helpers & icons                                   */
+/* ------------------------------------------------------------------ */
+const lockSvg = '<svg class="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 2a4 4 0 00-4 4v2H5a2 2 0 00-2 2v6a4 4 0 004 4h6a4 4 0 004-4v-6a2 2 0 00-2-2h-1V6a4 4 0 00-4-4zm-2 6V6a2 2 0 114 0v2H8z" clip-rule="evenodd"></path></svg>';
+const errorSvg = '<svg class="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-1-5a1 1 0 112 0 1 1 0 01-2 0zm0-7a1 1 0 012 0v4a1 1 0 11-2 0V6z" clip-rule="evenodd"></path></svg>';
+
+/** Return first sentence or whole string if no period */
+function formatErrorMessage(msg = 'Failed') {
+    const trimmed = String(msg).trim();
+    const idx = trimmed.indexOf('.');
+    return idx > 0 ? trimmed.slice(0, idx + 1) : trimmed;
+}
+
 // View switching
 export function switchView(view) {
     state.setCurrentView(view);
@@ -281,15 +294,16 @@ export function handleStreamingEvent(data) {
             break;
             
         case 'result':
-            // Add result to table or file view
+            // Store result
             addStreamingResult(data);
-            if (data.status === 'success') {
-                if (state.currentView === 'table') {
-                    addTableRow(data);
-                } else {
-                    addFileResult(data);
-                }
+
+            // Render in whichever view is active (helpers handle success vs error)
+            if (state.currentView === 'table') {
+                addTableRow(data);
+            } else {
+                addFileResult(data);
             }
+
             // Update progress from result
             if (data.progress) {
                 updateProgress(data.progress.current, data.progress.total);
@@ -297,6 +311,15 @@ export function handleStreamingEvent(data) {
             }
             break;
             
+        case 'conversion_summary':
+            if (data.password_required && data.password_required.length) {
+                showToast(
+                    `Failed to process password-protected PDFs: ${data.password_required.join(', ')}`,
+                    'error'
+                );
+            }
+            break;
+
         case 'complete':
             // Transform complete
             setTransformResults({
@@ -420,11 +443,15 @@ export function addTableRow(result) {
             row.appendChild(cell);
         });
     } else {
-        // Error row
+        // Error row - style nicely
+        row.classList.add('bg-red-50');
         const errorCell = document.createElement('td');
-        errorCell.colSpan = state.modelFields.length;
-        errorCell.textContent = result.error || 'Failed';
-        errorCell.className = 'text-red-600';
+        errorCell.colSpan = state.modelFields.length + 1; // span all columns
+        errorCell.innerHTML = `
+            <span class="inline-flex items-center gap-2 text-red-600">
+                ${result.error_type === 'password_required' ? lockSvg : errorSvg}
+                ${formatErrorMessage(result.error)}
+            </span>`;
         row.appendChild(errorCell);
     }
     
@@ -730,10 +757,17 @@ function createErrorItem(filename, error) {
     title.className = 'text-red-600';
     item.appendChild(title);
     
+    // Decide icon and message
+    const iconSpan = document.createElement('span');
+    iconSpan.innerHTML = error?.toLowerCase().includes('password') ? lockSvg : errorSvg;
+    item.prepend(iconSpan);
+
     const errorText = document.createElement('p');
-    errorText.textContent = error;
-    errorText.className = 'text-sm text-red-600';
+    errorText.textContent = formatErrorMessage(error);
+    errorText.className = 'text-sm text-red-600 mt-2';
     item.appendChild(errorText);
+
+    item.classList.add('border', 'border-red-300', 'bg-red-50');
     
     return item;
 }

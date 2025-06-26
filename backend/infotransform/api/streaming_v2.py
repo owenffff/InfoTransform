@@ -133,15 +133,28 @@ class OptimizedStreamingProcessor:
                         'original_index': i
                     })
             
+            # Identify password-protected PDFs among the failures so the UI can provide
+            # a clear, user-friendly message instead of a generic “network error”.
+            password_required = [
+                f['filename'] for f in failed_conversions
+                if f.get('error_type') == 'password_required'
+            ]
+
             # Send conversion summary
             conversion_summary = {
                 'type': 'conversion_summary',
                 'successful': len(successful_conversions),
                 'failed': len(failed_conversions),
-                'failed_files': [f['filename'] for f in failed_conversions]
+                'failed_files': [f['filename'] for f in failed_conversions],
+                'password_required': password_required
             }
             yield f"data: {json.dumps(conversion_summary)}\n\n"
             
+            # Initialise AI-phase counters even when there are zero successful conversions
+            processed_count = 0
+            successful_ai = 0
+            failed_ai = 0
+
             # Phase 2: Summarization (if needed) and AI processing
             if successful_conversions:
                 # Check which files need summarization
@@ -194,9 +207,6 @@ class OptimizedStreamingProcessor:
                 yield f"data: {json.dumps({'type': 'phase', 'phase': 'ai_processing', 'status': 'started'})}\n\n"
                 
                 # Process through batch processor
-                processed_count = 0
-                successful_ai = 0
-                failed_ai = 0
                 
                 # Create a mapping to track original indices
                 result_map = {}

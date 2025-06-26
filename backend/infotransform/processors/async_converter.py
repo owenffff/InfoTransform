@@ -95,12 +95,13 @@ class AsyncMarkdownConverter:
                     self.metrics['successful'] += 1
                 else:
                     self.metrics['failed'] += 1
-                
+
                 return {
                     'filename': filename,
                     'success': result['success'],
                     'markdown_content': result.get('content'),
-                    'error': result.get('error')
+                    'error': result.get('error'),
+                    'error_type': result.get('error_type')
                 }
                 
             except asyncio.TimeoutError:
@@ -109,7 +110,8 @@ class AsyncMarkdownConverter:
                     'filename': filename,
                     'success': False,
                     'error': f'Timeout after {self.timeout_per_file} seconds',
-                    'markdown_content': None
+                    'markdown_content': None,
+                    'error_type': 'timeout'
                 }
                 
         except Exception as e:
