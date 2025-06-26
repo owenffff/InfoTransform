@@ -9,6 +9,22 @@ import { handleSort } from './events.js';
 const lockSvg = '<svg class="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 2a4 4 0 00-4 4v2H5a2 2 0 00-2 2v6a4 4 0 004 4h6a4 4 0 004-4v-6a2 2 0 00-2-2h-1V6a4 4 0 00-4-4zm-2 6V6a2 2 0 114 0v2H8z" clip-rule="evenodd"></path></svg>';
 const errorSvg = '<svg class="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-1-5a1 1 0 112 0 1 1 0 01-2 0zm0-7a1 1 0 012 0v4a1 1 0 11-2 0V6z" clip-rule="evenodd"></path></svg>';
 
+// Default error messages by type
+const defaultErrorText = {
+    password_required: 'PDF is password-protected.',
+    unsupported_format: 'Unsupported file format.',
+    corrupt_file: 'File appears to be corrupted.',
+    ocr_failure: 'Could not extract text from image.',
+    timeout: 'Processing timed out.',
+    generic: 'File processing failed.'
+};
+
+/** Get user-friendly error message */
+function prettyError(result) {
+    // Use backend error if provided, otherwise use default based on error_type
+    return result.error || defaultErrorText[result.error_type] || defaultErrorText.generic;
+}
+
 /** Return first sentence or whole string if no period */
 function formatErrorMessage(msg = 'Failed') {
     const trimmed = String(msg).trim();
@@ -450,7 +466,7 @@ export function addTableRow(result) {
         errorCell.innerHTML = `
             <span class="inline-flex items-center gap-2 text-red-600">
                 ${result.error_type === 'password_required' ? lockSvg : errorSvg}
-                ${formatErrorMessage(result.error)}
+                ${formatErrorMessage(prettyError(result))}
             </span>`;
         row.appendChild(errorCell);
     }
@@ -763,7 +779,7 @@ function createErrorItem(filename, error) {
     item.prepend(iconSpan);
 
     const errorText = document.createElement('p');
-    errorText.textContent = formatErrorMessage(error);
+    errorText.textContent = formatErrorMessage(prettyError({error, error_type: error?.toLowerCase().includes('password') ? 'password_required' : 'generic'}));
     errorText.className = 'text-sm text-red-600 mt-2';
     item.appendChild(errorText);
 

@@ -90,6 +90,11 @@ dist_path = project_root / "frontend" / "dist"
 if dist_path.exists():
     app.mount("/static", StaticFiles(directory=str(dist_path)), name="static")
 
+# Mount frontend/static for fonts, favicon, and other static assets
+static_assets_path = project_root / "frontend" / "static"
+if static_assets_path.exists():
+    app.mount("/assets", StaticFiles(directory=str(static_assets_path)), name="assets")
+
 # Mount src as fallback for development
 src_path = project_root / "frontend" / "src"
 app.mount("/src", StaticFiles(directory=str(src_path)), name="src")

@@ -4,15 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Information Transformer</title>
+    <link rel="icon" type="image/x-icon" href="/assets/favicon.ico">
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body class="bg-gray-50 text-gray-900 antialiased">
     <div class="min-h-screen py-8 px-4 sm:px-6 lg:px-8">
         <div class="max-w-7xl mx-auto">
             <!-- Header Card -->
-            <div class="bg-gradient-to-br from-white to-blue-50 rounded-xl shadow-lg border border-gray-200 mb-8 overflow-hidden">
+            <div class="bg-gradient-to-br from-white to-brand-orange-50 rounded-xl shadow-lg border border-gray-200 mb-8 overflow-hidden">
                 <div class="px-6 py-10 text-center relative">
-                    <div class="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-indigo-500/5"></div>
+                    <div class="absolute inset-0 bg-gradient-to-br from-brand-orange-500/5 to-brand-orange-400/5"></div>
                     <h1 class="text-5xl font-bold text-gray-900 flex items-center justify-center gap-4 relative">
                         Information Transformer
                     </h1>
@@ -24,16 +25,16 @@
                 <!-- Upload Section Card -->
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                     <h2 class="text-2xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
-                        <span class="text-blue-500">1.</span>
+                        <span class="text-brand-orange-500">1.</span>
                         Upload Files
                     </h2>
-                    <div id="dropZone" class="relative border-2 border-dashed border-gray-300 rounded-xl p-16 text-center cursor-pointer transition-all duration-300 hover:border-blue-500 hover:bg-gradient-to-br hover:from-blue-50 hover:to-indigo-50 hover:shadow-inner group">
-                        <svg class="w-20 h-20 text-gray-400 mb-6 mx-auto group-hover:text-blue-500 transition-all duration-300 group-hover:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <div id="dropZone" class="relative border-2 border-dashed border-gray-300 rounded-xl p-16 text-center cursor-pointer transition-all duration-300 hover:border-brand-orange-500 hover:bg-gradient-to-br hover:from-brand-orange-50 hover:to-brand-orange-100 hover:shadow-inner group">
+                        <svg class="w-20 h-20 text-gray-400 mb-6 mx-auto group-hover:text-brand-orange-500 transition-all duration-300 group-hover:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                             <polyline points="7 10 12 15 17 10"></polyline>
                             <line x1="12" y1="15" x2="12" y2="3"></line>
                         </svg>
-                        <p class="text-2xl font-semibold text-gray-800 drop-text mb-3 group-hover:text-blue-700">Drop files here or click to browse</p>
+                        <p class="text-2xl font-semibold text-gray-800 drop-text mb-3 group-hover:text-brand-orange-700">Drop files here or click to browse</p>
                         <p class="text-base text-gray-600 group-hover:text-gray-700">Supported: Images, PDFs, Documents, Audio, ZIP archives</p>
                         <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.pdf,.docx,.pptx,.xlsx,.mp3,.wav,.m4a,.flac,.ogg,.webm,.zip,.md,.txt" multiple hidden>
                     </div>
@@ -42,7 +43,7 @@
                 <!-- Analysis Options Card -->
                 <div id="analysisOptions" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hidden">
                     <h2 class="text-2xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
-                        <span class="text-blue-500">2.</span>
+                        <span class="text-brand-orange-500">2.</span>
                         Configure Extraction
                     </h2>
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -51,10 +52,10 @@
                             <label for="modelSelect" class="block text-sm font-semibold text-gray-800 mb-3">
                                 Analysis Model
                             </label>
-                            <select id="modelSelect" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                            <select id="modelSelect" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-brand-orange-500 focus:ring-brand-orange-500 sm:text-sm">
                                 <option value="">Select an analysis model...</option>
                             </select>
-                            <div id="modelDescription" class="mt-4 p-3 bg-blue-50 border-l-4 border-blue-400 text-sm text-gray-700 rounded hidden"></div>
+                            <div id="modelDescription" class="mt-4 p-3 bg-brand-orange-50 border-l-4 border-brand-orange-400 text-sm text-gray-700 rounded hidden"></div>
                             
                             <!-- Schema Preview -->
                             <div id="schemaPreview" class="mt-5 hidden">
@@ -72,21 +73,21 @@
                             <label for="aiModelSelect" class="block text-sm font-semibold text-gray-800 mb-3">
                                 AI Model
                             </label>
-                            <select id="aiModelSelect" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm mb-6">
+                            <select id="aiModelSelect" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-brand-orange-500 focus:ring-brand-orange-500 sm:text-sm mb-6">
                             </select>
                             
                             <div class="border-t border-gray-200 pt-5">
                                 <label for="customInstructions" class="block text-sm font-semibold text-gray-800 mb-3">
                                     Custom Instructions (Optional)
                                 </label>
-                                <textarea id="customInstructions" rows="4" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm resize-none" placeholder="Add any specific instructions for the analysis..."></textarea>
+                                <textarea id="customInstructions" rows="4" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-brand-orange-500 focus:ring-brand-orange-500 sm:text-sm resize-none" placeholder="Add any specific instructions for the analysis..."></textarea>
                                 <p class="mt-2 text-xs text-gray-500">Provide additional context or specific requirements for the analysis</p>
                             </div>
                         </div>
                     </div>
                     
                     <div class="mt-8 flex justify-center">
-                        <button id="transformBtn" class="inline-flex items-center px-10 py-4 border border-transparent text-lg font-semibold rounded-xl shadow-lg text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-4 focus:ring-blue-500 focus:ring-opacity-50 transition-all duration-300 transform hover:scale-105 hover:shadow-xl">
+                        <button id="transformBtn" class="inline-flex items-center px-10 py-4 border border-transparent text-lg font-semibold rounded-xl shadow-lg text-white bg-gradient-to-r from-brand-orange-500 to-brand-orange-400 hover:from-brand-orange-600 hover:to-brand-orange-500 focus:outline-none focus:ring-4 focus:ring-brand-orange-500 focus:ring-opacity-50 transition-all duration-300 transform hover:scale-105 hover:shadow-xl">
                             <svg class="w-6 h-6 mr-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M12 2v20m0-20l-3 3m3-3l3 3m-3 17l-3-3m3 3l3-3"></path>
                                 <circle cx="12" cy="12" r="3"></circle>
@@ -100,12 +101,12 @@
                 <div id="processingStatus" class="bg-white rounded-lg shadow-sm border border-gray-200 p-8 hidden">
                     <div class="text-center">
                         <div class="inline-flex items-center justify-center w-16 h-16 mb-4">
-                            <div class="w-full h-full border-4 border-gray-200 border-t-blue-500 rounded-full animate-spin"></div>
+                            <div class="w-full h-full border-4 border-gray-200 border-t-brand-orange-500 rounded-full animate-spin"></div>
                         </div>
                         <p id="processingText" class="text-lg font-medium text-gray-900">Transforming your files...</p>
                         <div id="progressContainer" class="mt-6 max-w-md mx-auto hidden">
                             <div class="bg-gray-200 rounded-full h-2 overflow-hidden">
-                                <div id="progressBar" class="bg-blue-600 h-full transition-all duration-300 ease-out" style="width: 0%"></div>
+                                <div id="progressBar" class="bg-brand-orange-500 h-full transition-all duration-300 ease-out" style="width: 0%"></div>
                             </div>
                             <p id="progressText" class="mt-2 text-sm text-gray-600">0 / 0 files</p>
                         </div>
@@ -122,7 +123,7 @@
                             <div class="flex flex-wrap gap-3">
                                 <!-- View Toggle -->
                                 <div class="inline-flex rounded-md shadow-sm" role="group">
-                                    <button id="tableViewBtn" type="button" class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-l-md hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-2 focus:ring-blue-700 focus:text-blue-700">
+                                    <button id="tableViewBtn" type="button" class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-l-md hover:bg-gray-100 hover:text-brand-orange-700 focus:z-10 focus:ring-2 focus:ring-brand-orange-700 focus:text-brand-orange-700">
                                         <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                                             <line x1="3" y1="9" x2="21" y2="9"></line>
@@ -130,7 +131,7 @@
                                         </svg>
                                         Table
                                     </button>
-                                    <button id="fileViewBtn" type="button" class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-r-md hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-2 focus:ring-blue-700 focus:text-blue-700">
+                                    <button id="fileViewBtn" type="button" class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-r-md hover:bg-gray-100 hover:text-brand-orange-700 focus:z-10 focus:ring-2 focus:ring-brand-orange-700 focus:text-brand-orange-700">
                                         <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
                                             <polyline points="13 2 13 9 20 9"></polyline>
@@ -141,11 +142,11 @@
                                 
                                 <!-- Actions -->
                                 <div class="flex items-center gap-2">
-                                    <select id="downloadFormat" class="text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                    <select id="downloadFormat" class="text-sm rounded-md border-gray-300 shadow-sm focus:border-brand-orange-500 focus:ring-brand-orange-500">
                                         <option value="excel">Excel (.xlsx)</option>
                                         <option value="csv">CSV (.csv)</option>
                                     </select>
-                                    <button id="downloadBtn" class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                    <button id="downloadBtn" class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-orange-500">
                                         <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                                             <polyline points="7 10 12 15 17 10"></polyline>
@@ -182,9 +183,9 @@
                         <!-- Search/Filter Bar -->
                         <div class="mb-4 flex flex-col sm:flex-row gap-3">
                             <div class="flex-1">
-                                <input type="text" id="searchInput" placeholder="Search results..." class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                                <input type="text" id="searchInput" placeholder="Search results..." class="block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-orange-500 focus:ring-brand-orange-500 sm:text-sm">
                             </div>
-                            <button id="clearEditsBtn" class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 hidden">
+                            <button id="clearEditsBtn" class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-orange-500 hidden">
                                 <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
                                     <path d="M3 3v5h5"></path>

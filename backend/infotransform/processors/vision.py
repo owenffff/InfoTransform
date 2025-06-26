@@ -71,7 +71,8 @@ class VisionProcessor:
                 logger.warning(f"No text content extracted from {filename}")
                 return {
                     'success': False,
-                    'error': "No text content could be extracted",
+                    'error': "Could not extract text from image.",
+                    'error_type': 'ocr_failure',
                     'filename': filename,
                     'type': 'vision'
                 }
@@ -91,18 +92,16 @@ class VisionProcessor:
             logger.debug(f"Full traceback for {filename}:", exc_info=True)
 
             # Categorise common error types so upper layers can react properly
-            error_type = (
-                'password_required'
-                if isinstance(e, PDFPasswordIncorrect) or 'password' in str(e).lower()
-                else 'generic'
-            )
-
-            # Provide concise, user-friendly message
-            pretty_msg = (
-                "PDF is password-protected. Please remove the password and try again."
-                if error_type == 'password_required'
-                else f"{type(e).__name__}: {str(e)}"
-            )
+            error_msg = str(e).lower()
+            if isinstance(e, PDFPasswordIncorrect) or 'password' in error_msg:
+                error_type = 'password_required'
+                pretty_msg = "PDF is password-protected."
+            elif 'corrupt' in error_msg or 'invalid' in error_msg or 'bad' in error_msg:
+                error_type = 'corrupt_file'
+                pretty_msg = "File appears to be corrupted."
+            else:
+                error_type = 'generic'
+                pretty_msg = "File processing failed."
 
             return {
                 'success': False,

@@ -74,8 +74,9 @@ class AsyncMarkdownConverter:
                 return {
                     'filename': filename,
                     'success': False,
-                    'error': f'Unsupported file type: {filename}',
-                    'markdown_content': None
+                    'error': 'Unsupported file format.',
+                    'markdown_content': None,
+                    'error_type': 'unsupported_format'
                 }
             
             # Execute with timeout

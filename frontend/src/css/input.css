@@ -1,3 +1,84 @@
+/* Helvetica Neue Font Family */
+@font-face {
+  font-family: 'Helvetica Neue';
+  src: url('/assets/Fonts/HelveticaNeueLTW01-45Light.woff2') format('woff2'),
+       url('/assets/Fonts/HelveticaNeueLTW01-45Light.woff') format('woff'),
+       url('/assets/Fonts/HelveticaNeueLTW01-45Light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Helvetica Neue';
+  src: url('/assets/Fonts/HelveticaNeueLTW01-46LtIt.woff2') format('woff2'),
+       url('/assets/Fonts/HelveticaNeueLTW01-46LtIt.woff') format('woff'),
+       url('/assets/Fonts/HelveticaNeueLTW01-46LtIt.ttf') format('truetype');
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Helvetica Neue';
+  src: url('/assets/Fonts/HelveticaNeueLTW01-55Roman.woff2') format('woff2'),
+       url('/assets/Fonts/HelveticaNeueLTW01-55Roman.woff') format('woff'),
+       url('/assets/Fonts/HelveticaNeueLTW01-55Roman.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Helvetica Neue';
+  src: url('/assets/Fonts/HelveticaNeueLTW01-56Italic.woff2') format('woff2'),
+       url('/assets/Fonts/HelveticaNeueLTW01-56Italic.woff') format('woff'),
+       url('/assets/Fonts/HelveticaNeueLTW01-56Italic.ttf') format('truetype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Helvetica Neue';
+  src: url('/assets/Fonts/HelveticaNeueLTW01-65Medium.woff2') format('woff2'),
+       url('/assets/Fonts/HelveticaNeueLTW01-65Medium.woff') format('woff'),
+       url('/assets/Fonts/HelveticaNeueLTW01-65Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Helvetica Neue';
+  src: url('/assets/Fonts/HelveticaNeueLTW01-66MdIt.woff2') format('woff2'),
+       url('/assets/Fonts/HelveticaNeueLTW01-66MdIt.woff') format('woff'),
+       url('/assets/Fonts/HelveticaNeueLTW01-66MdIt.ttf') format('truetype');
+  font-weight: 500;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Helvetica Neue';
+  src: url('/assets/Fonts/HelveticaNeueLTW01-75Bold.woff2') format('woff2'),
+       url('/assets/Fonts/HelveticaNeueLTW01-75Bold.woff') format('woff'),
+       url('/assets/Fonts/HelveticaNeueLTW01-75Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Helvetica Neue';
+  src: url('/assets/Fonts/HelveticaNeueLTW01-76BoldIt.woff2') format('woff2'),
+       url('/assets/Fonts/HelveticaNeueLTW01-76BoldIt.woff') format('woff'),
+       url('/assets/Fonts/HelveticaNeueLTW01-76BoldIt.ttf') format('truetype');
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -6,12 +87,12 @@
 @layer components {
   /* Button group styles */
   .btn-group button.active {
-    @apply bg-gradient-to-r from-blue-600 to-blue-700 text-white border-transparent shadow-md hover:from-blue-700 hover:to-blue-800 transform scale-105;
+    @apply bg-gradient-to-r from-brand-orange-500 to-brand-orange-600 text-white border-transparent shadow-md hover:from-brand-orange-600 hover:to-brand-orange-700 transform scale-105;
   }
   
   /* Drop zone styles */
   .drop-zone-active {
-    @apply border-blue-500 bg-gradient-to-br from-blue-50 to-indigo-50 shadow-inner;
+    @apply border-brand-orange-500 bg-gradient-to-br from-brand-orange-50 to-brand-orange-100 shadow-inner;
   }
   
   /* Field chip styles */
@@ -20,7 +101,7 @@
   }
   
   .field-chip.required {
-    @apply bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-800 border border-blue-200 hover:from-blue-200 hover:to-indigo-200;
+    @apply bg-gradient-to-r from-brand-orange-100 to-brand-orange-200 text-brand-orange-700 border border-brand-orange-200 hover:from-brand-orange-200 hover:to-brand-orange-300;
   }
   
   .field-chip.optional {
@@ -97,12 +178,12 @@
   
   #resultsTable th.sort-asc::after {
     content: '↑';
-    @apply text-blue-600 font-bold;
+    @apply text-brand-orange-500 font-bold;
   }
   
   #resultsTable th.sort-desc::after {
     content: '↓';
-    @apply text-blue-600 font-bold;
+    @apply text-brand-orange-500 font-bold;
   }
   
   #resultsTable td {
@@ -110,7 +191,7 @@
   }
   
   #resultsTable tbody tr {
-    @apply bg-white hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200;
+    @apply bg-white hover:bg-gradient-to-r hover:from-brand-orange-50 hover:to-brand-orange-100 transition-all duration-200;
   }
   
   #resultsTable tbody tr:nth-child(even) {
@@ -135,7 +216,7 @@
   }
   
   .cell-editable:hover {
-    @apply bg-gradient-to-r from-blue-50 to-indigo-50 shadow-inner transform scale-105;
+    @apply bg-gradient-to-r from-brand-orange-50 to-brand-orange-100 shadow-inner transform scale-105;
   }
   
   .cell-editable::after {
@@ -148,11 +229,11 @@
   }
   
   .cell-editing {
-    @apply p-0 shadow-lg ring-2 ring-blue-500 ring-opacity-50 rounded-md;
+    @apply p-0 shadow-lg ring-2 ring-brand-orange-500 ring-opacity-50 rounded-md;
   }
   
   .cell-input {
-    @apply w-full px-6 py-4 text-sm border-2 border-blue-500 rounded-md focus:outline-none focus:ring-4 focus:ring-blue-500 focus:ring-opacity-30 bg-white;
+    @apply w-full px-6 py-4 text-sm border-2 border-brand-orange-500 rounded-md focus:outline-none focus:ring-4 focus:ring-brand-orange-500 focus:ring-opacity-30 bg-white;
   }
   
   /* Enhanced Cell type styles */
@@ -245,7 +326,7 @@
   }
   
   .toast.info {
-    @apply text-blue-600 bg-blue-50 border border-blue-200;
+    @apply text-brand-orange-600 bg-brand-orange-50 border border-brand-orange-200;
   }
   
   .toast.warning {
@@ -374,6 +455,6 @@
   
   /* Focus visible utilities */
   .focus-visible-ring {
-    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2;
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange-500 focus-visible:ring-offset-2;
   }
 }
