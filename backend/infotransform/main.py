@@ -85,8 +85,14 @@ app.add_middleware(
 project_root = Path(__file__).parent.parent.parent
 
 # Mount static files
-static_path = project_root / "frontend" / "dist"
-app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
+# Mount dist for compiled assets (CSS, JS bundles)
+dist_path = project_root / "frontend" / "dist"
+if dist_path.exists():
+    app.mount("/static", StaticFiles(directory=str(dist_path)), name="static")
+
+# Mount src as fallback for development
+src_path = project_root / "frontend" / "src"
+app.mount("/src", StaticFiles(directory=str(src_path)), name="src")
 
 # Setup templates
 templates_path = project_root / "frontend" / "templates"

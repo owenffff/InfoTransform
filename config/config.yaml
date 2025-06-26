@@ -9,7 +9,7 @@ ai_pipeline:
   # Step 1: File-to-Markdown Conversion
   # Converts uploaded files (images, audio, documents) into markdown text
   markdown_conversion:
-    vision_model: "azure.gpt-4o"      # Model for processing images/documents
+    vision_model: "openai.gpt-4.1-mini-2025-04-14"      # Model for processing images/documents
     audio_model: "whisper-1"          # Model for processing audio files
     
     # Prompt for vision processing (how to extract text from images)
@@ -58,10 +58,15 @@ ai_pipeline:
     
     # Models available for user selection in frontend
     available_models:
-      "azure.gpt-4o":
-        display_name: "gpt-4o"
-        temperature: 0.7
-        seed: 42
+      "openai.gpt-4.1-mini-2025-04-14":
+        display_name: "gpt-4.1 mini"
+        temperature: 0
+        seed: 123
+        
+      "openai.gpt-4.1-2025-04-14":
+        display_name: "gpt-4.1"
+        temperature: 0
+        seed: 123
     
     # Streaming configuration
     streaming:
@@ -104,19 +109,6 @@ ai_pipeline:
       Content to analyze:
       
       {content}
-
-# ============================================================================
-# AI MODEL CONNECTION SETTINGS
-# ============================================================================
-# Technical configuration for connecting to AI services
-
-ai_connection:
-  api_config:
-    base_url: "${OPENAI_BASE_URL}"     # Can be overridden by environment variable
-    api_key: "${OPENAI_API_KEY}"       # Must be set via environment variable
-    timeout: 120                       # Request timeout in seconds
-    max_retries: 3                     # Number of retry attempts
-    retry_delay: 1.0                   # Delay between retries in seconds
 
 # ============================================================================
 # APPLICATION SETTINGS

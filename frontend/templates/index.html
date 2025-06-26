@@ -5,20 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Information Transformer</title>
     <link rel="stylesheet" href="/static/css/style.css">
-    <!-- Add Tailwind Forms plugin for better form styling -->
-    <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-50 text-gray-900 antialiased">
     <div class="min-h-screen py-8 px-4 sm:px-6 lg:px-8">
         <div class="max-w-7xl mx-auto">
             <!-- Header Card -->
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-8">
-                <div class="px-6 py-8 text-center">
-                    <h1 class="text-4xl font-bold text-gray-900 flex items-center justify-center gap-3">
-                        <span class="text-5xl">🔄</span>
+            <div class="bg-gradient-to-br from-white to-blue-50 rounded-xl shadow-lg border border-gray-200 mb-8 overflow-hidden">
+                <div class="px-6 py-10 text-center relative">
+                    <div class="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-indigo-500/5"></div>
+                    <h1 class="text-5xl font-bold text-gray-900 flex items-center justify-center gap-4 relative">
                         Information Transformer
                     </h1>
-                    <p class="mt-3 text-lg text-gray-600">Transform any file type into structured, actionable data</p>
+                    <p class="mt-4 text-xl text-gray-700 font-medium">Transform any file type into structured, actionable data</p>
                 </div>
             </div>
 
@@ -29,14 +27,14 @@
                         <span class="text-blue-500">1.</span>
                         Upload Files
                     </h2>
-                    <div id="dropZone" class="relative border-2 border-dashed border-gray-300 rounded-lg p-12 text-center cursor-pointer transition-all duration-200 hover:border-blue-400 hover:bg-blue-50 group">
-                        <svg class="w-16 h-16 text-gray-400 mb-4 mx-auto group-hover:text-blue-500 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <div id="dropZone" class="relative border-2 border-dashed border-gray-300 rounded-xl p-16 text-center cursor-pointer transition-all duration-300 hover:border-blue-500 hover:bg-gradient-to-br hover:from-blue-50 hover:to-indigo-50 hover:shadow-inner group">
+                        <svg class="w-20 h-20 text-gray-400 mb-6 mx-auto group-hover:text-blue-500 transition-all duration-300 group-hover:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                             <polyline points="7 10 12 15 17 10"></polyline>
                             <line x1="12" y1="15" x2="12" y2="3"></line>
                         </svg>
-                        <p class="text-xl font-medium text-gray-700 drop-text mb-2">Drop files here or click to browse</p>
-                        <p class="text-sm text-gray-500">Supported: Images, PDFs, Documents, Audio, ZIP archives</p>
+                        <p class="text-2xl font-semibold text-gray-800 drop-text mb-3 group-hover:text-blue-700">Drop files here or click to browse</p>
+                        <p class="text-base text-gray-600 group-hover:text-gray-700">Supported: Images, PDFs, Documents, Audio, ZIP archives</p>
                         <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.pdf,.docx,.pptx,.xlsx,.mp3,.wav,.m4a,.flac,.ogg,.webm,.zip,.md,.txt" multiple hidden>
                     </div>
                 </div>
@@ -61,7 +59,6 @@
                             <!-- Schema Preview -->
                             <div id="schemaPreview" class="mt-5 hidden">
                                 <h3 class="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                                    <span>📋</span>
                                     Schema Preview
                                 </h3>
                                 <div id="schemaChipsContainer" class="p-4 bg-white rounded-lg border border-gray-200 shadow-inner">
@@ -90,8 +87,8 @@
                     </div>
                     
                     <div class="mt-8 flex justify-center">
-                        <button id="transformBtn" class="inline-flex items-center px-8 py-3 border border-transparent text-base font-medium rounded-md shadow-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 transform hover:scale-105">
-                            <svg class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <button id="transformBtn" class="inline-flex items-center px-10 py-4 border border-transparent text-lg font-semibold rounded-xl shadow-lg text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-4 focus:ring-blue-500 focus:ring-opacity-50 transition-all duration-300 transform hover:scale-105 hover:shadow-xl">
+                            <svg class="w-6 h-6 mr-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M12 2v20m0-20l-3 3m3-3l3 3m-3 17l-3-3m3 3l3-3"></path>
                                 <circle cx="12" cy="12" r="3"></circle>
                             </svg>
@@ -121,7 +118,6 @@
                     <div class="px-6 py-4 border-b border-gray-200">
                         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                             <h2 class="text-2xl font-semibold text-gray-900 flex items-center gap-2">
-                                <span class="text-green-500">📊</span>
                                 Transformation Results
                             </h2>
                             <div class="flex flex-wrap gap-3">
@@ -200,10 +196,10 @@
                         
                         <!-- Table View -->
                         <div id="tableView" class="overflow-hidden">
-                            <div class="overflow-x-auto">
-                                <table id="resultsTable" class="min-w-full divide-y divide-gray-200">
-                                    <thead id="tableHeader" class="bg-gray-50"></thead>
-                                    <tbody id="tableBody" class="bg-white divide-y divide-gray-200"></tbody>
+                            <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
+                                <table id="resultsTable" class="min-w-full">
+                                    <thead id="tableHeader"></thead>
+                                    <tbody id="tableBody"></tbody>
                                 </table>
                             </div>
                         </div>
@@ -242,6 +238,6 @@
     <!-- Toast Container -->
     <div id="toastContainer" class="fixed bottom-0 right-0 p-6 space-y-4 pointer-events-none z-50"></div>
 
-    <script src="/static/js/script.js"></script>
+    <script type="module" src="/src/js/main.js"></script>
 </body>
 </html>

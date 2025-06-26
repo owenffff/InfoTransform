@@ -1,0 +1,20 @@
+// DOM elements
+export const dropZone = document.getElementById('dropZone');
+export const fileInput = document.getElementById('fileInput');
+export const analysisOptions = document.getElementById('analysisOptions');
+export const modelSelect = document.getElementById('modelSelect');
+export const aiModelSelect = document.getElementById('aiModelSelect');
+export const modelDescription = document.getElementById('modelDescription');
+export const customInstructions = document.getElementById('customInstructions');
+export const transformBtn = document.getElementById('transformBtn');
+export const processingStatus = document.getElementById('processingStatus');
+export const processingText = document.getElementById('processingText');
+export const progressContainer = document.getElementById('progressContainer');
+export const progressBar = document.getElementById('progressBar');
+export const progressText = document.getElementById('progressText');
+export const resultsSection = document.getElementById('resultsSection');
+export const resultsSummary = document.getElementById('resultsSummary');
+export const errorDisplay = document.getElementById('errorDisplay');
+export const searchInput = document.getElementById('searchInput');
+export const clearEditsBtn = document.getElementById('clearEditsBtn');
+export const toastContainer = document.getElementById('toastContainer');
