@@ -4,13 +4,6 @@ analysis_schemas.py
 Schema definitions for structured data analysis models.
 These Pydantic models define the structure of data extracted by the analysis system.
 
-Example flow:
-1. User selects "content_compliance" in the UI dropdown
-2. API receives model_key="content_compliance"
-3. System looks up AVAILABLE_MODELS["content_compliance"] → ContentCompliance_response class
-4. AI extracts data according to that class's schema
-5. Pydantic validates the extracted data matches the schema
-
 HOW TO ADD A NEW ANALYSIS MODEL:
 1. Create a new Pydantic model class below (inherit from BaseModel)
 2. Add descriptive docstring and Field descriptions
@@ -63,7 +56,8 @@ class TechnicalDocAnalysis(BaseModel):
 
 # Model registry - just the models
 AVAILABLE_MODELS = {
-    "content_compliance": ContentCompliance_response,
+    #"UI displayed name": actual pydantic model name,
+    "content_compliance": ContentCompliance_response,   
     "document_metadata": DocumentMetadata,
     "technical_analysis": TechnicalDocAnalysis,
 }

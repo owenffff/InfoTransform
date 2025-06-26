@@ -291,8 +291,8 @@ if __name__ == "__main__":
     print(f"📚 API documentation available at http://localhost:{config.PORT}/docs")
     
     uvicorn.run(
-        "infotransform.main:app",
-        host="0.0.0.0",
+        app,
+        host=config.get('api.host', '0.0.0.0'),
         port=config.PORT,
         reload=True,
         log_level="info"

@@ -9,6 +9,7 @@ import yaml
 import os
 from pathlib import Path
 from typing import Dict, Any, Optional
+from infotransform.config import config as app_config
 
 # Global flag to prevent multiple logging configurations
 _LOGGING_CONFIGURED = False
@@ -42,9 +43,9 @@ def setup_logging(environment: Optional[str] = None, force_reconfigure: bool = F
     if _LOGGING_CONFIGURED and not force_reconfigure:
         return
     
-    # Get environment from parameter or environment variable
+    # Get environment from parameter or app config
     if environment is None:
-        environment = os.getenv('APP_ENVIRONMENT', 'development')
+        environment = app_config.get('app.environment', 'development')
     
     # Load logging configuration
     try:

@@ -51,7 +51,10 @@ streaming:
   enable_compression: ${STREAM_COMPRESSION:-false}       # Enable response compression
   heartbeat_interval: ${HEARTBEAT_INTERVAL:-30}         # Seconds between keepalive messages
 
-# Performance Profiles (can be activated via PERFORMANCE_PROFILE env var)
+# Performance Profiles
+# The active profile is set by the 'active_profile' key below.
+active_profile: balanced
+
 profiles:
   # Conservative profile for limited resources
   conservative:

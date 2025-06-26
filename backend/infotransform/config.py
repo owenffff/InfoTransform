@@ -151,10 +151,6 @@ class Config:
             'streaming': self.get('ai_pipeline.structured_analysis.streaming', {}),
         }
         
-        # Add connection settings
-        connection_config = self.get('ai_connection.api_config', {})
-        config.update(connection_config)
-        
         return config
     
     def get_analysis_prompt(self, model_key: Optional[str] = None) -> str:
@@ -259,7 +255,7 @@ class Config:
     
     def _apply_performance_profile(self):
         """Apply performance profile if specified"""
-        profile_name = os.getenv('PERFORMANCE_PROFILE')
+        profile_name = self.get_performance('active_profile')
         if not profile_name:
             return
         
