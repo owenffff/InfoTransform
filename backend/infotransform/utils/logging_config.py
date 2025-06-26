@@ -6,7 +6,6 @@ import logging
 import logging.handlers
 import sys
 import yaml
-import os
 from pathlib import Path
 from typing import Dict, Any, Optional
 from infotransform.config import config as app_config

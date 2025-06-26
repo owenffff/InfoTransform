@@ -3,30 +3,24 @@ FastAPI application for InfoTransform
 """
 
 import os
-import asyncio
-import tempfile
-import shutil
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
 import pandas as pd
 from io import BytesIO
 
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Depends, status
-from fastapi.responses import FileResponse, JSONResponse, HTMLResponse, StreamingResponse
+from fastapi import FastAPI, HTTPException, status
+from fastapi.responses import JSONResponse, HTMLResponse, StreamingResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.requests import Request
-import aiofiles
 import uvicorn
 
 from infotransform.config import config
 from infotransform.processors import VisionProcessor, AudioProcessor, BatchProcessor, StructuredAnalyzerAgent
-from infotransform.api.models import FileTransformResult, TransformResponse
 from infotransform.api.streaming_v2 import transform_stream_v2, shutdown_processor
 
 # Setup logger
@@ -176,7 +170,6 @@ async def download_results(request: Request):
                 df.to_excel(writer, sheet_name='Results', index=False)
                 
                 # Get the workbook and worksheet
-                workbook = writer.book
                 worksheet = writer.sheets['Results']
                 
                 # Format the header row
@@ -190,10 +183,12 @@ async def download_results(request: Request):
                     column_letter = column[0].column_letter
                     for cell in column:
                         try:
-                            if len(str(cell.value)) > max_length:
-                                max_length = len(str(cell.value))
-                        except:
-                            pass
+                            max_length = len(str(cell.value))
+                        except Exception as e:
+                            logger.warning(f"Could not determine length of cell value: {e}")
+                            value_length = 0
+                        if value_length > max_length:
+                            max_length = value_length
                     adjusted_width = min(max_length + 2, 50)
                     worksheet.column_dimensions[column_letter].width = adjusted_width
                 
@@ -214,10 +209,12 @@ async def download_results(request: Request):
                         column_letter = column[0].column_letter
                         for cell in column:
                             try:
-                                if len(str(cell.value)) > max_length:
-                                    max_length = len(str(cell.value))
-                            except:
-                                pass
+                                value_length = len(str(cell.value))
+                            except Exception:
+                                value_length = 0
+                            if value_length > max_length:
+                                max_length = value_length
+                            
                         adjusted_width = min(max_length + 2, 50)
                         summary_sheet.column_dimensions[column_letter].width = adjusted_width
             
