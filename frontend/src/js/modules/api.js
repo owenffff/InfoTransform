@@ -22,13 +22,16 @@ export async function loadAnalysisModels() {
         }
         
         // Populate AI models
-        dom.aiModelSelect.innerHTML = '<option value="">Default</option>';
+        dom.aiModelSelect.innerHTML = '';
         for (const [modelId, config] of Object.entries(data.ai_models.models)) {
             const option = document.createElement('option');
             option.value = modelId;
             // Use display_name if available, otherwise use model ID
             option.textContent = config.display_name || modelId;
             dom.aiModelSelect.appendChild(option);
+        }
+        if (dom.aiModelSelect.options.length > 0) {
+            dom.aiModelSelect.selectedIndex = 0;
         }
     } catch (error) {
         console.error('Failed to load models:', error);
