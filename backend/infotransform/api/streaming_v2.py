@@ -120,8 +120,6 @@ class OptimizedStreamingProcessor:
             
             for i, result in enumerate(markdown_results):
                 if result['success'] and result['markdown_content']:
-                    # Log token count for the converted markdown
-                    log_token_count(result['filename'], result['markdown_content'])
                     
                     successful_conversions.append({
                         'filename': result['filename'],

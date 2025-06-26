@@ -95,8 +95,6 @@ class StructuredAnalyzerAgent:
             
             model_class = AVAILABLE_MODELS[model_key]
             
-            # Log token count for the content
-            log_token_count(f"analysis_{model_key}", content)
             
             # Get or create agent
             agent = self._get_or_create_agent(model_class, model_key, ai_model)

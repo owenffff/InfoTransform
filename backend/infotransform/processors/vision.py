@@ -68,8 +68,6 @@ class VisionProcessor:
                     'type': 'vision'
                 }
             
-            # Log token count for the converted content (now at DEBUG level)
-            log_token_count(filename, result.text_content, context='vision_processing')
             
             logger.info(f"Successfully processed {filename} ({file_size} bytes)")
             
