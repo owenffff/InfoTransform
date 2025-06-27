@@ -21,7 +21,7 @@ import uvicorn
 
 from infotransform.config import config
 from infotransform.processors import VisionProcessor, AudioProcessor, BatchProcessor, StructuredAnalyzerAgent
-from infotransform.api.streaming_v2 import transform_stream_v2, shutdown_processor
+from backend.infotransform.api.document_transform_api import transform, shutdown_processor
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -141,7 +141,7 @@ async def list_analysis_models():
 
 
 # Add the new optimized streaming endpoint
-app.post("/api/transform-stream-v2")(transform_stream_v2)
+app.post("/api/transform")(transform)
 
 
 

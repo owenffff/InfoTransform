@@ -12,7 +12,6 @@ from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIModel
 
 from infotransform.config import config
-from infotransform.utils.token_counter import log_token_count
 
 # Import from the correct path - add project root to path
 import sys

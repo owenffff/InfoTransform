@@ -1,5 +1,5 @@
 """
-Optimized streaming API v2 with parallel processing and batch AI analysis
+Optimized streaming API with parallel processing and batch AI analysis
 """
 
 import json
@@ -15,12 +15,11 @@ from infotransform.processors import StructuredAnalyzerAgent, SummarizationAgent
 from infotransform.processors.async_converter import AsyncMarkdownConverter
 from infotransform.processors.ai_batch_processor import BatchProcessor
 from infotransform.utils.file_lifecycle import get_file_manager, ManagedStreamingResponse
-from infotransform.utils.token_counter import log_token_count
 
 logger = logging.getLogger(__name__)
 
 
-class OptimizedStreamingProcessor:
+class StreamingProcessor:
     """Handles optimized file processing with parallel conversion and batch AI"""
     
     def __init__(self):
@@ -40,14 +39,14 @@ class OptimizedStreamingProcessor:
         """Start all background services"""
         await self.file_manager.start()
         await self.batch_processor.start()
-        logger.info("OptimizedStreamingProcessor started")
+        logger.info("StreamingProcessor started")
     
     async def stop(self):
         """Stop all background services"""
         await self.batch_processor.stop()
         await self.file_manager.stop()
         self.markdown_converter.shutdown()
-        logger.info("OptimizedStreamingProcessor stopped")
+        logger.info("StreamingProcessor stopped")
     
     async def process_files_optimized(
         self,
@@ -353,19 +352,19 @@ class OptimizedStreamingProcessor:
 
 
 # Global processor instance
-_processor: Optional[OptimizedStreamingProcessor] = None
+_processor: Optional[StreamingProcessor] = None
 
 
-async def get_processor() -> OptimizedStreamingProcessor:
+async def get_processor() -> StreamingProcessor:
     """Get or create the global processor instance"""
     global _processor
     if _processor is None:
-        _processor = OptimizedStreamingProcessor()
+        _processor = StreamingProcessor()
         await _processor.start()
     return _processor
 
 
-async def transform_stream_v2(
+async def transform(
     files: List[UploadFile],
     model_key: str = Form(...),
     custom_instructions: str = Form(""),

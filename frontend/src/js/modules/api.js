@@ -89,7 +89,7 @@ async function handleStreamingTransform() {
     dom.resultsSection.classList.remove('hidden');
     
     try {
-        const response = await fetch('/api/transform-stream-v2', {
+        const response = await fetch('/api/transform', {
             method: 'POST',
             body: formData
         });

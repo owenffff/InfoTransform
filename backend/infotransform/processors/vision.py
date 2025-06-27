@@ -15,7 +15,6 @@ except Exception:  # pragma: no cover
         pass
 from openai import OpenAI
 from infotransform.config import config
-from infotransform.utils.token_counter import log_token_count
 
 logger = logging.getLogger(__name__)
 

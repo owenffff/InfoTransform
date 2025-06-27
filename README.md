@@ -236,7 +236,7 @@ Once the application is running, you can access the interactive API documentatio
 
 - `GET /` - Main web interface
 - `POST /api/transform` - Transform single file
-- `POST /api/transform-stream-v2` - Stream transformation for multiple files
+- `POST /api/transform` - Stream transformation for multiple files
 - `GET /api/models` - List available analysis models
 - `POST /api/download-results` - Download results as Excel/CSV
 
