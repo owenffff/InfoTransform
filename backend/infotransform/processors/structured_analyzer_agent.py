@@ -69,6 +69,118 @@ class StructuredAnalyzerAgent:
         
         return agent
     
+    async def analyze_content_stream(
+        self,
+        content: str,
+        model_key: str,
+        custom_instructions: Optional[str] = None,
+        ai_model: Optional[str] = None
+    ):
+        """
+        Analyze markdown content and stream partial structured data updates
+        
+        Args:
+            content: Markdown content to analyze
+            model_key: Key of the analysis model to use
+            custom_instructions: Optional custom instructions
+            ai_model: Optional AI model override
+            
+        Yields:
+            Tuples of (partial_result, is_final) where partial_result is the current
+            state of extracted fields and is_final indicates if this is the complete result
+        """
+        try:
+            # Validate model key
+            if model_key not in AVAILABLE_MODELS:
+                raise ValueError(f"Invalid model key: {model_key}")
+            
+            model_class = AVAILABLE_MODELS[model_key]
+            
+            # Get or create agent
+            agent = self._get_or_create_agent(model_class, model_key, ai_model)
+            
+            # Get model configuration and extract only temperature and seed
+            model_name = ai_model or self.config.get('ai_pipeline.structured_analysis.default_model')
+            model_config = self.config.get_ai_model_config(model_name)
+            
+            # Build model settings with only temperature and seed
+            model_settings = {}
+            if 'temperature' in model_config:
+                model_settings['temperature'] = model_config['temperature']
+            if 'seed' in model_config:
+                model_settings['seed'] = model_config['seed']
+            
+            # Prepare prompt
+            model_description = model_class.__doc__ or f"Analysis using {model_class.__name__}"
+            
+            prompt_template = self.config.get_prompt_template('analysis_prompt')
+            if prompt_template:
+                prompt = prompt_template.format(
+                    model_description=model_description,
+                    model_name=model_class.__name__,
+                    custom_instructions=custom_instructions if custom_instructions else "",
+                    content=content
+                )
+            else:
+                # Fallback prompt
+                prompt = f"""Analyze the following content.
+
+Task: {model_description}
+
+You should extract information according to the {model_class.__name__} schema.
+{custom_instructions if custom_instructions else ""}
+
+Content to analyze:
+
+{content}
+"""
+            
+            # Stream partial results
+            async with agent.run_stream(prompt, model_settings=model_settings) as result:
+                async for message, last in result.stream_structured(debounce_by=0.01):
+                    if last:
+                        # Final validated result
+                        validated_result = await result.validate_structured_output(message)
+                        result_dict = validated_result.model_dump()
+                        result_dict = self._convert_enums_to_strings(result_dict)
+                        
+                        yield {
+                            'success': True,
+                            'model_used': model_class.__name__,
+                            'ai_model_used': model_name,
+                            'result': result_dict,
+                            'final': True
+                        }
+                    else:
+                        # Partial result - may have validation errors
+                        try:
+                            partial_result = await result.partial_structured_output(message)
+                            if partial_result:
+                                result_dict = partial_result.model_dump()
+                                result_dict = self._convert_enums_to_strings(result_dict)
+                                
+                                yield {
+                                    'success': True,
+                                    'model_used': model_class.__name__,
+                                    'ai_model_used': model_name,
+                                    'result': result_dict,
+                                    'final': False
+                                }
+                        except Exception as e:
+                            # Skip partial results that fail validation
+                            logger.debug(f"Partial result validation failed: {e}")
+                            continue
+                            
+        except Exception as e:
+            logger.error(f"Error in structured analysis stream: {e}")
+            yield {
+                'success': False,
+                'error': str(e),
+                'model_used': model_key,
+                'ai_model_used': ai_model or self.config.get('ai_pipeline.structured_analysis.default_model'),
+                'final': True
+            }
+    
     async def analyze_content(
         self,
         content: str,
@@ -141,7 +253,7 @@ Content to analyze:
             if streaming_enabled:
                 # Streaming mode
                 async with agent.run_stream(prompt, model_settings=model_settings) as result:
-                    async for message, last in result.stream_structured(debounce_by=0.1):
+                    async for message, last in result.stream_structured(debounce_by=0.01):
                         if last:
                             validated_result = await result.validate_structured_output(message)
                             result_dict = validated_result.model_dump()

@@ -56,6 +56,7 @@ class BatchResult:
     structured_data: Optional[Dict[str, Any]] = None
     error: Optional[str] = None
     processing_time: float = 0.0
+    final: bool = True  # Indicates if this is the final result or a partial update
 
 
 class BatchProcessor:
@@ -172,7 +173,7 @@ class BatchProcessor:
             ai_model: AI model to use
             
         Yields:
-            Processing results as they complete
+            Processing results as they complete (including partial updates)
         """
         # Create processing context
         context = ProcessingContext(
@@ -185,21 +186,29 @@ class BatchProcessor:
         for item in items:
             await self.add_item(item['filename'], item['markdown_content'], context)
         
-        # Collect results
-        results_received = 0
-        while results_received < len(items):
+        # Track which files have sent their final result
+        final_results_received = set()
+        total_final_results_needed = len(items)
+        
+        # Collect results (including partial updates)
+        while len(final_results_received) < total_final_results_needed:
             result = await self.get_result()
             
             # Convert to expected format
-            yield {
+            yield_result = {
                 'filename': result.filename,
                 'success': result.success,
                 'structured_data': result.structured_data,
                 'error': result.error,
-                'processing_time': result.processing_time
+                'processing_time': result.processing_time,
+                'final': result.final
             }
             
-            results_received += 1
+            # Track final results
+            if result.final:
+                final_results_received.add(result.filename)
+            
+            yield yield_result
     
     async def _batch_collector(self):
         """Collect items into batches and send for processing"""
@@ -316,15 +325,84 @@ class BatchProcessor:
     
     async def _process_and_enqueue_item(self, item: BatchItem):
         """Process a single item and immediately enqueue the result"""
+        start_time = time.time()
+        
         try:
-            result = await self._process_single_item(item)
-            await self.result_queue.put(result)
+            # Extract processing parameters from the item's context
+            context = item.context
+            
+            # Log token count for the markdown content with context
+            log_token_count(item.filename, item.markdown_content, context='batch_analysis')
+            
+            # Check if partial streaming is enabled
+            enable_partial = config.get('ai_pipeline.structured_analysis.streaming.enable_partial', False)
+            
+            if enable_partial:
+                # Use streaming analyzer for partial results
+                async for result in self.analyzer.analyze_content_stream(
+                    item.markdown_content,
+                    context.model_key,
+                    context.custom_instructions,
+                    context.ai_model
+                ):
+                    processing_time = time.time() - start_time
+                    
+                    if result['success']:
+                        await self.result_queue.put(BatchResult(
+                            filename=item.filename,
+                            success=True,
+                            structured_data=result['result'],
+                            processing_time=processing_time,
+                            final=result.get('final', True)
+                        ))
+                    else:
+                        await self.result_queue.put(BatchResult(
+                            filename=item.filename,
+                            success=False,
+                            error=result.get('error', 'Analysis failed'),
+                            processing_time=processing_time,
+                            final=result.get('final', True)
+                        ))
+                        
+                    # If this was the final result or an error, we're done
+                    if result.get('final', True):
+                        break
+            else:
+                # Use regular analyzer (non-streaming)
+                result = await self.analyzer.analyze_content(
+                    item.markdown_content,
+                    context.model_key,
+                    context.custom_instructions,
+                    context.ai_model
+                )
+                
+                processing_time = time.time() - start_time
+                
+                if result['success']:
+                    await self.result_queue.put(BatchResult(
+                        filename=item.filename,
+                        success=True,
+                        structured_data=result['result'],
+                        processing_time=processing_time,
+                        final=True
+                    ))
+                else:
+                    await self.result_queue.put(BatchResult(
+                        filename=item.filename,
+                        success=False,
+                        error=result.get('error', 'Analysis failed'),
+                        processing_time=processing_time,
+                        final=True
+                    ))
+                    
         except Exception as e:
             # Handle any exceptions and enqueue error result
             await self.result_queue.put(BatchResult(
                 filename=item.filename,
                 success=False,
-                error=str(e)
+                error=str(e),
+                processing_time=time.time() - start_time,
+                final=True
             ))
     
     async def _process_single_item(self, item: BatchItem) -> BatchResult:

@@ -309,6 +309,13 @@ export function handleStreamingEvent(data) {
             updateProgress(data.current, data.total);
             break;
             
+        case 'partial':
+            // Handle partial field updates
+            if (data.status === 'success' && data.structured_data) {
+                updatePartialResult(data);
+            }
+            break;
+            
         case 'result':
             // Store result
             addStreamingResult(data);
@@ -353,6 +360,54 @@ export function handleStreamingEvent(data) {
             });
             showToast('Transformation complete!', 'success');
             break;
+    }
+}
+
+// Update partial result in the table
+function updatePartialResult(data) {
+    const row = document.querySelector(`tr[data-filename="${data.filename}"]`);
+    
+    if (!row) {
+        // Row doesn't exist yet, create a placeholder
+        const tableBody = document.getElementById('tableBody');
+        const newRow = document.createElement('tr');
+        newRow.dataset.filename = data.filename;
+        newRow.classList.add('partial-result');
+        
+        // Filename cell
+        const filenameCell = document.createElement('td');
+        filenameCell.className = 'filename-cell';
+        filenameCell.textContent = data.filename;
+        newRow.appendChild(filenameCell);
+        
+        // Create empty cells for each field
+        state.modelFields.forEach(field => {
+            const cell = document.createElement('td');
+            cell.dataset.field = field;
+            cell.className = 'cell-editable text-gray-400';
+            cell.textContent = '—';
+            newRow.appendChild(cell);
+        });
+        
+        tableBody.appendChild(newRow);
+    }
+    
+    // Update cells with partial data
+    if (data.structured_data) {
+        Object.entries(data.structured_data).forEach(([field, value]) => {
+            const cell = row?.querySelector(`td[data-field="${field}"]`);
+            if (cell) {
+                // Add loading animation for fields that are still being processed
+                if (value === null || value === undefined) {
+                    cell.innerHTML = '<span class="loading-dots">...</span>';
+                } else {
+                    renderCellValue(cell, value);
+                    // Add a subtle animation to show the field was updated
+                    cell.classList.add('field-updated');
+                    setTimeout(() => cell.classList.remove('field-updated'), 1000);
+                }
+            }
+        });
     }
 }
 

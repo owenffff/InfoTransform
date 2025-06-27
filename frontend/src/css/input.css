@@ -430,6 +430,54 @@
   #schemaChipsContainer {
     @apply flex flex-wrap gap-2 p-4 bg-gradient-to-br from-gray-50 to-slate-50 rounded-lg;
   }
+  
+  /* Partial result styles */
+  .partial-result {
+    @apply opacity-75;
+  }
+  
+  /* Loading dots animation */
+  .loading-dots {
+    @apply inline-block;
+  }
+  
+  .loading-dots::after {
+    content: '...';
+    @apply inline-block;
+    animation: dots 1.5s steps(4, end) infinite;
+  }
+  
+  @keyframes dots {
+    0%, 20% {
+      content: '.';
+    }
+    40% {
+      content: '..';
+    }
+    60% {
+      content: '...';
+    }
+    80%, 100% {
+      content: '';
+    }
+  }
+  
+  /* Field update animation */
+  .field-updated {
+    animation: fieldPulse 1s ease-out;
+  }
+  
+  @keyframes fieldPulse {
+    0% {
+      @apply bg-brand-orange-100 scale-105;
+    }
+    50% {
+      @apply bg-brand-orange-50 scale-102;
+    }
+    100% {
+      @apply bg-transparent scale-100;
+    }
+  }
 }
 
 /* Custom utilities */

@@ -109,6 +109,62 @@ The improvement leverages Python's `asyncio` capabilities:
 - Results are yielded as soon as each task completes
 - The batch processor maintains efficiency while improving responsiveness
 
+## Partial Field Streaming (Experimental)
+
+### Overview
+
+In addition to streaming complete file results, InfoTransform now supports streaming partial field updates. This means users can see individual fields being populated in real-time as the AI processes the content.
+
+### How It Works
+
+1. **Streaming Analysis**: The `StructuredAnalyzerAgent` now has a `analyze_content_stream()` method that yields partial results as the AI generates them.
+
+2. **Partial Events**: The frontend receives `partial` events with incremental field updates:
+   ```json
+   {
+     "type": "partial",
+     "filename": "document.pdf",
+     "structured_data": {
+       "title": "Annual Report",
+       "date": null,  // Still being processed
+       "summary": null
+     }
+   }
+   ```
+
+3. **Visual Feedback**: Fields being processed show loading dots (`...`) and completed fields animate with a subtle pulse effect.
+
+### Enabling Partial Streaming
+
+To enable partial field streaming, update your `config/config.yaml`:
+
+```yaml
+ai_pipeline:
+  structured_analysis:
+    streaming:
+      enable_partial: true  # Default is false
+```
+
+### Benefits
+
+- **Immediate Feedback**: Users see fields being populated in real-time
+- **Better Progress Indication**: Clear visual feedback on which fields are being processed
+- **Improved Perceived Performance**: The interface feels more responsive
+
+### Limitations
+
+- **Experimental Feature**: This feature is still being refined
+- **Model Dependent**: Not all AI models support streaming structured output
+- **Potential Overhead**: May introduce slight overhead for simple documents
+
+### Frontend Updates
+
+The frontend automatically handles partial updates:
+- Creates placeholder rows with loading indicators
+- Updates individual cells as data arrives
+- Applies smooth animations to show field updates
+- Maintains edit functionality once fields are complete
+
 ## Future Improvements
 
 Potential enhancements could include:
@@ -116,3 +172,5 @@ Potential enhancements could include:
 - Priority queuing for smaller files
 - WebSocket support for even more real-time updates
 - Progress indicators for individual file processing
+- Field-level progress bars
+- Predictive field completion times

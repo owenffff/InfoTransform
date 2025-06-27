@@ -68,7 +68,8 @@ ai_pipeline:
     # Streaming configuration
     streaming:
       enabled: true                    # Enable real-time streaming of results
-      debounce_by: 0.1                # Delay between streaming updates (seconds)
+      debounce_by: 0.01                # Delay between streaming updates (seconds)
+      enable_partial: false           # Enable streaming of partial field updates (experimental)
     
     # Analysis prompts for different types of content
     prompts:

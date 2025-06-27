@@ -218,7 +218,12 @@ class OptimizedStreamingProcessor:
                     custom_instructions,
                     ai_model
                 ):
-                    processed_count += 1
+                    # Check if this is a partial or final result
+                    is_final = ai_result.get('final', True)
+                    
+                    # Only increment processed count for final results
+                    if is_final:
+                        processed_count += 1
                     
                     # Find original index
                     original_item = next(
@@ -232,39 +237,59 @@ class OptimizedStreamingProcessor:
                         
                         # Prepare result event
                         if ai_result['success']:
-                            successful_ai += 1
-                            result_event = {
-                                "type": "result",
-                                "filename": ai_result['filename'],
-                                "status": "success",
-                                "markdown_content": original_item.get('original_markdown_content', original_item['markdown_content']),
-                                "structured_data": ai_result['structured_data'],
-                                "model_fields": list(ai_result['structured_data'].keys()),
-                                "processing_time": ai_result.get('processing_time', 0),
-                                "was_summarized": original_item.get('was_summarized', False),
-                                "summarization_metrics": original_item.get('summarization_metrics', None),
-                                "progress": {
-                                    "current": processed_count + len(failed_conversions),
-                                    "total": total_files,
-                                    "successful": successful_ai,
-                                    "failed": failed_ai + len(failed_conversions)
+                            if is_final:
+                                successful_ai += 1
+                                result_event = {
+                                    "type": "result",
+                                    "filename": ai_result['filename'],
+                                    "status": "success",
+                                    "markdown_content": original_item.get('original_markdown_content', original_item['markdown_content']),
+                                    "structured_data": ai_result['structured_data'],
+                                    "model_fields": list(ai_result['structured_data'].keys()) if ai_result['structured_data'] else [],
+                                    "processing_time": ai_result.get('processing_time', 0),
+                                    "was_summarized": original_item.get('was_summarized', False),
+                                    "summarization_metrics": original_item.get('summarization_metrics', None),
+                                    "progress": {
+                                        "current": processed_count + len(failed_conversions),
+                                        "total": total_files,
+                                        "successful": successful_ai,
+                                        "failed": failed_ai + len(failed_conversions)
+                                    }
                                 }
-                            }
+                            else:
+                                # Partial result - don't update progress counters
+                                result_event = {
+                                    "type": "partial",
+                                    "filename": ai_result['filename'],
+                                    "status": "success",
+                                    "structured_data": ai_result['structured_data'],
+                                    "model_fields": list(ai_result['structured_data'].keys()) if ai_result['structured_data'] else [],
+                                    "processing_time": ai_result.get('processing_time', 0)
+                                }
                         else:
-                            failed_ai += 1
-                            result_event = {
-                                "type": "result",
-                                "filename": ai_result['filename'],
-                                "status": "error",
-                                "error": ai_result.get('error', 'AI processing failed'),
-                                "markdown_content": original_item['markdown_content'],
-                                "progress": {
-                                    "current": processed_count + len(failed_conversions),
-                                    "total": total_files,
-                                    "successful": successful_ai,
-                                    "failed": failed_ai + len(failed_conversions)
+                            if is_final:
+                                failed_ai += 1
+                                result_event = {
+                                    "type": "result",
+                                    "filename": ai_result['filename'],
+                                    "status": "error",
+                                    "error": ai_result.get('error', 'AI processing failed'),
+                                    "markdown_content": original_item['markdown_content'],
+                                    "progress": {
+                                        "current": processed_count + len(failed_conversions),
+                                        "total": total_files,
+                                        "successful": successful_ai,
+                                        "failed": failed_ai + len(failed_conversions)
+                                    }
                                 }
-                            }
+                            else:
+                                # Partial error (unlikely but handle it)
+                                result_event = {
+                                    "type": "partial",
+                                    "filename": ai_result['filename'],
+                                    "status": "error",
+                                    "error": ai_result.get('error', 'AI processing failed')
+                                }
                         
                         yield f"data: {json.dumps(result_event)}\n\n"
                 
