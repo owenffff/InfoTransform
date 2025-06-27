@@ -12,7 +12,7 @@ markdown_conversion:
 # AI Processing Performance  
 ai_processing:
   batch_size: ${AI_BATCH_SIZE:-10}              # Files to process in one AI call
-  max_wait_time: ${AI_BATCH_WAIT:-2.0}         # Max seconds to wait for full batch
+  max_wait_time: ${AI_BATCH_WAIT:-0.5}         # Max seconds to wait for full batch (lower = more frequent updates)
   max_concurrent_batches: ${AI_CONCURRENT:-3}   # Parallel AI batch requests
   timeout_per_batch: ${AI_BATCH_TIMEOUT:-60}    # Seconds before batch timeout
   retry_attempts: ${AI_RETRY_ATTEMPTS:-3}       # Retries for failed batches

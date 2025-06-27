@@ -270,29 +270,17 @@ class BatchProcessor:
             logger.info(f"Processing batch of {batch_size} items with model: {model_key}")
             
             try:
-                # Process all items in the batch concurrently
+                # Process all items in the batch concurrently and stream results as they complete
                 tasks = []
                 for item in batch:
-                    task = self._process_single_item(item)
+                    task = self._process_and_enqueue_item(item)
                     tasks.append(task)
                 
                 # Wait for all with timeout
-                results = await asyncio.wait_for(
+                await asyncio.wait_for(
                     asyncio.gather(*tasks, return_exceptions=True),
                     timeout=self.timeout_per_batch
                 )
-                
-                # Send results to result queue
-                for i, result in enumerate(results):
-                    if isinstance(result, Exception):
-                        # Handle exception
-                        await self.result_queue.put(BatchResult(
-                            filename=batch[i].filename,
-                            success=False,
-                            error=str(result)
-                        ))
-                    else:
-                        await self.result_queue.put(result)
                 
                 # Update metrics
                 processing_time = time.time() - start_time
@@ -306,7 +294,8 @@ class BatchProcessor:
             except asyncio.TimeoutError:
                 logger.error(f"Batch processing timeout after {self.timeout_per_batch}s")
                 
-                # Send timeout errors for all items
+                # Send timeout errors for any remaining items
+                # (items that completed will have already been enqueued)
                 for item in batch:
                     await self.result_queue.put(BatchResult(
                         filename=item.filename,
@@ -324,6 +313,19 @@ class BatchProcessor:
                         success=False,
                         error=str(e)
                     ))
+    
+    async def _process_and_enqueue_item(self, item: BatchItem):
+        """Process a single item and immediately enqueue the result"""
+        try:
+            result = await self._process_single_item(item)
+            await self.result_queue.put(result)
+        except Exception as e:
+            # Handle any exceptions and enqueue error result
+            await self.result_queue.put(BatchResult(
+                filename=item.filename,
+                success=False,
+                error=str(e)
+            ))
     
     async def _process_single_item(self, item: BatchItem) -> BatchResult:
         """Process a single item with its processing context"""
