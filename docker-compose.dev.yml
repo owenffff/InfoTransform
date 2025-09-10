@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount all source code for hot-reload
+      - ./app.py:/app/app.py
+      - ./backend:/app/backend
+      - ./config:/app/config
+      - ./frontend/templates:/app/frontend/templates
+      - ./frontend/static:/app/frontend/static
+      - ./frontend/src:/app/frontend/src
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./pyproject.toml:/app/pyproject.toml
+      - ./package.json:/app/package.json
+      - ./tailwind.config.js:/app/tailwind.config.js
+      - ./postcss.config.js:/app/postcss.config.js
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - PORT=${PORT:-8000}
+      - QUIET_MODE=${QUIET_MODE:-false}
+      - PYTHONUNBUFFERED=1
+    env_file:
+      - .env
+    command: >
+      sh -c "
+        # Install frontend dependencies if needed
+        if [ ! -d 'node_modules' ]; then
+          npm install
+        fi
+        # Run frontend build in watch mode and backend server concurrently
+        npm run dev
+      "
+    stdin_open: true
+    tty: true

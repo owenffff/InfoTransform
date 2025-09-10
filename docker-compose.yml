@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount data directories for persistence
+      - ./data/uploads:/app/data/uploads
+      - ./data/temp_extracts:/app/data/temp_extracts
+      - ./logs:/app/logs
+    environment:
+      # Pass environment variables from .env file
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - PORT=${PORT:-8000}
+      - QUIET_MODE=${QUIET_MODE:-false}
+    env_file:
+      - .env
+    restart: unless-stopped
+
+  # Development service with hot-reload
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: python:3.11-slim  # Use base Python image for development
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount source code for hot-reload
+      - ./app.py:/app/app.py
+      - ./backend:/app/backend
+      - ./config:/app/config
+      - ./frontend:/app/frontend
+      - ./data:/app/data
+      - ./logs:/app/logs
+      # Exclude node_modules and dist
+      - /app/frontend/node_modules
+      - /app/frontend/dist
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - PORT=${PORT:-8000}
+      - QUIET_MODE=${QUIET_MODE:-false}
+    env_file:
+      - .env
+    command: python app.py
+    profiles:
+      - development
