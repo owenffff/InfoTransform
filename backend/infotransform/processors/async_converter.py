@@ -175,6 +175,88 @@ class AsyncMarkdownConverter:
         
         return processed_results
     
+    async def convert_files_streaming(self, files: List[Dict[str, str]], progress_callback=None):
+        """
+        Convert multiple files to markdown with streaming progress updates
+        
+        Args:
+            files: List of file info dictionaries
+            progress_callback: Optional async callback for progress updates
+            
+        Yields:
+            Conversion results as they complete
+        """
+        import time
+        start_time = time.time()
+        total = len(files)
+        completed = 0
+        
+        logger.info(f"Starting streaming conversion of {total} files")
+        
+        # Create tasks with their original indices
+        tasks = []
+        for i, file_info in enumerate(files):
+            task = asyncio.create_task(self.convert_file_async(file_info))
+            tasks.append((i, task))
+        
+        # Process as they complete
+        results = [None] * total  # Maintain original order
+        
+        # Use as_completed to get results as they finish
+        pending = {task: idx for idx, task in tasks}
+        
+        while pending:
+            done, pending_set = await asyncio.wait(
+                pending.keys(), 
+                return_when=asyncio.FIRST_COMPLETED
+            )
+            
+            for task in done:
+                original_index = pending.pop(task)
+                completed += 1
+                
+                try:
+                    result = await task
+                except Exception as e:
+                    result = {
+                        'filename': files[original_index]['filename'],
+                        'success': False,
+                        'error': str(e),
+                        'markdown_content': None
+                    }
+                
+                results[original_index] = result
+                
+                # Calculate progress metrics
+                elapsed = time.time() - start_time
+                files_per_second = completed / elapsed if elapsed > 0 else 0
+                
+                # Send progress update if callback provided
+                if progress_callback:
+                    await progress_callback({
+                        'type': 'conversion_progress',
+                        'current': completed,
+                        'total': total,
+                        'filename': result['filename'],
+                        'success': result['success'],
+                        'files_per_second': files_per_second,
+                        'elapsed_time': elapsed
+                    })
+            
+            # Update pending set
+            pending = {task: pending[task] for task in pending_set}
+        
+        # Update total time metric
+        elapsed = time.time() - start_time
+        self.metrics['total_time'] += elapsed
+        
+        logger.info(
+            f"Completed streaming conversion in {elapsed:.2f}s - "
+            f"Success: {self.metrics['successful']}, Failed: {self.metrics['failed']}"
+        )
+        
+        return results
+    
     async def convert_with_semaphore(
         self, 
         files: List[Dict[str, str]], 

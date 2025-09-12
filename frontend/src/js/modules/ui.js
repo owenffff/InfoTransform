@@ -3,6 +3,10 @@ import * as state from './state.js';
 import { addStreamingResult, setModelFields, setTransformResults } from './state.js';
 import { handleSort } from './events.js';
 
+// Track last known phase for legacy progress updates
+let lastPhase = 1;
+
+
 /* ------------------------------------------------------------------ */
 /*  Error-rendering helpers & icons                                   */
 /* ------------------------------------------------------------------ */
@@ -304,10 +308,26 @@ export function handleStreamingEvent(data) {
             }
             break;
             
-        case 'progress':
-            // Update progress bar
-            updateProgress(data.current, data.total);
+        case 'conversion_progress':
+            // Handle Phase 1 progress
+            console.log('Phase 1 progress event received:', data);
+            updatePhaseProgress(
+                data.phase,
+                data.phase_name,
+                data.current, 
+                data.total,
+                data.filename,
+                data.files_per_second
+            );
             break;
+            
+        case 'progress': {
+            // Legacy progress events: render via phase-aware path
+            const phase = lastPhase;
+            const phaseName = (phase === 1) ? 'Converting documents' : 'Analyzing with AI';
+            updatePhaseProgress(phase, phaseName, data.current, data.total, null, null);
+            break;
+        }
             
         case 'partial':
             // Handle partial field updates
@@ -327,9 +347,18 @@ export function handleStreamingEvent(data) {
                 addFileResult(data);
             }
 
-            // Update progress from result
+            // Update progress from result (Phase 2)
             if (data.progress) {
-                updateProgress(data.progress.current, data.progress.total);
+                const phase = data.progress.phase || 2;
+                const phaseName = data.progress.phase_name || 'Analyzing with AI';
+                updatePhaseProgress(
+                    phase,
+                    phaseName,
+                    data.progress.current,
+                    data.progress.total,
+                    data.filename,
+                    null // files_per_second not available in result events
+                );
                 updateSummaryStats(data.progress);
             }
             break;
@@ -343,6 +372,32 @@ export function handleStreamingEvent(data) {
             }
             break;
 
+        case 'phase':
+            // Handle phase transitions
+            // Initialize phases on start
+            if (data.status === 'started' && data.phase === 'markdown_conversion') {
+                updatePhaseProgress(1, 'Converting documents', 0, (state.selectedFiles?.length ?? 0), null, null);
+                // Ensure progress container is visible
+                dom.progressContainer.classList.remove('hidden');
+            } else if (data.status === 'started' && data.phase === 'ai_processing') {
+                updatePhaseProgress(2, 'Analyzing with AI', 0, (state.selectedFiles?.length ?? 0), null, null);
+            }
+
+            if (data.status === 'completed' && data.phase === 'markdown_conversion') {
+                showToast('Document conversion complete! Starting AI analysis...', 'info');
+                // Reset progress bar for Phase 2
+                dom.progressBar.style.width = '0%';
+                dom.progressText.textContent = 'Starting AI analysis...';
+                // Hide current file element
+                const currentFileElement = document.getElementById('currentFileProcessing');
+                if (currentFileElement) {
+                    currentFileElement.classList.add('hidden');
+                }
+            } else if (data.status === 'completed' && data.phase === 'ai_processing') {
+                showToast('AI analysis complete!', 'success');
+            }
+            break;
+            
         case 'complete':
             // Transform complete
             setTransformResults({
@@ -916,9 +971,84 @@ export function convertToCSV(data) {
 
 // Update progress
 export function updateProgress(current, total) {
-    const percentage = (current / total) * 100;
-    dom.progressBar.style.width = `${percentage}%`;
+    const percentage = total > 0 ? (current / total) * 100 : 0;
+    const displayPct = (lastPhase === 1 && total > 0 && current === 0) ? 1 : percentage;
+
+    // width and color
+    dom.progressBar.style.width = `${displayPct}%`;
+    const color = lastPhase === 1 ? '#3B82F6' : '#10B981';
+    dom.progressBar.setAttribute('style', `width: ${displayPct}%; background-color: ${color} !important; background: ${color} !important;`);
+
+    // legacy text format
     dom.progressText.textContent = `${current} / ${total} files`;
+}
+
+// Update phase-aware progress with enhanced information
+export function updatePhaseProgress(phase, phaseName, current, total, filename, filesPerSecond) {
+    const percentage = total > 0 ? (current / total) * 100 : 0;
+    // Ensure a visible sliver at phase start so color is obvious
+    const displayPct = (phase === 1 && total > 0 && current === 0) ? 1 : percentage;
+
+    // Remember last phase so legacy updates can color the bar
+    lastPhase = phase;
+    
+    // Update progress bar
+    dom.progressBar.style.width = `${displayPct}%`;
+    
+    // Remove any existing background classes
+    dom.progressBar.className = dom.progressBar.className.replace(/bg-\S+/g, '');
+    dom.progressBar.classList.add('h-full', 'transition-all', 'duration-300', 'ease-out');
+    
+    // Color code by phase using inline styles with !important
+    if (phase === 1) {
+        dom.progressBar.setAttribute('style', `width: ${displayPct}%; background-color: #3B82F6 !important; background: #3B82F6 !important;`);
+    } else {
+        dom.progressBar.setAttribute('style', `width: ${displayPct}%; background-color: #10B981 !important; background: #10B981 !important;`);
+    }
+    
+    // Build detailed progress text
+    let progressText = `Phase ${phase}: ${phaseName} - ${current}/${total} files`;
+    
+    // Add speed indicator if available
+    if (filesPerSecond !== null && filesPerSecond > 0) {
+        progressText += ` (${filesPerSecond.toFixed(1)} files/sec)`;
+    }
+    
+    dom.progressText.textContent = progressText;
+    
+    // Show current file being processed (create element if doesn't exist)
+    let currentFileElement = document.getElementById('currentFileProcessing');
+    if (!currentFileElement) {
+        currentFileElement = document.createElement('div');
+        currentFileElement.id = 'currentFileProcessing';
+        currentFileElement.className = 'text-sm text-gray-600 mt-1';
+        dom.progressText.parentElement.appendChild(currentFileElement);
+    }
+    
+    if (filename) {
+        currentFileElement.textContent = `Processing: ${filename}`;
+        currentFileElement.classList.remove('hidden');
+    } else {
+        currentFileElement.classList.add('hidden');
+    }
+    
+    // Add phase indicator badge if doesn't exist
+    let phaseIndicator = document.getElementById('phaseIndicator');
+    if (!phaseIndicator) {
+        phaseIndicator = document.createElement('span');
+        phaseIndicator.id = 'phaseIndicator';
+        phaseIndicator.className = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ml-2';
+        dom.progressText.parentElement.insertBefore(phaseIndicator, dom.progressText);
+    }
+    
+    // Update phase indicator
+    if (phase === 1) {
+        phaseIndicator.className = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 ml-2';
+        phaseIndicator.textContent = 'Phase 1 of 2';
+    } else {
+        phaseIndicator.className = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 ml-2';
+        phaseIndicator.textContent = 'Phase 2 of 2';
+    }
 }
 
 // Show error message

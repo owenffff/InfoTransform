@@ -472,7 +472,7 @@
       @apply bg-brand-orange-100 scale-105;
     }
     50% {
-      @apply bg-brand-orange-50 scale-102;
+      @apply bg-brand-orange-50 scale-100;
     }
     100% {
       @apply bg-transparent scale-100;

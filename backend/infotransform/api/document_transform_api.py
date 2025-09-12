@@ -94,14 +94,41 @@ class StreamingProcessor:
         }
         yield f"data: {json.dumps(initial_event)}\n\n"
         
-        # Phase 1: Parallel markdown conversion
+        # Phase 1: Parallel markdown conversion with real-time progress
         conversion_start = time.time()
         yield f"data: {json.dumps({'type': 'phase', 'phase': 'markdown_conversion', 'status': 'started'})}\n\n"
         
         # Use file lifecycle manager to track files
         async with self.file_manager.batch_context(files) as managed_files:
-            # Convert all files to markdown in parallel
-            markdown_results = await self.markdown_converter.convert_files_parallel(managed_files)
+            # Create conversion tasks
+            import asyncio
+            tasks = []
+            for file_info in managed_files:
+                task = asyncio.create_task(self.markdown_converter.convert_file_async(file_info))
+                tasks.append(task)
+            
+            # Process tasks as they complete and send progress
+            completed = 0
+            for coro in asyncio.as_completed(tasks):
+                result = await coro
+                completed += 1
+                
+                # Send progress event for each completed file
+                elapsed = time.time() - conversion_start
+                event = {
+                    'type': 'conversion_progress',
+                    'phase': 1,
+                    'current': completed,
+                    'total': len(files),
+                    'filename': result.get('filename', 'Unknown'),
+                    'success': result.get('success', False),
+                    'files_per_second': round(completed / elapsed if elapsed > 0 else 0, 2),
+                    'phase_name': 'Converting documents'
+                }
+                yield f"data: {json.dumps(event)}\n\n"
+            
+            # Gather all results in original order
+            markdown_results = await asyncio.gather(*tasks)
             
             conversion_time = time.time() - conversion_start
             phase_complete_event = {
@@ -249,6 +276,8 @@ class StreamingProcessor:
                                     "was_summarized": original_item.get('was_summarized', False),
                                     "summarization_metrics": original_item.get('summarization_metrics', None),
                                     "progress": {
+                                        "phase": 2,
+                                        "phase_name": "Analyzing with AI",
                                         "current": processed_count + len(failed_conversions),
                                         "total": total_files,
                                         "successful": successful_ai,
@@ -275,6 +304,8 @@ class StreamingProcessor:
                                     "error": ai_result.get('error', 'AI processing failed'),
                                     "markdown_content": original_item['markdown_content'],
                                     "progress": {
+                                        "phase": 2,
+                                        "phase_name": "Analyzing with AI",
                                         "current": processed_count + len(failed_conversions),
                                         "total": total_files,
                                         "successful": successful_ai,

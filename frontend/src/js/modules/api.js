@@ -1,6 +1,6 @@
 import * as dom from './dom.js';
 import * as state from './state.js';
-import { handleStreamingEvent, showError, updateProgress } from './ui.js';
+import { handleStreamingEvent, showError, updateProgress, updatePhaseProgress } from './ui.js';
 
 // Load available analysis models
 export async function loadAnalysisModels() {
@@ -83,7 +83,8 @@ async function handleStreamingTransform() {
     
     // Show progress container
     dom.progressContainer.classList.remove('hidden');
-    updateProgress(0, state.selectedFiles.length);
+    // Initialize a visible blue sliver immediately at phase start
+    updatePhaseProgress(1, 'Converting documents', 0, state.selectedFiles.length, null, null);
     
     // Show results section immediately for streaming
     dom.resultsSection.classList.remove('hidden');
