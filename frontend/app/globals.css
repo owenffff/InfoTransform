@@ -4,12 +4,62 @@
 
 @layer base {
   :root {
-    --background: 249 250 251;
-    --foreground: 17 24 39;
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+    --primary: 16 96% 51%; /* Brand orange #FD5108 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 23 100% 96%; /* Brand orange-50 #FFF5ED */
+    --secondary-foreground: 16 90% 30%; /* Brand orange-700 #D13D09 */
+    --muted: 210 14% 96%; /* Brand gray-50 #F5F7F8 */
+    --muted-foreground: 210 8% 65%; /* Brand gray-500 #A1A8B3 */
+    --accent: 20 95% 92%; /* Brand orange-100 #FFE8D4 */
+    --accent-foreground: 16 96% 51%; /* Brand orange-500 */
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 210 9% 88%; /* Brand gray-200 #DFE3E6 */
+    --input: 210 9% 88%; /* Brand gray-200 #DFE3E6 */
+    --ring: 16 96% 51%; /* Brand orange-500 */
+    --chart-1: 16 96% 51%; /* Brand orange */
+    --chart-2: 19 98% 61%; /* Brand orange-400 */
+    --chart-3: 23 100% 72%; /* Brand orange-300 */
+    --chart-4: 210 8% 75%; /* Brand gray-400 */
+    --chart-5: 210 9% 80%; /* Brand gray-300 */
+    --radius: 0.75rem;
   }
 
   body {
     @apply antialiased bg-gray-50 text-gray-900;
+  }
+  
+  .dark {
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 16 96% 51%; /* Brand orange stays same */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 16 80% 20%; /* Dark orange accent */
+    --accent-foreground: 20 95% 92%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 16 96% 51%; /* Brand orange */
+    --chart-1: 16 96% 51%;
+    --chart-2: 19 98% 61%;
+    --chart-3: 23 100% 72%;
+    --chart-4: 210 8% 45%;
+    --chart-5: 210 9% 55%;
   }
 }
 
@@ -73,5 +123,31 @@
   to {
     transform: translateX(100%);
     opacity: 0;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
   }
 }

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { Download, Table, Grid3X3, Search, RotateCcw, ChevronUp, ChevronDown } from 'lucide-react';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { Download, Table, Grid3X3, Search, RotateCcw, ChevronUp, ChevronDown, Loader2, ArrowDown } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { downloadResults } from '@/lib/api';
 import { showToast } from './Toast';
@@ -17,15 +17,40 @@ export function ResultsDisplay() {
     setSortState,
     viewMode,
     setViewMode,
-    setEditedData
+    setEditedData,
+    isProcessing
   } = useStore();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [downloadFormat, setDownloadFormat] = useState<'excel' | 'csv'>('excel');
+  const [newResultIds, setNewResultIds] = useState<Set<string>>(new Set());
+  const prevResultsCount = useRef(0);
+  const tableRef = useRef<HTMLDivElement>(null);
+  const [autoScroll, setAutoScroll] = useState(true);
   
-  // Debug logging
-  console.log('ResultsDisplay - streamingResults:', streamingResults);
-  console.log('ResultsDisplay - modelFields:', modelFields);
+  // Track new results for animation and auto-scroll
+  useEffect(() => {
+    if (streamingResults.length > prevResultsCount.current) {
+      const newIds = new Set<string>();
+      for (let i = prevResultsCount.current; i < streamingResults.length; i++) {
+        newIds.add(streamingResults[i].filename);
+      }
+      setNewResultIds(newIds);
+      
+      // Auto-scroll to show new results
+      if (autoScroll && tableRef.current) {
+        setTimeout(() => {
+          tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }, 100);
+      }
+      
+      // Remove animation class after animation completes
+      setTimeout(() => {
+        setNewResultIds(new Set());
+      }, 2000);
+    }
+    prevResultsCount.current = streamingResults.length;
+  }, [streamingResults, autoScroll]);
 
   // Get data with edits applied
   const getDataWithEdits = () => {
@@ -127,9 +152,28 @@ export function ResultsDisplay() {
     <div className="bg-white rounded-lg shadow-sm border border-gray-200">
       <div className="px-6 py-4 border-b border-gray-200">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <h2 className="text-2xl font-semibold text-gray-900">
-            Transformation Results
-          </h2>
+          <div>
+            <h2 className="text-2xl font-semibold text-gray-900 flex items-center gap-3">
+              <span className="text-brand-orange-500">4.</span>
+              Transformation Results
+              {isProcessing && (
+                <span className="flex items-center gap-2 text-sm font-normal text-brand-orange-600 bg-brand-orange-50 px-3 py-1 rounded-full animate-pulse">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Live Streaming
+                </span>
+              )}
+            </h2>
+            <p className="text-sm text-gray-600 mt-1">
+              {isProcessing 
+                ? (
+                  <span className="flex items-center gap-2">
+                    <span className="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                    {streamingResults.length} file(s) processed so far...
+                  </span>
+                )
+                : `${streamingResults.length} file(s) processed`}
+            </p>
+          </div>
           
           <div className="flex flex-wrap gap-3">
             {/* View Toggle */}
@@ -162,6 +206,21 @@ export function ResultsDisplay() {
             
             {/* Actions */}
             <div className="flex items-center gap-2">
+              {isProcessing && (
+                <button
+                  onClick={() => setAutoScroll(!autoScroll)}
+                  className={cn(
+                    "inline-flex items-center px-3 py-2 text-sm font-medium rounded-md shadow-sm transition-all",
+                    autoScroll 
+                      ? "bg-brand-orange-500 text-white hover:bg-brand-orange-600"
+                      : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                  )}
+                  title={autoScroll ? "Auto-scroll enabled" : "Auto-scroll disabled"}
+                >
+                  <ArrowDown className={cn("w-4 h-4", autoScroll && "animate-bounce")} />
+                  <span className="ml-2 hidden sm:inline">Auto-scroll</span>
+                </button>
+              )}
               <select
                 value={downloadFormat}
                 onChange={(e) => setDownloadFormat(e.target.value as 'excel' | 'csv')}
@@ -233,14 +292,17 @@ export function ResultsDisplay() {
         
         {/* Table View */}
         {viewMode === 'table' && successfulResults.length > 0 && (
-          <TableView
-            results={successfulResults}
-            fields={modelFields}
-            onSort={handleSort}
-            sortState={sortState}
-            onEdit={updateEditedData}
-            editedData={editedData}
-          />
+          <div ref={tableRef}>
+            <TableView
+              results={successfulResults}
+              fields={modelFields}
+              onSort={handleSort}
+              sortState={sortState}
+              onEdit={updateEditedData}
+              editedData={editedData}
+              newResultIds={newResultIds}
+            />
+          </div>
         )}
         
         {/* Card View */}
@@ -250,6 +312,7 @@ export function ResultsDisplay() {
             fields={modelFields}
             onEdit={updateEditedData}
             editedData={editedData}
+            newResultIds={newResultIds}
           />
         )}
         
@@ -264,7 +327,7 @@ export function ResultsDisplay() {
   );
 }
 
-function TableView({ results, fields, onSort, sortState, onEdit, editedData }: any) {
+function TableView({ results, fields, onSort, sortState, onEdit, editedData, newResultIds }: any) {
   const handleCellEdit = (filename: string, field: string, value: string) => {
     onEdit(filename, field, value);
   };
@@ -303,8 +366,15 @@ function TableView({ results, fields, onSort, sortState, onEdit, editedData }: a
         <tbody className="bg-white divide-y divide-gray-200">
           {results.map((result: any) => {
             const hasEdits = editedData[result.filename];
+            const isNew = newResultIds?.has(result.filename);
             return (
-              <tr key={result.filename} className={hasEdits ? 'bg-brand-orange-50/30' : ''}>
+              <tr 
+                key={result.filename} 
+                className={cn(
+                  'transition-all duration-500',
+                  hasEdits ? 'bg-brand-orange-50/30' : '',
+                  isNew ? 'animate-fadeIn bg-gradient-to-r from-brand-orange-50 to-transparent' : ''
+                )}>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                   {result.filename}
                 </td>
@@ -334,7 +404,7 @@ function TableView({ results, fields, onSort, sortState, onEdit, editedData }: a
   );
 }
 
-function CardView({ results, fields, onEdit, editedData }: any) {
+function CardView({ results, fields, onEdit, editedData, newResultIds }: any) {
   // Ensure fields is always an array
   const fieldArray = Array.isArray(fields) ? fields : [];
   
@@ -342,16 +412,18 @@ function CardView({ results, fields, onEdit, editedData }: any) {
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {results.map((result: any) => {
         const hasEdits = editedData[result.filename];
+        const isNew = newResultIds?.has(result.filename);
         return (
           <div
             key={result.filename}
             className={cn(
-              'p-4 rounded-lg border',
+              'p-4 rounded-lg border transition-all duration-500',
               result.status === 'error'
                 ? 'bg-red-50 border-red-200'
                 : hasEdits
                 ? 'bg-brand-orange-50/50 border-brand-orange-200'
-                : 'bg-white border-gray-200'
+                : 'bg-white border-gray-200',
+              isNew ? 'animate-fadeIn ring-2 ring-brand-orange-400 shadow-lg shadow-brand-orange-100' : ''
             )}
           >
             <h3 className="font-medium text-gray-900 mb-3 truncate" title={result.filename}>

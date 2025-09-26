@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-InfoTransform is a document processing application that transforms various file types (images, PDFs, documents, audio) into structured data using AI-powered analysis. The application uses FastAPI for the backend, vanilla JavaScript with Tailwind CSS for the frontend, and integrates OpenAI's GPT models through Pydantic AI.
+InfoTransform is a document processing application that transforms various file types (images, PDFs, documents, audio) into structured data using AI-powered analysis. The application uses FastAPI for the backend, Next.js with TypeScript and Tailwind CSS for the frontend, and integrates OpenAI's GPT models through Pydantic AI.
 
 ## Architecture
 
@@ -20,10 +20,12 @@ InfoTransform is a document processing application that transforms various file 
 - **Configuration**: YAML-based config system (`config/`) with environment variable support
 
 ### Frontend (`frontend/`)
-- **Modular JavaScript**: ES6 modules in `src/js/modules/` (api, dom, events, state, ui)
-- **Build System**: Tailwind CSS + esbuild for bundling
-- **Static Assets**: Fonts and images in `frontend/static/`
-- **Templates**: Jinja2 templates in `frontend/templates/`
+- **Framework**: Next.js 14 with App Router and TypeScript
+- **State Management**: Zustand for global state management
+- **Components**: React components in `components/` (FileUpload, AnalysisOptions, ProcessingStatus, ResultsDisplay)
+- **Styling**: Tailwind CSS with PostCSS
+- **API Integration**: Custom hooks and API client in `lib/`
+- **Type Safety**: TypeScript types in `types/`
 
 ## Development Commands
 
@@ -47,23 +49,26 @@ uv run ruff format backend/
 
 ### Frontend Development
 ```bash
-# Install Node dependencies
+# Install Node dependencies (from root or frontend directory)
 npm install
+# Or from frontend directory
+cd frontend && npm install
 
-# Build all frontend assets
-npm run build
-
-# Development mode (watches files and runs backend with uv)
+# Development mode (runs Next.js dev server + backend)
 npm run dev
 
-# Watch frontend only (CSS + JS)
-npm run dev:frontend
+# Run only Next.js frontend
+npm run dev:next
+# Or from frontend directory
+cd frontend && npm run dev
 
-# Individual build commands
-npm run build:css    # Build Tailwind CSS
-npm run build:js     # Bundle JavaScript
-npm run watch:css    # Watch CSS changes
-npm run watch:js     # Watch JS changes
+# Build production frontend
+npm run build
+# Or
+npm run build:next
+
+# Start production Next.js server (from frontend directory)
+cd frontend && npm run start
 
 # Clean build artifacts
 npm run clean
@@ -77,12 +82,16 @@ npm run clean
 
 ## Key API Endpoints
 
-- `GET /` - Main web interface
-- `POST /api/transform` - Process files with streaming response
+### Backend API (FastAPI - Port 8000)
+- `POST /api/transform` - Process files with streaming response (SSE)
 - `GET /api/models` - List available analysis models  
 - `POST /api/download-results` - Export results as Excel/CSV
 - `GET /docs` - Swagger API documentation
 - `GET /redoc` - ReDoc API documentation
+
+### Frontend (Next.js - Port 3000)
+- `/` - Main application interface
+- API calls are proxied from frontend to backend
 
 ## Adding New Analysis Models
 
@@ -103,6 +112,7 @@ class YourModel(BaseModel):
 
 ## Configuration Files
 
+### Backend Configuration
 - **Environment Variables**: Copy `.env.example` to `.env` and set:
   - `OPENAI_API_KEY` (required)
   - `PORT`, `UPLOAD_FOLDER`, `TEMP_EXTRACT_DIR` (optional)
@@ -110,13 +120,37 @@ class YourModel(BaseModel):
 - **Main Config**: `config/config.yaml` - App settings, storage paths, model configurations
 - **Performance**: `config/performance.yaml` - Parallel processing, batch sizes, monitoring
 
+### Frontend Configuration
+- **Next.js Config**: `frontend/next.config.js` - Next.js configuration
+- **TypeScript**: `frontend/tsconfig.json` - TypeScript compiler options
+- **Tailwind**: `frontend/tailwind.config.js` - Tailwind CSS configuration
+- **PostCSS**: `frontend/postcss.config.mjs` - PostCSS plugins
+
+## Frontend Components
+
+### Core Components
+- **FileUpload**: Drag-and-drop file upload with react-dropzone
+- **AnalysisOptions**: Model selection and configuration UI
+- **ProcessingStatus**: Real-time SSE progress display
+- **ResultsDisplay**: Results viewer with export functionality
+- **Toast**: Notification system for user feedback
+
+### State Management (Zustand Store)
+- Files management
+- Processing state tracking
+- Results storage
+- Error handling
+
 ## File Processing Pipeline
 
-1. **Upload**: Files uploaded to `data/uploads/`
-2. **Conversion**: Parallel markdown conversion using AsyncMarkdownConverter
-3. **AI Analysis**: Batch processing through Pydantic AI agents
-4. **Streaming**: Results streamed back via Server-Sent Events
-5. **Cleanup**: Automatic file lifecycle management
+1. **Upload**: Files uploaded via Next.js frontend
+2. **API Call**: Frontend sends files to FastAPI backend
+3. **Conversion**: Parallel markdown conversion using AsyncMarkdownConverter
+4. **AI Analysis**: Batch processing through Pydantic AI agents
+5. **Streaming**: Results streamed back via Server-Sent Events
+6. **Display**: Real-time updates in React components
+7. **Export**: Download results as Excel/CSV
+8. **Cleanup**: Automatic file lifecycle management
 
 ## Important Patterns
 
@@ -128,9 +162,16 @@ class YourModel(BaseModel):
 
 ## Dependencies
 
+### Backend
 - **Python**: FastAPI, Pydantic AI, markitdown, OpenAI, pandas, uvicorn
-- **Node.js**: Tailwind CSS, esbuild, concurrently
-- **Package Managers**: UV for Python, npm for Node.js
+- **Package Manager**: UV
+
+### Frontend
+- **Framework**: Next.js 14, React 18, TypeScript 5
+- **UI Libraries**: Tailwind CSS, lucide-react, react-dropzone
+- **State Management**: Zustand
+- **Utilities**: clsx, tailwind-merge, xlsx
+- **Package Manager**: npm
 
 ## Performance Considerations
 
@@ -139,9 +180,25 @@ class YourModel(BaseModel):
 - Configurable via `config/performance.yaml`
 - Monitor slow operations threshold: 5 seconds
 
+## Development Ports
+
+- **Frontend (Next.js)**: http://localhost:3000
+- **Backend (FastAPI)**: http://localhost:8000
+- **API Documentation**: http://localhost:8000/docs
+
 ## Security Notes
 
 - API keys stored in `.env` file (never commit)
 - CORS configured for all origins (restrict in production)
 - File size limits: 50MB single file, 100MB for ZIP archives
 - Automatic cleanup of uploaded files after processing
+
+## Legacy Frontend
+
+The project maintains a legacy vanilla JavaScript frontend in `frontend-legacy/` directory. To use the legacy frontend:
+```bash
+# Build and run legacy frontend
+npm run dev:legacy
+# Or build only
+npm run build:legacy
+```
