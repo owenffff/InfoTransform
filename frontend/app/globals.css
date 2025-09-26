@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 249 250 251;
+    --foreground: 17 24 39;
+  }
+
+  body {
+    @apply antialiased bg-gray-50 text-gray-900;
+  }
+}
+
+@layer components {
+  .drop-zone-active {
+    @apply border-brand-orange-500 bg-gradient-to-br from-brand-orange-50 to-brand-orange-100;
+  }
+
+  .editable-cell {
+    @apply hover:bg-gray-50 cursor-text;
+  }
+
+  .editable-cell:focus-within {
+    @apply bg-brand-orange-50 ring-2 ring-brand-orange-500 ring-opacity-50;
+  }
+
+  .toast-enter {
+    animation: slideIn 0.3s ease-out;
+  }
+
+  .toast-exit {
+    animation: slideOut 0.3s ease-in;
+  }
+
+  /* Custom scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-gray-100 rounded;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-gray-400 rounded hover:bg-gray-500;
+  }
+
+  /* Progress bar gradient */
+  .progress-gradient {
+    @apply bg-gradient-to-r from-brand-orange-400 to-brand-orange-500;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOut {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}

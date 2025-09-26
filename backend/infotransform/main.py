@@ -85,22 +85,23 @@ app.add_middleware(
 project_root = Path(__file__).parent.parent.parent
 
 # Mount static files
-# Mount dist for compiled assets (CSS, JS bundles)
-dist_path = project_root / "frontend" / "dist"
-if dist_path.exists():
-    app.mount("/static", StaticFiles(directory=str(dist_path)), name="static")
+# Mount legacy frontend dist for compiled assets (CSS, JS bundles)
+legacy_dist_path = project_root / "frontend-legacy" / "dist"
+if legacy_dist_path.exists():
+    app.mount("/static", StaticFiles(directory=str(legacy_dist_path)), name="static")
 
-# Mount frontend/static for fonts, favicon, and other static assets
-static_assets_path = project_root / "frontend" / "static"
-if static_assets_path.exists():
-    app.mount("/assets", StaticFiles(directory=str(static_assets_path)), name="assets")
+# Mount legacy frontend/static for fonts, favicon, and other static assets
+legacy_static_path = project_root / "frontend-legacy" / "static"
+if legacy_static_path.exists():
+    app.mount("/assets", StaticFiles(directory=str(legacy_static_path)), name="assets")
 
-# Mount src as fallback for development
-src_path = project_root / "frontend" / "src"
-app.mount("/src", StaticFiles(directory=str(src_path)), name="src")
+# Mount legacy src as fallback for development
+legacy_src_path = project_root / "frontend-legacy" / "src"
+if legacy_src_path.exists():
+    app.mount("/src", StaticFiles(directory=str(legacy_src_path)), name="src")
 
-# Setup templates
-templates_path = project_root / "frontend" / "templates"
+# Setup templates - using legacy for now
+templates_path = project_root / "frontend-legacy" / "templates"
 templates = Jinja2Templates(directory=str(templates_path))
 
 # Create necessary directories
@@ -118,10 +119,16 @@ def secure_filename(filename: str) -> str:
     return filename
 
 
-@app.get("/", response_class=HTMLResponse)
-async def index(request: Request):
-    """Render the main page"""
+@app.get("/legacy", response_class=HTMLResponse)
+async def legacy_index(request: Request):
+    """Render the legacy page"""
     return templates.TemplateResponse("index.html", {"request": request})
+
+@app.get("/")
+async def index():
+    """Redirect to Next.js frontend"""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="http://localhost:3000", status_code=307)
 
 
 

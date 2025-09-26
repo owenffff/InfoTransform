@@ -1,0 +1,399 @@
+'use client';
+
+import { useState, useMemo } from 'react';
+import { Download, Table, Grid3X3, Search, RotateCcw, ChevronUp, ChevronDown } from 'lucide-react';
+import { useStore } from '@/lib/store';
+import { downloadResults } from '@/lib/api';
+import { showToast } from './Toast';
+import { cn } from '@/lib/utils';
+
+export function ResultsDisplay() {
+  const {
+    streamingResults,
+    modelFields,
+    editedData,
+    updateEditedData,
+    sortState,
+    setSortState,
+    viewMode,
+    setViewMode,
+    setEditedData
+  } = useStore();
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [downloadFormat, setDownloadFormat] = useState<'excel' | 'csv'>('excel');
+  
+  // Debug logging
+  console.log('ResultsDisplay - streamingResults:', streamingResults);
+  console.log('ResultsDisplay - modelFields:', modelFields);
+
+  // Get data with edits applied
+  const getDataWithEdits = () => {
+    return streamingResults.map(result => {
+      if (result.status !== 'success' || !result.structured_data) return result;
+      
+      const editedFields = editedData[result.filename] || {};
+      return {
+        ...result,
+        structured_data: {
+          ...result.structured_data,
+          ...editedFields
+        }
+      };
+    });
+  };
+
+  // Filter and sort results
+  const filteredResults = useMemo(() => {
+    let results = getDataWithEdits();
+    
+    // Filter by search query
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      results = results.filter(result => {
+        if (result.filename.toLowerCase().includes(query)) return true;
+        if (result.status === 'success' && result.structured_data) {
+          return Object.values(result.structured_data).some(value => 
+            String(value).toLowerCase().includes(query)
+          );
+        }
+        return false;
+      });
+    }
+
+    // Sort if needed
+    if (sortState.column && sortState.direction) {
+      results = [...results].sort((a, b) => {
+        let aValue: any = '';
+        let bValue: any = '';
+
+        if (sortState.column === 'filename') {
+          aValue = a.filename;
+          bValue = b.filename;
+        } else if (a.status === 'success' && b.status === 'success' && a.structured_data && b.structured_data && sortState.column) {
+          aValue = a.structured_data[sortState.column] || '';
+          bValue = b.structured_data[sortState.column] || '';
+        }
+
+        if (aValue < bValue) return sortState.direction === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortState.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return results;
+  }, [streamingResults, editedData, searchQuery, sortState]);
+
+  const successfulResults = filteredResults.filter(r => r.status === 'success');
+  const failedResults = filteredResults.filter(r => r.status === 'error');
+
+  const handleSort = (column: string) => {
+    if (sortState.column === column) {
+      // Toggle direction
+      if (sortState.direction === 'asc') {
+        setSortState({ column, direction: 'desc' });
+      } else if (sortState.direction === 'desc') {
+        setSortState({ column: null, direction: null });
+      }
+    } else {
+      setSortState({ column, direction: 'asc' });
+    }
+  };
+
+  const handleDownload = async () => {
+    try {
+      const dataToExport = getDataWithEdits()
+        .filter(r => r.status === 'success' && r.structured_data)
+        .map(r => ({
+          filename: r.filename,
+          ...r.structured_data
+        }));
+
+      await downloadResults(dataToExport, downloadFormat, ['filename', ...modelFields]);
+      showToast('success', `Results exported as ${downloadFormat.toUpperCase()}`);
+    } catch (error) {
+      showToast('error', 'Failed to download results');
+    }
+  };
+
+  const clearEdits = () => {
+    setEditedData({});
+    showToast('info', 'All edits cleared');
+  };
+
+  if (streamingResults.length === 0) return null;
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+      <div className="px-6 py-4 border-b border-gray-200">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <h2 className="text-2xl font-semibold text-gray-900">
+            Transformation Results
+          </h2>
+          
+          <div className="flex flex-wrap gap-3">
+            {/* View Toggle */}
+            <div className="inline-flex rounded-md shadow-sm" role="group">
+              <button
+                onClick={() => setViewMode('table')}
+                className={cn(
+                  'inline-flex items-center px-4 py-2 text-sm font-medium border rounded-l-md',
+                  viewMode === 'table'
+                    ? 'text-brand-orange-700 bg-brand-orange-50 border-brand-orange-300'
+                    : 'text-gray-900 bg-white border-gray-200 hover:bg-gray-100'
+                )}
+              >
+                <Table className="w-4 h-4 mr-2" />
+                Table
+              </button>
+              <button
+                onClick={() => setViewMode('cards')}
+                className={cn(
+                  'inline-flex items-center px-4 py-2 text-sm font-medium border rounded-r-md',
+                  viewMode === 'cards'
+                    ? 'text-brand-orange-700 bg-brand-orange-50 border-brand-orange-300'
+                    : 'text-gray-900 bg-white border-gray-200 hover:bg-gray-100'
+                )}
+              >
+                <Grid3X3 className="w-4 h-4 mr-2" />
+                Cards
+              </button>
+            </div>
+            
+            {/* Actions */}
+            <div className="flex items-center gap-2">
+              <select
+                value={downloadFormat}
+                onChange={(e) => setDownloadFormat(e.target.value as 'excel' | 'csv')}
+                className="text-sm rounded-md border-gray-300 shadow-sm focus:border-brand-orange-500 focus:ring-brand-orange-500"
+              >
+                <option value="excel">Excel (.xlsx)</option>
+                <option value="csv">CSV (.csv)</option>
+              </select>
+              <button
+                onClick={handleDownload}
+                disabled={successfulResults.length === 0}
+                className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-orange-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Download
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Summary */}
+      {streamingResults.length > 0 && (
+        <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-white rounded-lg border border-gray-200 px-4 py-3">
+              <p className="text-sm font-medium text-gray-500">Total Files</p>
+              <p className="text-2xl font-semibold text-gray-900">{streamingResults.length}</p>
+            </div>
+            <div className="bg-white rounded-lg border border-green-200 px-4 py-3">
+              <p className="text-sm font-medium text-green-600">Successful</p>
+              <p className="text-2xl font-semibold text-green-600">
+                {streamingResults.filter(r => r.status === 'success').length}
+              </p>
+            </div>
+            <div className="bg-white rounded-lg border border-red-200 px-4 py-3">
+              <p className="text-sm font-medium text-red-600">Failed</p>
+              <p className="text-2xl font-semibold text-red-600">
+                {streamingResults.filter(r => r.status === 'error').length}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      <div className="p-6">
+        {/* Search/Filter Bar */}
+        <div className="mb-4 flex flex-col sm:flex-row gap-3">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search results..."
+              className="block w-full pl-10 pr-3 py-2 rounded-md border-gray-300 shadow-sm focus:border-brand-orange-500 focus:ring-brand-orange-500 sm:text-sm"
+            />
+          </div>
+          {Object.keys(editedData).length > 0 && (
+            <button
+              onClick={clearEdits}
+              className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50"
+            >
+              <RotateCcw className="w-4 h-4 mr-2" />
+              Clear Edits ({Object.keys(editedData).length})
+            </button>
+          )}
+        </div>
+        
+        {/* Table View */}
+        {viewMode === 'table' && successfulResults.length > 0 && (
+          <TableView
+            results={successfulResults}
+            fields={modelFields}
+            onSort={handleSort}
+            sortState={sortState}
+            onEdit={updateEditedData}
+            editedData={editedData}
+          />
+        )}
+        
+        {/* Card View */}
+        {viewMode === 'cards' && (
+          <CardView
+            results={filteredResults}
+            fields={modelFields}
+            onEdit={updateEditedData}
+            editedData={editedData}
+          />
+        )}
+        
+        {/* No Results */}
+        {filteredResults.length === 0 && searchQuery && (
+          <div className="text-center py-8">
+            <p className="text-gray-500">No results found for "{searchQuery}"</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TableView({ results, fields, onSort, sortState, onEdit, editedData }: any) {
+  const handleCellEdit = (filename: string, field: string, value: string) => {
+    onEdit(filename, field, value);
+  };
+
+  // Ensure fields is always an array
+  const fieldArray = Array.isArray(fields) ? fields : [];
+
+  return (
+    <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
+      <table className="min-w-full">
+        <thead className="bg-gray-50">
+          <tr>
+            <th
+              onClick={() => onSort('filename')}
+              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+            >
+              <div className="flex items-center gap-1">
+                Filename
+                <SortIcon column="filename" sortState={sortState} />
+              </div>
+            </th>
+            {fieldArray.map((field: string) => (
+              <th
+                key={field}
+                onClick={() => onSort(field)}
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+              >
+                <div className="flex items-center gap-1">
+                  {field}
+                  <SortIcon column={field} sortState={sortState} />
+                </div>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {results.map((result: any) => {
+            const hasEdits = editedData[result.filename];
+            return (
+              <tr key={result.filename} className={hasEdits ? 'bg-brand-orange-50/30' : ''}>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  {result.filename}
+                </td>
+                {fieldArray.map((field: string) => {
+                  const value = result.structured_data?.[field];
+                  console.log(`Field ${field} value:`, value, 'from:', result.structured_data);
+                  return (
+                    <td
+                      key={field}
+                      className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 editable-cell"
+                    >
+                      <input
+                        type="text"
+                        value={value !== null && value !== undefined ? String(value) : ''}
+                        onChange={(e) => handleCellEdit(result.filename, field, e.target.value)}
+                        className="w-full bg-transparent border-0 p-0 focus:outline-none focus:ring-0"
+                      />
+                    </td>
+                  );
+                })}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function CardView({ results, fields, onEdit, editedData }: any) {
+  // Ensure fields is always an array
+  const fieldArray = Array.isArray(fields) ? fields : [];
+  
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {results.map((result: any) => {
+        const hasEdits = editedData[result.filename];
+        return (
+          <div
+            key={result.filename}
+            className={cn(
+              'p-4 rounded-lg border',
+              result.status === 'error'
+                ? 'bg-red-50 border-red-200'
+                : hasEdits
+                ? 'bg-brand-orange-50/50 border-brand-orange-200'
+                : 'bg-white border-gray-200'
+            )}
+          >
+            <h3 className="font-medium text-gray-900 mb-3 truncate" title={result.filename}>
+              {result.filename}
+            </h3>
+            
+            {result.status === 'error' ? (
+              <p className="text-sm text-red-600">{result.error || 'Processing failed'}</p>
+            ) : (
+              <div className="space-y-2">
+                {fieldArray.map((field: string) => (
+                  <div key={field}>
+                    <label className="text-xs font-medium text-gray-500">{field}</label>
+                    <input
+                      type="text"
+                      value={result.structured_data?.[field] || ''}
+                      onChange={(e) => onEdit(result.filename, field, e.target.value)}
+                      className="mt-1 block w-full text-sm bg-white border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-orange-500"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function SortIcon({ column, sortState }: { column: string; sortState: any }) {
+  if (sortState.column !== column) {
+    return <div className="w-4 h-4" />;
+  }
+  
+  if (sortState.direction === 'asc') {
+    return <ChevronUp className="w-4 h-4" />;
+  }
+  
+  if (sortState.direction === 'desc') {
+    return <ChevronDown className="w-4 h-4" />;
+  }
+  
+  return <div className="w-4 h-4" />;
+}

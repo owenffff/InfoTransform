@@ -52,6 +52,8 @@ ai_pipeline:
   # Step 3: Structured Data Extraction
   # Extracts structured information from markdown content using AI analysis
   structured_analysis:
+    # Default model to use
+    default_model: "openai.gpt-4.1-mini-2025-04-14"
 
     # Models available for user selection in frontend
     available_models:
