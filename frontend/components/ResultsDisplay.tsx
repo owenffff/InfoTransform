@@ -6,6 +6,7 @@ import { useStore } from '@/lib/store';
 import { downloadResults } from '@/lib/api';
 import { showToast } from './Toast';
 import { cn } from '@/lib/utils';
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 
 export function ResultsDisplay() {
   const {
@@ -178,7 +179,8 @@ export function ResultsDisplay() {
       await downloadResults(dataToExport, downloadFormat, ['filename', ...modelFields]);
       showToast('success', `Results exported as ${downloadFormat.toUpperCase()}`);
     } catch (error) {
-      showToast('error', 'Failed to download results');
+      const msg = error instanceof Error ? error.message : 'Failed to download results';
+      showToast('error', msg);
     }
   };
 
@@ -262,14 +264,15 @@ export function ResultsDisplay() {
                   <span className="ml-2 hidden sm:inline">Auto-scroll</span>
                 </button>
               )}
-              <select
-                value={downloadFormat}
-                onChange={(e) => setDownloadFormat(e.target.value as 'excel' | 'csv')}
-                className="text-sm rounded-md border-gray-300 shadow-sm focus:border-brand-orange-500 focus:ring-brand-orange-500"
-              >
-                <option value="excel">Excel (.xlsx)</option>
-                <option value="csv">CSV (.csv)</option>
-              </select>
+              <Select value={downloadFormat} onValueChange={(v) => setDownloadFormat(v as 'excel' | 'csv')}>
+                <SelectTrigger className="w-[180px] text-sm">
+                  <SelectValue placeholder="Format" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="excel">Excel (.xlsx)</SelectItem>
+                  <SelectItem value="csv">CSV (.csv)</SelectItem>
+                </SelectContent>
+              </Select>
               <button
                 onClick={handleDownload}
                 disabled={successfulResults.length === 0}

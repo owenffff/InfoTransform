@@ -11,12 +11,7 @@ import {
   File,
   X,
   Search,
-  ChevronDown,
-  ChevronRight,
-  Filter,
-  Trash2,
-  CheckSquare,
-  Square
+  Trash2
 } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { showToast } from './Toast';
@@ -27,14 +22,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   Accordion,
   AccordionContent,
@@ -42,6 +29,8 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 const ACCEPTED_EXTENSIONS = [
   '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp',
@@ -57,16 +46,11 @@ interface FileGroup {
   totalSize: number;
 }
 
-type SortOption = 'name' | 'size' | 'type' | 'date';
-type ViewMode = 'summary' | 'list' | 'grid';
-
 export function FileUpload() {
   const { selectedFiles, setSelectedFiles } = useStore();
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<SortOption>('name');
-  const [viewMode, setViewMode] = useState<ViewMode>('summary');
-  const [selectedFileIndices, setSelectedFileIndices] = useState<Set<number>>(new Set());
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  // Toggle for grouping files by type (replaces "Summary/List" dropdown)
+  const [groupByType, setGroupByType] = useState<boolean>(true);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length === 0) {
@@ -105,11 +89,19 @@ export function FileUpload() {
     multiple: true
   });
 
-  // Group files by type
+  // Filter files by search; preserve insertion order (recently added last)
+  const filteredFiles = useMemo(() => {
+    if (!searchQuery) return selectedFiles;
+    return selectedFiles.filter(file =>
+      file.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [selectedFiles, searchQuery]);
+
+  // Group files by type (driven by filteredFiles so search affects groups)
   const fileGroups = useMemo(() => {
     const groups: Record<string, FileGroup> = {};
     
-    selectedFiles.forEach(file => {
+    filteredFiles.forEach(file => {
       const extension = file.name.split('.').pop()?.toLowerCase() || '';
       let type = 'Other';
       let icon = <File className="w-4 h-4" />;
@@ -143,76 +135,16 @@ export function FileUpload() {
     });
     
     return Object.values(groups);
-  }, [selectedFiles]);
-
-  // Filter and sort files
-  const filteredAndSortedFiles = useMemo(() => {
-    let files = [...selectedFiles];
-    
-    // Filter by search query
-    if (searchQuery) {
-      files = files.filter(file => 
-        file.name.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-    
-    // Sort files
-    files.sort((a, b) => {
-      switch (sortBy) {
-        case 'name':
-          return a.name.localeCompare(b.name);
-        case 'size':
-          return b.size - a.size;
-        case 'type':
-          return a.type.localeCompare(b.type);
-        case 'date':
-          return (b.lastModified || 0) - (a.lastModified || 0);
-        default:
-          return 0;
-      }
-    });
-    
-    return files;
-  }, [selectedFiles, searchQuery, sortBy]);
+  }, [filteredFiles]);
 
   const totalSize = useMemo(() => 
     selectedFiles.reduce((acc, file) => acc + file.size, 0),
     [selectedFiles]
   );
 
-  const handleSelectAll = () => {
-    if (selectedFileIndices.size === selectedFiles.length) {
-      setSelectedFileIndices(new Set());
-    } else {
-      setSelectedFileIndices(new Set(selectedFiles.map((_, i) => i)));
-    }
-  };
-
-  const handleRemoveSelected = () => {
-    const indicesToRemove = Array.from(selectedFileIndices).sort((a, b) => b - a);
-    const newFiles = [...selectedFiles];
-    indicesToRemove.forEach(index => {
-      newFiles.splice(index, 1);
-    });
-    setSelectedFiles(newFiles);
-    setSelectedFileIndices(new Set());
-    showToast('info', `${indicesToRemove.length} file(s) removed`);
-  };
-
   const handleClearAll = () => {
     setSelectedFiles([]);
-    setSelectedFileIndices(new Set());
     showToast('info', 'All files cleared');
-  };
-
-  const toggleGroup = (type: string) => {
-    const newExpanded = new Set(expandedGroups);
-    if (newExpanded.has(type)) {
-      newExpanded.delete(type);
-    } else {
-      newExpanded.add(type);
-    }
-    setExpandedGroups(newExpanded);
   };
 
   return (
@@ -270,76 +202,33 @@ export function FileUpload() {
                 />
               </div>
               
-              <div className="flex gap-2">
-                <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
-                  <SelectTrigger className="w-[130px]">
-                    <SelectValue placeholder="Sort by" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="name">Name</SelectItem>
-                    <SelectItem value="size">Size</SelectItem>
-                    <SelectItem value="type">Type</SelectItem>
-                    <SelectItem value="date">Date</SelectItem>
-                  </SelectContent>
-                </Select>
-                
-                <Select value={viewMode} onValueChange={(value) => setViewMode(value as ViewMode)}>
-                  <SelectTrigger className="w-[130px]">
-                    <SelectValue placeholder="View" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="summary">Summary</SelectItem>
-                    <SelectItem value="list">List</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+              <div className="flex gap-3 items-center ml-auto">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="groupByType" className="whitespace-nowrap text-sm">
+                    Group by type
+                  </Label>
+                  <Switch
+                    id="groupByType"
+                    checked={groupByType}
+                    onCheckedChange={(checked) => setGroupByType(!!checked)}
+                    aria-label="Group by file type"
+                  />
+                </div>
 
-            {selectedFiles.length > 10 && (
-              <div className="flex gap-2 items-center">
                 <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleSelectAll}
-                >
-                  {selectedFileIndices.size === selectedFiles.length ? (
-                    <>
-                      <CheckSquare className="h-4 w-4 mr-2" />
-                      Deselect All
-                    </>
-                  ) : (
-                    <>
-                      <Square className="h-4 w-4 mr-2" />
-                      Select All
-                    </>
-                  )}
-                </Button>
-                
-                {selectedFileIndices.size > 0 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleRemoveSelected}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Remove Selected ({selectedFileIndices.size})
-                  </Button>
-                )}
-                
-                <Button
-                  variant="ghost"
-                  size="sm"
+                  variant="destructive"
                   onClick={handleClearAll}
-                  className="ml-auto"
+                  className="shadow-md hover:shadow-lg"
                 >
+                  <Trash2 className="h-4 w-4 mr-2" />
                   Clear All
                 </Button>
               </div>
-            )}
+            </div>
 
             <Separator />
 
-            {viewMode === 'summary' ? (
+            {groupByType ? (
               <Accordion type="multiple" className="w-full">
                 {fileGroups.map((group) => (
                   <AccordionItem key={group.type} value={group.type}>
@@ -388,27 +277,13 @@ export function FileUpload() {
             ) : (
               <div className="border rounded-lg">
                 <ScrollArea className="h-[400px]">
-                  {filteredAndSortedFiles.map((file, index) => {
+                  {filteredFiles.map((file, index) => {
                       const originalIndex = selectedFiles.indexOf(file);
-                      const isSelected = selectedFileIndices.has(originalIndex);
-                      
                       return (
                         <div
                           key={index}
                           className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50"
                         >
-                          <Checkbox
-                            checked={isSelected}
-                            onCheckedChange={() => {
-                              const newSelected = new Set(selectedFileIndices);
-                              if (isSelected) {
-                                newSelected.delete(originalIndex);
-                              } else {
-                                newSelected.add(originalIndex);
-                              }
-                              setSelectedFileIndices(newSelected);
-                            }}
-                          />
                           <span className="text-lg">{getFileTypeIcon(file.name)}</span>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-gray-900 truncate">
