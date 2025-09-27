@@ -11,6 +11,7 @@ import { loadAnalysisModels } from '@/lib/api';
 import { showToast } from '@/components/Toast';
 import { Sparkles, FileText, Activity } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import ProcessingTasks from '@/components/ProcessingTasks';
 
 export default function Home() {
   const { 
@@ -200,8 +201,12 @@ export default function Home() {
             <AnalysisOptions onTransformStart={handleTransformStart} />
           )}
           
+
           {/* Processing Status */}
           {isProcessing && <ProcessingStatus />}
+
+          {/* Processing Tasks */}
+          {(isProcessing || showResults) && <ProcessingTasks />}
           
           {/* Results Section - Show during and after processing */}
           {showResults && <ResultsDisplay />}

@@ -166,17 +166,28 @@ export function AnalysisOptions({ onTransformStart }: { onTransformStart: () => 
       
       dispatchStreamingEvent(processingEvent);
       
-      if (event.type === 'result' && event.status === 'success' && event.structured_data && event.filename) {
-        addStreamingResult({
-          filename: event.filename,
-          status: event.status,
-          markdown_content: event.markdown_content,
-          structured_data: event.structured_data,
-          model_fields: event.model_fields,
-          processing_time: event.processing_time,
-          was_summarized: event.was_summarized,
-          summarization_metrics: event.summarization_metrics
-        });
+      // Persist both successful and failed results so totals/failed counts are accurate
+      const fname = event.filename || event.file;
+      if (event.type === 'result' && fname) {
+        if (event.status === 'success' && event.structured_data) {
+          addStreamingResult({
+            filename: fname,
+            status: 'success',
+            markdown_content: event.markdown_content,
+            structured_data: event.structured_data,
+            model_fields: event.model_fields,
+            processing_time: event.processing_time,
+            was_summarized: event.was_summarized,
+            summarization_metrics: event.summarization_metrics
+          });
+        } else if (event.status === 'error') {
+          addStreamingResult({
+            filename: fname,
+            status: 'error',
+            error: event.error || 'Processing failed',
+            markdown_content: event.markdown_content
+          });
+        }
       }
       if (event.type === 'complete') {
         setIsProcessing(false);

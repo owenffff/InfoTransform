@@ -1,15 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Loader2, CheckCircle, XCircle, Clock, FileText, Activity, AlertCircle } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { CheckCircle, XCircle, Clock, FileText, Activity } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
+import { Task, TaskContent, TaskItem, TaskTrigger } from '@/components/ai-elements/task';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Button } from '@/components/ui/button';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Loader as AiLoader } from '@/components/ai-elements/loader';
+import { useStore } from '@/lib/store';
 
 export interface StreamingEvent {
   type: 'start' | 'markdown_conversion' | 'ai_analysis' | 'result' | 'complete' | 'error' | 'reset';
@@ -37,14 +35,16 @@ export interface StreamingEvent {
   };
 }
 
-interface ProcessingLog {
-  timestamp: string;
-  type: 'info' | 'success' | 'error' | 'warning';
-  message: string;
-  filename?: string;
-}
 
 let eventHandlers: Map<string, (event: StreamingEvent) => void> = new Map();
+
+export function addStreamingEventListener(id: string, handler: (event: StreamingEvent) => void) {
+  eventHandlers.set(id, handler);
+}
+
+export function removeStreamingEventListener(id: string) {
+  eventHandlers.delete(id);
+}
 
 export function dispatchStreamingEvent(event: StreamingEvent) {
   eventHandlers.forEach(handler => handler(event));
@@ -59,10 +59,10 @@ export function ProcessingStatus() {
   const [errorCount, setErrorCount] = useState(0);
   const [currentPhase, setCurrentPhase] = useState<'converting' | 'analyzing' | 'complete'>('converting');
   const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<string>('');
-  const [processingLogs, setProcessingLogs] = useState<ProcessingLog[]>([]);
   const [startTime, setStartTime] = useState<number>(Date.now());
-  const [showLogs, setShowLogs] = useState(false);
   const [handlerId] = useState(() => `handler-${Date.now()}-${Math.random()}`);
+  const finishedFilesRef = useRef<Set<string>>(new Set());
+  const { selectedFiles } = useStore();
 
   useEffect(() => {
     const handleEvent = (event: StreamingEvent) => {
@@ -79,33 +79,22 @@ export function ProcessingStatus() {
           setErrorCount(0);
           setCurrentPhase('converting');
           setEstimatedTimeRemaining('');
-          setProcessingLogs([]);
           setStartTime(Date.now());
           break;
           
         case 'start':
-          setTotalCount(event.total || 0);
+          setTotalCount(event.total && event.total > 0 ? event.total : (selectedFiles?.length ?? 0));
           setProcessedCount(0);
           setSuccessCount(0);
           setErrorCount(0);
           setStartTime(Date.now());
-          setProcessingLogs(prev => [...prev, {
-            timestamp,
-            type: 'info',
-            message: `Starting processing of ${event.total} file(s)`
-          }]);
+          finishedFilesRef.current.clear();
           break;
 
         case 'markdown_conversion':
           if (event.filename) {
             setCurrentFile(event.filename);
             setCurrentPhase('converting');
-            setProcessingLogs(prev => [...prev, {
-              timestamp,
-              type: 'info',
-              message: `Converting to markdown`,
-              filename: event.filename
-            }]);
           }
           if (event.progress && event.total) {
             const progress = (event.progress / event.total) * 50; // 50% for conversion
@@ -118,12 +107,6 @@ export function ProcessingStatus() {
           if (event.filename) {
             setCurrentFile(event.filename);
             setCurrentPhase('analyzing');
-            setProcessingLogs(prev => [...prev, {
-              timestamp,
-              type: 'info',
-              message: `Analyzing with AI`,
-              filename: event.filename
-            }]);
           }
           if (event.progress && event.total) {
             const progress = 50 + (event.progress / event.total) * 50; // 50-100% for analysis
@@ -133,26 +116,22 @@ export function ProcessingStatus() {
           break;
 
         case 'result':
-          if (event.status === 'success') {
-            setSuccessCount(prev => prev + 1);
-            setProcessingLogs(prev => [...prev, {
-              timestamp,
-              type: 'success',
-              message: event.was_summarized 
-                ? `Processed successfully (summarized to fit context)`
-                : `Processed successfully`,
-              filename: event.filename
-            }]);
-          } else if (event.status === 'error') {
-            setErrorCount(prev => prev + 1);
-            setProcessingLogs(prev => [...prev, {
-              timestamp,
-              type: 'error',
-              message: event.error || 'Processing failed',
-              filename: event.filename
-            }]);
+          {
+            const fname = event.filename;
+            if (!fname) {
+              break;
+            }
+            if (!finishedFilesRef.current.has(fname)) {
+              finishedFilesRef.current.add(fname);
+              if (event.status === 'success') {
+                setSuccessCount(prev => prev + 1);
+              } else if (event.status === 'error') {
+                setErrorCount(prev => prev + 1);
+              }
+              setProcessedCount(prev => prev + 1);
+            }
+            // no-op: logs removed from UI
           }
-          setProcessedCount(prev => prev + 1);
           break;
 
         case 'complete':
@@ -161,20 +140,12 @@ export function ProcessingStatus() {
           setEstimatedTimeRemaining('');
           if (event.summary) {
             const summary = event.summary;
-            setProcessingLogs(prev => [...prev, {
-              timestamp,
-              type: 'info',
-              message: `Processing complete: ${summary.successful_files} succeeded, ${summary.failed_files} failed (${Math.round(summary.total_time)}s total)`
-            }]);
+            // summary available; logs UI removed
           }
           break;
 
         case 'error':
-          setProcessingLogs(prev => [...prev, {
-            timestamp,
-            type: 'error',
-            message: event.error || 'An error occurred'
-          }]);
+          // no-op: logs removed from UI
           break;
       }
     };
@@ -204,24 +175,6 @@ export function ProcessingStatus() {
     }
   };
 
-  const getPhaseIcon = (phase: string) => {
-    switch (phase) {
-      case 'converting':
-        return <FileText className="w-4 h-4" />;
-      case 'analyzing':
-        return <Activity className="w-4 h-4" />;
-      case 'complete':
-        return <CheckCircle className="w-4 h-4" />;
-      default:
-        return <Loader2 className="w-4 h-4 animate-spin" />;
-    }
-  };
-
-  const getPhaseColor = (phase: string) => {
-    if (phase === currentPhase) return 'default';
-    if (phase === 'complete' && currentPhase === 'complete') return 'default';
-    return 'secondary';
-  };
 
   return (
     <Card className="shadow-lg border-gray-200">
@@ -229,10 +182,11 @@ export function ProcessingStatus() {
         <CardTitle className="text-2xl flex items-center gap-2">
           <span className="text-primary">3.</span>
           Processing Status
-          <Badge variant="default" className="ml-auto animate-pulse">
-            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-            Processing
-          </Badge>
+          {currentPhase !== 'complete' ? (
+            <Badge variant="default" className="ml-auto">Processing</Badge>
+          ) : (
+            <Badge variant="secondary" className="ml-auto">Complete</Badge>
+          )}
         </CardTitle>
         <CardDescription>
           Transforming your files into structured data
@@ -240,42 +194,42 @@ export function ProcessingStatus() {
       </CardHeader>
       
       <CardContent className="space-y-6">
-        {/* Progress Overview */}
-        <div className="space-y-3">
-          <div className="flex justify-between items-center text-sm">
-            <span className="font-medium">Overall Progress</span>
-            <span className="text-muted-foreground">
-              {processedCount}/{totalCount} files • {Math.round(overallProgress)}%
-            </span>
-          </div>
-          <Progress value={overallProgress} className="h-3" />
-          {estimatedTimeRemaining && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Clock className="w-3 h-3" />
-              {estimatedTimeRemaining}
-            </div>
-          )}
-        </div>
+        {/* Overall Pipeline */}
+        <Task defaultOpen>
+          <TaskTrigger title={`Overall processing — ${Math.min(processedCount, totalCount || processedCount)}/${totalCount} files • ${Math.round(overallProgress)}%`} />
+          <TaskContent aria-live="polite" role="status">
+            {estimatedTimeRemaining && (
+              <div className="text-xs text-muted-foreground mb-2 flex items-center gap-2">
+                <Clock className="w-3 h-3" />
+                <span>{estimatedTimeRemaining}</span>
+              </div>
+            )}
+            <TaskItem aria-busy={currentPhase === 'converting'}>
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                <span>Converting</span>
+                {currentPhase === 'converting' && <AiLoader size={14} className="text-blue-600" />}
+                {currentPhase !== 'converting' && overallProgress > 0 && <CheckCircle className="w-4 h-4 text-green-600" />}
+              </div>
+            </TaskItem>
+            <TaskItem aria-busy={currentPhase === 'analyzing'}>
+              <div className="flex items-center gap-2">
+                <Activity className="w-4 h-4" />
+                <span>Analyzing</span>
+                {currentPhase === 'analyzing' && <AiLoader size={14} className="text-blue-600" />}
+                {currentPhase === 'complete' && <CheckCircle className="w-4 h-4 text-green-600" />}
+              </div>
+            </TaskItem>
+            <TaskItem>
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-4 h-4" />
+                <span>Complete</span>
+                {currentPhase === 'complete' && <span className="text-green-700 text-xs font-medium">Done</span>}
+              </div>
+            </TaskItem>
+          </TaskContent>
+        </Task>
 
-        {/* Phase Indicators */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 flex-1">
-            <Badge variant={getPhaseColor('converting')} className="flex items-center gap-1">
-              {getPhaseIcon('converting')}
-              Converting
-            </Badge>
-            <Separator className="flex-1" />
-            <Badge variant={getPhaseColor('analyzing')} className="flex items-center gap-1">
-              {getPhaseIcon('analyzing')}
-              Analyzing
-            </Badge>
-            <Separator className="flex-1" />
-            <Badge variant={getPhaseColor('complete')} className="flex items-center gap-1">
-              {getPhaseIcon('complete')}
-              Complete
-            </Badge>
-          </div>
-        </div>
 
         {/* Statistics */}
         <div className="grid grid-cols-3 gap-4">
@@ -289,7 +243,6 @@ export function ProcessingStatus() {
           
           <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
             <div className="flex items-center justify-center gap-2 mb-1">
-              <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
               <span className="text-sm font-medium text-blue-900">Processing</span>
             </div>
             <p className="text-2xl font-bold text-blue-700">
@@ -316,43 +269,6 @@ export function ProcessingStatus() {
           </Alert>
         )}
 
-        {/* Processing Logs */}
-        <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="logs">
-            <AccordionTrigger className="text-sm hover:no-underline">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="w-4 h-4" />
-                Processing Logs
-                <Badge variant="secondary" className="ml-2">
-                  {processingLogs.length} entries
-                </Badge>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent>
-              <ScrollArea className="h-48 w-full rounded-lg border bg-muted/20 p-3">
-                <div className="space-y-1">
-                  {processingLogs.map((log, index) => (
-                    <div
-                      key={index}
-                      className={`flex items-start gap-2 text-xs font-mono ${
-                        log.type === 'error' ? 'text-red-600' :
-                        log.type === 'success' ? 'text-green-600' :
-                        log.type === 'warning' ? 'text-yellow-600' :
-                        'text-gray-600'
-                      }`}
-                    >
-                      <span className="text-gray-400">[{log.timestamp}]</span>
-                      {log.filename && (
-                        <span className="text-gray-500">{log.filename}:</span>
-                      )}
-                      <span>{log.message}</span>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
 
         {/* Error Summary */}
         {errorCount > 0 && currentPhase === 'complete' && (
@@ -360,7 +276,7 @@ export function ProcessingStatus() {
             <XCircle className="h-4 w-4" />
             <AlertDescription>
               {errorCount} file{errorCount > 1 ? 's' : ''} failed to process. 
-              Check the logs above for details.
+              Review the failed files above for details.
             </AlertDescription>
           </Alert>
         )}

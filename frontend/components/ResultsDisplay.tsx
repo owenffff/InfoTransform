@@ -27,6 +27,11 @@ export function ResultsDisplay() {
   const prevResultsCount = useRef(0);
   const tableRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
+  // Success/Failed panel state
+  const [successOpen, setSuccessOpen] = useState(true);
+  const [failedOpen, setFailedOpen] = useState(true);
+  const prevSuccessCount = useRef(0);
+  const prevFailedCount = useRef(0);
   
   // Track new results for animation and auto-scroll
   useEffect(() => {
@@ -82,6 +87,9 @@ export function ResultsDisplay() {
             String(value).toLowerCase().includes(query)
           );
         }
+        if (result.status === 'error' && result.error) {
+          return String(result.error).toLowerCase().includes(query);
+        }
         return false;
       });
     }
@@ -111,6 +119,39 @@ export function ResultsDisplay() {
 
   const successfulResults = filteredResults.filter(r => r.status === 'success');
   const failedResults = filteredResults.filter(r => r.status === 'error');
+
+  // Heuristic classification for clearer badges/tips
+  const classifyError = (err?: string) => {
+    const e = (err || '').toLowerCase();
+    if (/(password|protected|encrypt)/.test(e)) return { label: 'Password required', tip: 'Unlock the PDF and re-upload.' };
+    if (/(corrupt|damaged|malformed)/.test(e)) return { label: 'Corrupted file', tip: 'Re-download or repair the file and try again.' };
+    if (/(unsupported|format)/.test(e)) return { label: 'Unsupported format', tip: 'Upload a supported PDF or text-based document.' };
+    if (/(timeout|too large|token|context)/.test(e)) return { label: 'Too large / timed out', tip: 'Try splitting the document or enabling summarization.' };
+    return { label: '', tip: '' };
+  };
+
+  // Auto-open the failures panel when new failures arrive
+  useEffect(() => {
+    if (failedResults.length > prevFailedCount.current) {
+      setFailedOpen(true);
+    }
+    prevFailedCount.current = failedResults.length;
+  }, [failedResults.length]);
+
+  // Auto-open successes when new items arrive
+  useEffect(() => {
+    if (successfulResults.length > prevSuccessCount.current) {
+      setSuccessOpen(true);
+    }
+    prevSuccessCount.current = successfulResults.length;
+  }, [successfulResults.length]);
+
+  // Collapse failed panel by default after processing completes
+  useEffect(() => {
+    if (!isProcessing) {
+      setFailedOpen(false);
+    }
+  }, [isProcessing]);
 
   const handleSort = (column: string) => {
     if (sortState.column === column) {
@@ -266,6 +307,28 @@ export function ResultsDisplay() {
         </div>
       )}
       
+      {/* Success header container */}
+      {successfulResults.length > 0 && (
+        <div className="px-6 py-4 border-b border-green-200 bg-green-50/50">
+          <button
+            onClick={() => setSuccessOpen(!successOpen)}
+            className="w-full flex items-center justify-between text-left"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-green-700">
+                Successful files ({successfulResults.length})
+              </span>
+            </div>
+            {successOpen ? (
+              <ChevronUp className="w-4 h-4 text-green-700" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-green-700" />
+            )}
+          </button>
+        </div>
+      )}
+      
+      {successOpen && (
       <div className="p-6">
         {/* Search/Filter Bar */}
         <div className="mb-4 flex flex-col sm:flex-row gap-3">
@@ -308,7 +371,7 @@ export function ResultsDisplay() {
         {/* Card View */}
         {viewMode === 'cards' && (
           <CardView
-            results={filteredResults}
+            results={successfulResults}
             fields={modelFields}
             onEdit={updateEditedData}
             editedData={editedData}
@@ -323,6 +386,48 @@ export function ResultsDisplay() {
           </div>
         )}
       </div>
+      )}
+      
+      {/* Failed container comes after successes */}
+      {failedResults.length > 0 && (
+        <div className="px-6 py-4 border-b border-red-200 bg-red-50/50">
+          <button
+            onClick={() => setFailedOpen(!failedOpen)}
+            className="w-full flex items-center justify-between text-left"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-red-700">Failed files ({failedResults.length})</span>
+            </div>
+            {failedOpen ? <ChevronUp className="w-4 h-4 text-red-700" /> : <ChevronDown className="w-4 h-4 text-red-700" />}
+          </button>
+          {failedOpen && (
+            <ul className="mt-3 space-y-2">
+              {failedResults.map((r: any) => {
+                const info = classifyError(r.error);
+                return (
+                  <li key={r.filename} className="p-3 rounded-md border border-red-200 bg-white">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{r.filename}</div>
+                        <div className="text-sm text-red-600">{r.error || 'Processing failed'}</div>
+                      </div>
+                      {info.label && (
+                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-700 border border-red-200">
+                          {info.label}
+                        </span>
+                      )}
+                    </div>
+                    {info.tip && (
+                      <div className="mt-2 text-xs text-gray-600">{info.tip}</div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      )}
+
     </div>
   );
 }
@@ -340,6 +445,7 @@ function TableView({ results, fields, onSort, sortState, onEdit, editedData, new
       <table className="min-w-full">
         <thead className="bg-gray-50">
           <tr>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
             <th
               onClick={() => onSort('filename')}
               className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
@@ -364,7 +470,7 @@ function TableView({ results, fields, onSort, sortState, onEdit, editedData, new
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
-          {results.map((result: any) => {
+          {results.map((result: any, idx: number) => {
             const hasEdits = editedData[result.filename];
             const isNew = newResultIds?.has(result.filename);
             return (
@@ -375,6 +481,9 @@ function TableView({ results, fields, onSort, sortState, onEdit, editedData, new
                   hasEdits ? 'bg-brand-orange-50/30' : '',
                   isNew ? 'animate-fadeIn bg-gradient-to-r from-brand-orange-50 to-transparent' : ''
                 )}>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {idx + 1}
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                   {result.filename}
                 </td>
