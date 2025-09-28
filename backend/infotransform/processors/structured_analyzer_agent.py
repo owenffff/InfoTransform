@@ -80,7 +80,7 @@ class StructuredAnalyzerAgent:
         
         Args:
             content: Markdown content to analyze
-            model_key: Key of the analysis model to use
+            model_key: Key of the document schema to use
             custom_instructions: Optional custom instructions
             ai_model: Optional AI model override
             
@@ -192,7 +192,7 @@ Content to analyze:
         
         Args:
             content: Markdown content to analyze
-            model_key: Key of the analysis model to use
+            model_key: Key of the document schema to use
             custom_instructions: Optional custom instructions
             ai_model: Optional AI model override
             
@@ -313,7 +313,7 @@ Content to analyze:
         
         Args:
             contents: Dictionary mapping filenames to markdown content
-            model_key: Key of the analysis model to use
+            model_key: Key of the document schema to use
             custom_instructions: Optional custom instructions
             ai_model: Optional AI model override
             
@@ -353,11 +353,33 @@ Content to analyze:
     
     def get_available_models(self) -> Dict[str, Dict[str, Any]]:
         """Get information about available analysis models with detailed field info"""
+        import typing
+        from typing import get_origin, get_args
+        
         models_info = {}
         
         for key, model_class in AVAILABLE_MODELS.items():
+            # Check if this is a response wrapper model with just an 'item' field
+            actual_model_class = model_class
+            model_fields = model_class.model_fields
+            
+            if len(model_fields) == 1 and 'item' in model_fields:
+                # This looks like a wrapper response model
+                item_field = model_fields['item']
+                
+                # Check if the item field is a List type
+                if hasattr(item_field.annotation, '__origin__'):
+                    origin = get_origin(item_field.annotation)
+                    if origin is list or (hasattr(typing, 'List') and origin is typing.List):
+                        # Get the actual model class from the List type
+                        args = get_args(item_field.annotation)
+                        if args and hasattr(args[0], 'model_fields'):
+                            actual_model_class = args[0]
+                            model_fields = actual_model_class.model_fields
+            
+            # Now extract fields from the actual model
             fields_info = {}
-            for field_name, field in model_class.model_fields.items():
+            for field_name, field in model_fields.items():
                 # Get clean field type
                 field_type = str(field.annotation).replace('typing.', '')
                 
@@ -375,9 +397,10 @@ Content to analyze:
                     'constraints': constraints
                 }
             
+            # Use the original model class name for the response but actual model for description
             models_info[key] = {
                 "name": model_class.__name__,
-                "description": model_class.__doc__ or "No description",
+                "description": actual_model_class.__doc__ or model_class.__doc__ or "No description",
                 "fields": fields_info
             }
         

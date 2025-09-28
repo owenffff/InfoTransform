@@ -211,10 +211,10 @@ export function ResultsDisplay() {
                 ? (
                   <span className="flex items-center gap-2">
                     <span className="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                    {streamingResults.length} file(s) processed so far...
+                    {streamingResults.filter(r => r.is_primary_result !== false).length} file(s) processed so far...
                   </span>
                 )
-                : `${streamingResults.length} file(s) processed`}
+                : `${streamingResults.filter(r => r.is_primary_result !== false).length} file(s) processed`}
             </p>
           </div>
           
@@ -292,18 +292,32 @@ export function ResultsDisplay() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="bg-white rounded-lg border border-gray-200 px-4 py-3">
               <p className="text-sm font-medium text-gray-500">Total Files</p>
-              <p className="text-2xl font-semibold text-gray-900">{streamingResults.length}</p>
+              <p className="text-2xl font-semibold text-gray-900">
+                {(() => {
+                  const primaryResults = streamingResults.filter(r => r.is_primary_result !== false);
+                  console.log('Total files calculation:', {
+                    totalResults: streamingResults.length,
+                    primaryResults: primaryResults.length,
+                    results: streamingResults.map(r => ({
+                      filename: r.filename,
+                      is_primary_result: r.is_primary_result,
+                      status: r.status
+                    }))
+                  });
+                  return primaryResults.length;
+                })()}
+              </p>
             </div>
             <div className="bg-white rounded-lg border border-green-200 px-4 py-3">
               <p className="text-sm font-medium text-green-600">Successful</p>
               <p className="text-2xl font-semibold text-green-600">
-                {streamingResults.filter(r => r.status === 'success').length}
+                {streamingResults.filter(r => r.status === 'success' && r.is_primary_result !== false).length}
               </p>
             </div>
             <div className="bg-white rounded-lg border border-red-200 px-4 py-3">
               <p className="text-sm font-medium text-red-600">Failed</p>
               <p className="text-2xl font-semibold text-red-600">
-                {streamingResults.filter(r => r.status === 'error').length}
+                {streamingResults.filter(r => r.status === 'error' && r.is_primary_result !== false).length}
               </p>
             </div>
           </div>

@@ -47,7 +47,6 @@ export function AnalysisOptions({ onTransformStart }: { onTransformStart: () => 
   const { 
     selectedFiles, 
     modelsData, 
-    setStreamingResults,
     addStreamingResult,
     setModelFields,
     setIsProcessing,
@@ -62,6 +61,7 @@ export function AnalysisOptions({ onTransformStart }: { onTransformStart: () => 
   const [activeTab, setActiveTab] = useState('model');
   const [estimatedTime, setEstimatedTime] = useState<string>('');
   const [open, setOpen] = useState(false);
+  const scrollAreaRef = React.useRef(null);
 
   useEffect(() => {
     if (modelsData?.ai_models?.default_model) {
@@ -124,7 +124,7 @@ export function AnalysisOptions({ onTransformStart }: { onTransformStart: () => 
 
   const handleTransform = async () => {
     if (!selectedModel) {
-      showToast('error', 'Please select an analysis model');
+      showToast('error', 'Please select an document schema');
       return;
     }
 
@@ -178,14 +178,18 @@ export function AnalysisOptions({ onTransformStart }: { onTransformStart: () => 
             model_fields: event.model_fields,
             processing_time: event.processing_time,
             was_summarized: event.was_summarized,
-            summarization_metrics: event.summarization_metrics
+            summarization_metrics: event.summarization_metrics,
+            is_primary_result: event.is_primary_result,
+            source_file: event.source_file
           });
         } else if (event.status === 'error') {
           addStreamingResult({
             filename: fname,
             status: 'error',
             error: event.error || 'Processing failed',
-            markdown_content: event.markdown_content
+            markdown_content: event.markdown_content,
+            is_primary_result: event.is_primary_result,
+            source_file: event.source_file
           });
         }
       }
@@ -220,18 +224,89 @@ export function AnalysisOptions({ onTransformStart }: { onTransformStart: () => 
     );
   };
 
+  const formatPythonType = (pythonType: string): string => {
+    // Clean up <class 'type'> format first
+    let cleanType = pythonType.replace(/<class '(.+?)'>/, '$1');
+    
+    // Convert Python type annotations to user-friendly format
+    const typeMap: Record<string, string> = {
+      'str': 'Text',
+      'int': 'Number (Integer)',
+      'float': 'Number (Decimal)',
+      'bool': 'Yes/No',
+      'datetime.datetime': 'Date & Time',
+      'datetime': 'Date & Time',
+      'date': 'Date',
+      'dict': 'Object',
+      'Any': 'Any type',
+    };
+    
+    // Handle Optional types
+    if (cleanType.includes('Optional[')) {
+      const innerType = cleanType.match(/Optional\[(.+)\]/)?.[1] || cleanType;
+      return `${formatPythonType(innerType)} (Optional)`;
+    }
+    
+    // Handle Union types
+    if (cleanType.includes('Union[')) {
+      const types = cleanType.match(/Union\[(.+)\]/)?.[1]?.split(',').map(t => t.trim()) || [];
+      return types.map(t => formatPythonType(t)).join(' or ');
+    }
+    
+    // Handle List types
+    if (cleanType.includes('List[') || cleanType.includes('list[')) {
+      const innerType = cleanType.match(/[Ll]ist\[(.+)\]/)?.[1] || 'items';
+      return `List of ${formatPythonType(innerType)}`;
+    }
+    
+    // Handle Dict types
+    if (cleanType.includes('Dict[') || cleanType.includes('dict[')) {
+      const match = cleanType.match(/[Dd]ict\[(.+?),\s*(.+)\]/);
+      if (match) {
+        return `Dictionary (${formatPythonType(match[1])} → ${formatPythonType(match[2])})`;
+      }
+      return 'Dictionary';
+    }
+    
+    // Check if it's a basic type we know
+    for (const [pyType, friendlyType] of Object.entries(typeMap)) {
+      if (cleanType === pyType || cleanType.endsWith('.' + pyType)) {
+        return friendlyType;
+      }
+    }
+    
+    // Clean up any remaining typing module prefixes and config module paths
+    cleanType = cleanType.replace(/typing\./gi, '');
+    cleanType = cleanType.replace(/config\.analysis_schemas\./gi, '');
+    
+    // If it's still a complex type, just return the cleaned version
+    return cleanType;
+  };
+
   const getFieldInfo = (fieldName: string) => {
     const field = schemaFields[fieldName];
-    if (!field) return { type: 'string', description: `Extract ${fieldName}` };
+    if (!field) return { 
+      type: 'Text', 
+      description: `Extract ${fieldName}`,
+      required: false,
+      constraints: null 
+    };
     
     if (typeof field === 'object') {
       return {
-        type: field.type || field.data_type || 'string',
-        description: field.description || field.help_text || `Extract ${fieldName} information`
+        type: formatPythonType(field.type || field.data_type || 'str'),
+        description: field.description || field.help_text || `Extract ${fieldName} information`,
+        required: field.required !== undefined ? field.required : false,
+        constraints: field.constraints || null
       };
     }
     
-    return { type: 'string', description: `Extract ${fieldName}` };
+    return { 
+      type: 'Text', 
+      description: `Extract ${fieldName}`,
+      required: false,
+      constraints: null 
+    };
   };
 
   if (!selectedFiles.length) return null;
@@ -250,7 +325,7 @@ export function AnalysisOptions({ onTransformStart }: { onTransformStart: () => 
           )}
         </CardTitle>
         <CardDescription>
-          Choose an analysis model and configure AI settings for data extraction
+          Choose a document schema and configure AI settings for data extraction
         </CardDescription>
       </CardHeader>
       
@@ -259,7 +334,7 @@ export function AnalysisOptions({ onTransformStart }: { onTransformStart: () => 
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="model" className="flex items-center gap-2">
               <Wand2 className="w-4 h-4" />
-              Analysis Model
+              Document Schema
             </TabsTrigger>
             <TabsTrigger value="ai" className="flex items-center gap-2">
               <Settings2 className="w-4 h-4" />
@@ -274,7 +349,7 @@ export function AnalysisOptions({ onTransformStart }: { onTransformStart: () => 
           <TabsContent value="model" className="mt-6 space-y-4">
             <div>
               <Label htmlFor="modelSelect" className="text-sm font-semibold mb-2 block">
-                Select Analysis Model
+                Select Document Schema
               </Label>
               
               {/* Searchable Dropdown using Command */}
@@ -288,7 +363,7 @@ export function AnalysisOptions({ onTransformStart }: { onTransformStart: () => 
                   >
                     {selectedModel
                       ? modelsData?.models[selectedModel]?.name
-                      : "Search and select an analysis model..."}
+                      : "Search and select an document schema..."}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
@@ -342,38 +417,71 @@ export function AnalysisOptions({ onTransformStart }: { onTransformStart: () => 
                     {Object.keys(schemaFields).length} fields
                   </Badge>
                 </div>
-                <ScrollArea className="h-32 w-full rounded-lg border bg-muted/20 p-3">
-                  <div className="flex flex-wrap gap-2">
-                    {Object.keys(schemaFields).map((fieldName) => {
-                      const fieldInfo = getFieldInfo(fieldName);
-                      return (
-                        <TooltipProvider key={fieldName}>
-                          <Tooltip>
+                <TooltipProvider>
+                  <ScrollArea ref={scrollAreaRef} className="h-32 w-full rounded-lg border bg-muted/20 p-3">
+                    <div className="flex flex-wrap gap-2">
+                      {Object.keys(schemaFields).map((fieldName) => {
+                        const fieldInfo = getFieldInfo(fieldName);
+                        return (
+                          <Tooltip key={fieldName}>
                             <TooltipTrigger asChild>
                               <Badge
                                 variant="outline"
-                                className="cursor-help border-primary/30 bg-primary/10 text-primary hover:bg-primary/20"
+                                className="cursor-help border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
                               >
                                 {fieldName}
+                                {fieldInfo.required && (
+                                  <span className="ml-1 text-red-500">*</span>
+                                )}
                               </Badge>
                             </TooltipTrigger>
-                            <TooltipContent className="max-w-xs">
-                              <div className="space-y-1">
-                                <p className="font-semibold text-xs">Field: {fieldName}</p>
-                                <p className="text-xs">
-                                  <span className="font-medium">Type:</span> {fieldInfo.type}
-                                </p>
-                                <p className="text-xs">
-                                  <span className="font-medium">Description:</span> {fieldInfo.description}
-                                </p>
+                            <TooltipContent>
+                              <div className="space-y-2">
+                                <div className="border-b pb-1">
+                                  <p className="font-semibold text-sm">{fieldName}</p>
+                                </div>
+                                
+                                <div className="space-y-1.5">
+                                  <div className="flex items-start gap-2">
+                                    <span className="font-medium text-xs min-w-[60px]">Type:</span>
+                                    <span className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">
+                                      {fieldInfo.type}
+                                    </span>
+                                  </div>
+                                  
+                                  {fieldInfo.description && (
+                                    <div className="flex items-start gap-2">
+                                      <span className="font-medium text-xs min-w-[60px]">About:</span>
+                                      <span className="text-xs leading-relaxed">
+                                        {fieldInfo.description}
+                                      </span>
+                                    </div>
+                                  )}
+                                  
+                                  <div className="flex items-start gap-2">
+                                    <span className="font-medium text-xs min-w-[60px]">Required:</span>
+                                    <span className={`text-xs font-medium ${fieldInfo.required ? 'text-red-500' : 'text-green-500'}`}>
+                                      {fieldInfo.required ? 'Yes' : 'No (Optional)'}
+                                    </span>
+                                  </div>
+                                  
+                                  {fieldInfo.constraints && (
+                                    <div className="flex items-start gap-2">
+                                      <span className="font-medium text-xs min-w-[60px]">Limits:</span>
+                                      <span className="text-xs">
+                                        {fieldInfo.constraints}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </TooltipContent>
                           </Tooltip>
-                        </TooltipProvider>
-                      );
-                    })}
-                  </div>
-                </ScrollArea>
+                        );
+                      })}
+                    </div>
+                  </ScrollArea>
+                </TooltipProvider>
               </div>
             )}
           </TabsContent>

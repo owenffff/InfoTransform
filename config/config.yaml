@@ -165,6 +165,8 @@ processing:
         - md
         - html
         - msg
+      archives:
+        - zip
   
   # Analysis performance settings
   analysis:

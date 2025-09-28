@@ -12,6 +12,8 @@ export interface FileResult {
     summary_length: number;
     compression_ratio: number;
   };
+  is_primary_result?: boolean;
+  source_file?: string;
 }
 
 export interface StreamingEvent {
@@ -36,6 +38,8 @@ export interface StreamingEvent {
     summary_length: number;
     compression_ratio: number;
   };
+  is_primary_result?: boolean;
+  source_file?: string;
   data?: FileResult;
   error?: string;
   summary?: {

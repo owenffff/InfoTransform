@@ -191,6 +191,10 @@ class Config:
     def ALLOWED_DOCUMENT_EXTENSIONS(self):
         return set(self.get('processing.upload.allowed_extensions.documents', []))
     
+    @property
+    def ALLOWED_ARCHIVE_EXTENSIONS(self):
+        return set(self.get('processing.upload.allowed_extensions.archives', []))
+    
     # Batch processing from YAML
     @property
     def MAX_CONCURRENT_PROCESSES(self):
@@ -341,6 +345,7 @@ MAX_CONTENT_LENGTH = config.MAX_CONTENT_LENGTH
 ALLOWED_IMAGE_EXTENSIONS = config.ALLOWED_IMAGE_EXTENSIONS
 ALLOWED_AUDIO_EXTENSIONS = config.ALLOWED_AUDIO_EXTENSIONS
 ALLOWED_DOCUMENT_EXTENSIONS = config.ALLOWED_DOCUMENT_EXTENSIONS
+ALLOWED_ARCHIVE_EXTENSIONS = config.ALLOWED_ARCHIVE_EXTENSIONS
 MAX_CONCURRENT_PROCESSES = config.MAX_CONCURRENT_PROCESSES
 BATCH_TIMEOUT = config.BATCH_TIMEOUT
 MAX_ZIP_SIZE = config.MAX_ZIP_SIZE
