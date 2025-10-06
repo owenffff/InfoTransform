@@ -4,9 +4,10 @@ This guide explains how to run InfoTransform using Docker, making it easy to dep
 
 ## 📋 Prerequisites
 
-- **Docker** (version 20.10 or higher)
-- **Docker Compose** (version 2.0 or higher)
+- **Docker** (version 20.10 or higher) with Docker Compose V2
 - **OpenAI API Key** (required for AI processing)
+
+> **Note**: This guide uses `docker compose` (Docker Compose V2) which is the modern syntax. If you're using an older version, replace `docker compose` with `docker-compose` in all commands.
 
 ### Installing Docker
 
@@ -41,13 +42,13 @@ OPENAI_API_KEY=sk-your-actual-api-key-here
 **Production Mode** (optimized, no hot-reload):
 
 ```bash
-docker-compose up --build
+docker compose up --build
 ```
 
 **Development Mode** (with hot-reload for code changes):
 
 ```bash
-docker-compose -f docker-compose.dev.yml up --build
+docker compose -f docker-compose.dev.yml up --build
 ```
 
 ### 4. Access the Application
@@ -62,52 +63,52 @@ docker-compose -f docker-compose.dev.yml up --build
 
 ```bash
 # Start in production mode (detached)
-docker-compose up -d
+docker compose up -d
 
 # Start in development mode with live reload
-docker-compose -f docker-compose.dev.yml up
+docker compose -f docker-compose.dev.yml up
 
 # Rebuild and start (use after code changes in production)
-docker-compose up --build
+docker compose up --build
 ```
 
 ### Stopping Services
 
 ```bash
 # Stop services (keeps containers)
-docker-compose stop
+docker compose stop
 
 # Stop and remove containers
-docker-compose down
+docker compose down
 
 # Stop and remove containers + volumes (clears data)
-docker-compose down -v
+docker compose down -v
 ```
 
 ### Viewing Logs
 
 ```bash
 # View all logs
-docker-compose logs
+docker compose logs
 
 # Follow logs in real-time
-docker-compose logs -f
+docker compose logs -f
 
 # View logs for specific service
-docker-compose logs -f infotransform
+docker compose logs -f infotransform
 ```
 
 ### Managing Containers
 
 ```bash
 # List running containers
-docker-compose ps
+docker compose ps
 
 # Restart services
-docker-compose restart
+docker compose restart
 
 # Execute command in running container
-docker-compose exec infotransform bash
+docker compose exec infotransform bash
 
 # View resource usage
 docker stats
@@ -180,11 +181,11 @@ lsof -ti:8000 | xargs kill -9
 
 ```bash
 # Check logs for errors
-docker-compose logs
+docker compose logs
 
 # Remove old containers and rebuild
-docker-compose down -v
-docker-compose up --build
+docker compose down -v
+docker compose up --build
 ```
 
 ### Permission Issues (Linux)
@@ -235,7 +236,7 @@ git clone <repo>
 cd InfoTransform
 cp .env.docker .env
 # Edit .env with production keys
-docker-compose up -d
+docker compose up -d
 ```
 
 **2. AWS ECS / Google Cloud Run**
@@ -276,7 +277,7 @@ The backend includes built-in health checks:
 
 ```bash
 # Check if services are healthy
-docker-compose ps
+docker compose ps
 
 # Manual health check
 curl http://localhost:8000/docs
@@ -299,11 +300,11 @@ docker system df
 git pull origin main
 
 # Rebuild and restart
-docker-compose down
-docker-compose up --build -d
+docker compose down
+docker compose up --build -d
 
 # Check logs
-docker-compose logs -f
+docker compose logs -f
 ```
 
 ## 📝 Advanced Usage
@@ -334,14 +335,14 @@ services:
 Run with:
 
 ```bash
-docker-compose --profile production up
+docker compose --profile production up
 ```
 
 ## 💡 Tips
 
 1. **Faster Rebuilds**: Use BuildKit for improved build performance
    ```bash
-   DOCKER_BUILDKIT=1 docker-compose build
+   DOCKER_BUILDKIT=1 docker compose build
    ```
 
 2. **Clean Docker Cache**: Free up disk space
@@ -351,7 +352,7 @@ docker-compose --profile production up
 
 3. **Inspect Container**: Debug issues inside the container
    ```bash
-   docker-compose exec infotransform bash
+   docker compose exec infotransform bash
    ```
 
 4. **Copy Files**: Transfer files to/from container
@@ -372,10 +373,10 @@ docker-compose --profile production up
 If you encounter issues:
 
 1. Check the [Troubleshooting](#-troubleshooting) section above
-2. Review Docker logs: `docker-compose logs -f`
+2. Review Docker logs: `docker compose logs -f`
 3. Verify `.env` configuration
 4. Open an issue on [GitHub](https://github.com/owenffff/InfoTransform/issues)
 
 ---
 
-**Ready to transform documents?** Run `docker-compose up` and visit http://localhost:3000 🚀
+**Ready to transform documents?** Run `docker compose up` and visit http://localhost:3000 🚀

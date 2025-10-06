@@ -123,7 +123,11 @@ class Config:
     # Server settings (environment-specific)
     @property
     def PORT(self):
-        return int(os.getenv('PORT', self.get('api.port', 8000)))
+        port_str = os.getenv('PORT', str(self.get('api.port', 8000))).strip()
+        try:
+            return int(port_str)
+        except ValueError:
+            return self.get('api.port', 8000)
     
     # Model settings from YAML - updated for new structure
     @property

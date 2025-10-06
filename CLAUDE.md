@@ -80,6 +80,31 @@ npm run clean
 # uv run pytest tests/
 ```
 
+### Docker Development
+```bash
+# Build and start development environment with Docker
+docker-compose up --build
+
+# Start existing containers
+docker-compose up
+
+# Stop containers
+docker-compose down
+
+# View logs
+docker-compose logs -f
+
+# Rebuild after dependency changes
+docker-compose up --build
+```
+
+**Docker Features:**
+- Hot-reloading for both frontend and backend
+- Source code mounted as volumes for live changes
+- Corporate CA certificate support (place cert at `certs/corporate-ca.crt`)
+- UV installed via pip for better corporate network compatibility
+- All services accessible at same ports (3000, 8000)
+
 ## Key API Endpoints
 
 ### Backend API (FastAPI - Port 8000)
@@ -170,8 +195,10 @@ class YourModel(BaseModel):
 - **Framework**: Next.js 14, React 18, TypeScript 5
 - **UI Libraries**: Tailwind CSS, lucide-react, react-dropzone
 - **State Management**: Zustand
-- **Utilities**: clsx, tailwind-merge, xlsx
+- **Utilities**: clsx, tailwind-merge
 - **Package Manager**: npm
+
+Note: Excel/CSV export is handled server-side by the Python backend using pandas.
 
 ## Performance Considerations
 
@@ -199,18 +226,21 @@ class YourModel(BaseModel):
 InfoTransform is designed to run on **Windows**, **WSL**, and **macOS/Linux**. The codebase uses cross-platform tools and conventions:
 
 - **Path Handling**: Backend uses `pathlib.Path` throughout for OS-agnostic path operations
-- **Environment Variables**: Uses `cross-env` and `dotenv-cli` for consistent env var handling
-- **npm Scripts**: Updated to work across all platforms without shell-specific syntax
+- **Environment Variables**: Uses `dotenv-cli` for loading `.env` files on all platforms
+- **npm Scripts**: All scripts work cross-platform without bash-specific syntax
 - **Python Execution**: Uses `uv run python` which works on all platforms
+- **Directory Operations**: Uses `os.makedirs(..., exist_ok=True)` and pathlib for cross-platform compatibility
 
 ### Platform-Specific Notes
 
 #### Windows Users
-- Use provided batch files for convenience:
-  - `setup.bat` - One-time setup script
+- **Recommended**: Use provided batch files for convenience:
+  - `setup.bat` - One-time setup script (installs dependencies, creates .env)
   - `dev.bat` - Start development server
+- **PowerShell/CMD**: Standard `npm run dev` works in PowerShell and CMD
 - Ensure Python is accessible as `python` command
-- PowerShell users may need to adjust execution policy
+- Copy `.env.example` to `.env` and configure `OPENAI_API_KEY`
+- All npm scripts are PowerShell-compatible (no bash syntax used)
 
 #### WSL Users  
 - Follow Linux setup instructions
@@ -221,12 +251,20 @@ InfoTransform is designed to run on **Windows**, **WSL**, and **macOS/Linux**. T
 - No special considerations needed
 - Use standard bash/zsh commands
 
+### Known Compatibility Issues (Resolved)
+
+**PowerShell Variable Substitution (Fixed)**: Earlier versions used bash-style `${VAR:-default}` syntax in npm scripts, which failed in PowerShell. This has been resolved:
+- npm scripts now rely on `.env` file for default values via `dotenv-cli`
+- Python config has fallback logic for invalid environment variables
+- All scripts tested on Windows PowerShell, CMD, and Unix shells
+
 ### When Making Changes
-- Always use `pathlib.Path` for file operations, never hardcoded paths
-- Test path separators work on all platforms (`/` and `\`)
+- Always use `pathlib.Path` for file operations in Python, never hardcoded paths
+- Use `os.path.join()` or Path operators (`/`) instead of string concatenation
 - Use `os.makedirs()` with `exist_ok=True` for directory creation
-- Avoid shell-specific commands in npm scripts
-- Use cross-platform npm packages (`cross-env`, `concurrently`, etc.)
+- Avoid bash-specific syntax in npm scripts (use `&&` not `;`, avoid `$VAR` expansion)
+- Use cross-platform npm packages (`concurrently`, `dotenv-cli`)
+- Test changes on both Windows and Unix if modifying paths or environment handling
 
 ## Legacy Frontend
 

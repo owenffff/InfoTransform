@@ -1,0 +1,30 @@
+# Enforce Unix (LF) line endings for shell scripts
+# This prevents issues on Windows/WSL where Git might convert to CRLF
+*.sh text eol=lf
+
+# Ensure Python files use LF
+*.py text eol=lf
+
+# Ensure JavaScript/TypeScript files use LF
+*.js text eol=lf
+*.jsx text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.json text eol=lf
+
+# Docker files should use LF
+Dockerfile* text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Documentation can use native line endings
+*.md text
+*.txt text
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary

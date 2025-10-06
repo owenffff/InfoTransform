@@ -1,10 +1,8 @@
-version: '3.8'
-
 services:
   infotransform:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: infotransform
     ports:
       - "${PORT:-8000}:${PORT:-8000}"
@@ -17,28 +15,24 @@ services:
       - PORT=${PORT:-8000}
       - FRONTEND_PORT=${FRONTEND_PORT:-3000}
       - QUIET_MODE=${QUIET_MODE:-false}
-      - NODE_ENV=production
+      - NODE_ENV=development
       - PYTHONUNBUFFERED=1
     volumes:
+      - ./backend:/app/backend
+      - ./config:/app/config
+      - ./frontend:/app/frontend
+      - ./app.py:/app/app.py
       - ./data/uploads:/app/data/uploads
       - ./data/temp_extracts:/app/data/temp_extracts
       - ./logs:/app/logs
-      - ./config:/app/config
+      - /app/frontend/node_modules
+      - /app/frontend/.next
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
     networks:
       - infotransform-network
+    stdin_open: true
+    tty: true
 
 networks:
   infotransform-network:
     driver: bridge
-
-volumes:
-  uploads:
-  temp_extracts:
-  logs:
