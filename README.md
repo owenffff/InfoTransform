@@ -21,85 +21,76 @@ InfoTransform is a powerful document processing tool that converts various file 
 - **Export Options**: Download results as Excel or CSV files
 - **Modern UI**: Clean, responsive interface built with Tailwind CSS
 
-## 🚀 Quick Start
+## 🚀 Getting Started
+
+This guide will get you a copy of the project up and running on your local machine for development and testing purposes.
 
 ### Prerequisites
 
-- Python 3.11 or higher
-- Node.js 18 or higher
-- [UV package manager](https://github.com/astral-sh/uv) for Python
-- OpenAI API key (or compatible AI service)
+*   **Node.js**: Version 18 or higher.
+*   **Python**: Version 3.11 or higher.
+*   **uv**: A fast Python package installer. You can install it by following the instructions [here](https://github.com/astral-sh/uv).
 
 ### Installation
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/InfoTransform.git
-   cd InfoTransform
-   ```
+1.  **Clone the repository:**
 
-2. **Backend Setup (Python with UV)**
-   ```bash
-   # Install UV if you haven't already
-   curl -LsSf https://astral.sh/uv/install.sh | sh
+    ```bash
+    git clone https://github.com/owenffff/InfoTransform.git
+    cd InfoTransform
+    ```
 
-   # Create virtual environment
-   uv venv
+2.  **Set up the Backend (Python):**
 
-   # Activate virtual environment
-   # On macOS/Linux:
-   source .venv/bin/activate
-   # On Windows:
-   .venv\Scripts\activate
+    ```bash
+    # Create a virtual environment
+    uv venv
 
-   # Install Python dependencies
-   uv sync
+    # Activate the virtual environment
+    # On macOS/Linux:
+    source .venv/bin/activate
+    # On Windows (Command Prompt):
+    .venv\Scripts\activate.bat
+    # On Windows (PowerShell):
+    .venv\Scripts\Activate.ps1
 
-   # Copy environment variables
-   cp .env.example .env
-   # Edit .env with your API keys
-   ```
+    # Install Python dependencies
+    uv sync
+    ```
 
-3. **Frontend Setup (Node.js)**
-   ```bash
-   # Install Node dependencies
-   npm install
+3.  **Set up the Frontend (Node.js):**
 
-   # Build frontend assets
-   npm run build
-   ```
+    ```bash
+    # Install Node.js dependencies
+    npm install
+    ```
 
-4. **Configure Environment Variables**
-   
-   Edit `.env` file with your settings:
-   ```env
-   # Required
-   OPENAI_API_KEY=your_openai_api_key_here
-   
-   # Optional
-   PORT=8000
-   UPLOAD_FOLDER=data/uploads
-   TEMP_EXTRACT_DIR=data/temp_extracts
-   MAX_FILE_SIZE=52428800  # 50MB
-   MAX_ZIP_SIZE=104857600  # 100MB
-   ```
+4.  **Configure Environment Variables:**
 
-5. **Run the Application**
-   ```bash
-   # Development mode (with auto-reload)
-   npm run dev
+    Create a `.env` file in the root of the project by copying the example file:
 
-   # Or run backend and frontend separately:
-   # Terminal 1 - Frontend watch mode:
-   npm run dev:frontend
-   
-   # Terminal 2 - Backend:
-   uv run python app.py
-   ```
+    ```bash
+    cp .env.example .env
+    ```
 
-6. **Access the Application**
-   
-   Open your browser and navigate to: `http://localhost:8000`
+    Then, open the `.env` file and add your `OPENAI_API_KEY`. You can also adjust the `PORT` and `FRONTEND_PORT` if needed.
+
+    ```env
+    # .env
+    OPENAI_API_KEY="your_openai_api_key_here"
+    PORT=8000
+    FRONTEND_PORT=3000
+    ```
+
+### Running the Application
+
+Once you've completed the setup, you can start the development server:
+
+```bash
+npm run dev
+```
+
+This single command will start both the backend API and the frontend application concurrently. The application will be available at `http://localhost:3000` (or whatever `FRONTEND_PORT` you have set).
 
 ## 📁 Project Structure
 

@@ -15,10 +15,10 @@
     "build:legacy": "npm run build:css:legacy && npm run build:js:legacy",
     "dev:legacy": "concurrently \"npm run watch:css:legacy\" \"npm run watch:js:legacy\" \"uv run python app.py\"",
     "build:next": "cd frontend && npm run build",
-    "dev:next": "cd frontend && npm run dev",
-    "dev:frontend": "cd frontend && npm run dev",
-    "dev:api": "cross-env PORT=8000 uv run python app.py",
-    "dev": "concurrently -k --names \"next,api\" \"npm run dev:next\" \"cross-env PORT=8000 uv run python app.py\"",
+    "dev:next": "dotenv -- cross-env-shell \"cd frontend && npm run dev -- -p $FRONTEND_PORT\"",
+    "dev:frontend": "dotenv -- cross-env-shell \"cd frontend && npm run dev -- -p $FRONTEND_PORT\"",
+    "dev:api": "dotenv -- cross-env-shell \"uv run python app.py --port $PORT\"",
+    "dev": "dotenv -- concurrently -k --kill-others-on-fail --names \"next,api\" \"npm run dev:next\" \"npm run dev:api\"",
     "build": "npm run build:next",
     "clean": "node -e \"const fs=require('fs'); const path=require('path'); const dirs=['frontend/.next','frontend/out','frontend-legacy/dist']; dirs.forEach(d=>{try{fs.rmSync(d,{recursive:true,force:true})}catch(e){}});\""
   },
@@ -37,6 +37,7 @@
     "autoprefixer": "^10.4.21",
     "concurrently": "^9.2.0",
     "cross-env": "^10.1.0",
+    "dotenv-cli": "^10.0.0",
     "esbuild": "^0.25.5",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17"
