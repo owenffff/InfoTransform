@@ -54,15 +54,15 @@ async def lifespan(app: FastAPI):
     """Manage application lifespan"""
     # Startup
     if init_processors():
-        print("✅ Processors initialized successfully")
+        print("[OK] Processors initialized successfully")
     else:
-        print("❌ Failed to initialize processors. Please check your configuration.")
+        print("[ERROR] Failed to initialize processors. Please check your configuration.")
     
     yield
     
     # Shutdown
     await shutdown_processor()  # Shutdown the optimized processor
-    print("✅ Cleanup completed")
+    print("[OK] Cleanup completed")
 
 
 # Initialize FastAPI app

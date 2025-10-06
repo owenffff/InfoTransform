@@ -36,7 +36,7 @@ class VisionProcessor:
         # Add Azure Document Intelligence endpoint if configured
         if config.DOCINTEL_ENDPOINT:
             init_params['docintel_endpoint'] = config.DOCINTEL_ENDPOINT
-            print(f"✓ Azure Document Intelligence enabled: {config.DOCINTEL_ENDPOINT}")
+            print(f"[OK] Azure Document Intelligence enabled: {config.DOCINTEL_ENDPOINT}")
         
         self.md = MarkItDown(**init_params)
     

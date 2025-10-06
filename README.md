@@ -94,7 +94,7 @@ InfoTransform is a powerful document processing tool that converts various file 
    npm run dev:frontend
    
    # Terminal 2 - Backend:
-   python app.py
+   uv run python app.py
    ```
 
 6. **Access the Application**
