@@ -70,7 +70,14 @@ This guide will get you a copy of the project up and running on your local machi
     Create a `.env` file in the root of the project by copying the example file:
 
     ```bash
+    # On macOS/Linux:
     cp .env.example .env
+    
+    # On Windows (Command Prompt):
+    copy .env.example .env
+    
+    # On Windows (PowerShell):
+    Copy-Item .env.example .env
     ```
 
     Then, open the `.env` file and add your `OPENAI_API_KEY`. You can also adjust the `PORT` and `FRONTEND_PORT` if needed.
@@ -146,7 +153,7 @@ npm run watch:js     # Watch JS changes
 npm run clean
 ```
 
-### Adding New Analysis Models
+### Adding New document schemas
 
 1. Edit `config/analysis_schemas.py`
 2. Add your model configuration:
@@ -228,7 +235,7 @@ Once the application is running, you can access the interactive API documentatio
 - `GET /` - Main web interface
 - `POST /api/transform` - Transform single file
 - `POST /api/transform` - Stream transformation for multiple files
-- `GET /api/models` - List available analysis models
+- `GET /api/models` - List available document schemas
 - `POST /api/download-results` - Download results as Excel/CSV
 
 ## 🐛 Troubleshooting
@@ -251,11 +258,40 @@ Once the application is running, you can access the interactive API documentatio
    - Check file size limits in configuration
    - Ensure `data/uploads/` directory exists and is writable
 
+5. **Windows-specific issues**
+   - If `npm run dev` fails, ensure you have `uv` installed and in PATH
+   - On PowerShell, you may need to run: `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`
+   - If you get "command not found" errors, try running commands with explicit `npx` prefix
+   - For WSL users: ensure all files use LF line endings, not CRLF
+
+### Platform-Specific Notes
+
+#### Windows
+- The project uses `cross-env` to ensure environment variables work across platforms
+- Make sure Python is accessible as `python` (not just `python3`)
+- If using Windows Command Prompt, some npm scripts may need adjustments
+
+#### WSL (Windows Subsystem for Linux)
+- Follow Linux instructions for setup
+- Ensure file permissions are correct: `chmod +x app.py`
+- May need to install additional system dependencies for markitdown
+
+#### macOS/Linux
+- No special considerations needed
+- Ensure execute permissions on Python files if needed
+
 ### Debug Mode
 
 For detailed logging, set the environment variable:
 ```bash
-export RUST_LOG=debug
+# macOS/Linux:
+export QUIET_MODE=false
+
+# Windows Command Prompt:
+set QUIET_MODE=false
+
+# Windows PowerShell:
+$env:QUIET_MODE="false"
 ```
 
 ## 🤝 Contributing

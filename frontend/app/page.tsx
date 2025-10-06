@@ -33,7 +33,7 @@ export default function Home() {
       })
       .catch(error => {
         console.error('Failed to load models:', error);
-        showToast('error', 'Failed to load analysis models. Please refresh the page.');
+        showToast('error', 'Failed to load document schemas. Please refresh the page.');
       });
   }, [setModelsData]);
 
@@ -80,8 +80,7 @@ export default function Home() {
     return 'inactive';
   };
 
-  const StepIndicator = ({ step, title, icon, status }: { 
-    step: number; 
+  const StepIndicator = ({ title, icon, status }: { 
     title: string; 
     icon: React.ReactNode;
     status: string;
@@ -97,7 +96,7 @@ export default function Home() {
           status === 'active' ? 'bg-background border-primary text-primary' :
           'bg-muted border-muted-foreground/30'}
       `}>
-        {status === 'completed' ? '✓' : step}
+        {status === 'completed' ? '✓' : icon}
       </div>
       <div className="flex items-center gap-2">
         {icon}
@@ -129,28 +128,24 @@ export default function Home() {
             {/* Progress Steps */}
             <div className="hidden lg:flex items-center gap-8">
               <StepIndicator 
-                step={1} 
                 title="Upload" 
                 icon={<FileText className="w-4 h-4" />}
                 status={getStepStatus(1)} 
               />
               <Separator className="w-8" />
               <StepIndicator 
-                step={2} 
                 title="Configure" 
                 icon={<Sparkles className="w-4 h-4" />}
                 status={getStepStatus(2)} 
               />
               <Separator className="w-8" />
               <StepIndicator 
-                step={3} 
                 title="Process" 
                 icon={<Activity className="w-4 h-4" />}
                 status={getStepStatus(3)} 
               />
               <Separator className="w-8" />
               <StepIndicator 
-                step={4} 
                 title="Results" 
                 icon={<FileText className="w-4 h-4" />}
                 status={getStepStatus(4)} 
@@ -167,25 +162,21 @@ export default function Home() {
         <div className="lg:hidden mb-6">
           <div className="flex items-center justify-between gap-2">
             <StepIndicator 
-              step={1} 
               title="Upload" 
               icon={<></>}
               status={getStepStatus(1)} 
             />
             <StepIndicator 
-              step={2} 
               title="Configure" 
               icon={<></>}
               status={getStepStatus(2)} 
             />
             <StepIndicator 
-              step={3} 
               title="Process" 
               icon={<></>}
               status={getStepStatus(3)} 
             />
             <StepIndicator 
-              step={4} 
               title="Results" 
               icon={<></>}
               status={getStepStatus(4)} 

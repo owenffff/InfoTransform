@@ -29,13 +29,6 @@ file_management:
   cleanup_check_interval: ${CLEANUP_INTERVAL:-10}         # Seconds between cleanup checks
   use_temp_directory: ${USE_TEMP_DIR:-true}               # Use system temp directory
 
-# System Resource Limits
-resource_limits:
-  max_memory_per_file_mb: ${MAX_MEMORY_PER_FILE:-100}    # MB limit per file
-  max_total_memory_mb: ${MAX_TOTAL_MEMORY:-1000}         # Total memory limit
-  cpu_limit_percentage: ${CPU_LIMIT:-80}                 # Max CPU usage percentage
-  max_concurrent_operations: ${MAX_CONCURRENT_OPS:-50}    # Total concurrent operations
-
 # Performance Monitoring
 monitoring:
   enable_metrics: ${ENABLE_METRICS:-true}
@@ -43,13 +36,6 @@ monitoring:
   slow_operation_threshold: ${SLOW_THRESHOLD:-5.0}       # Seconds to flag as slow
   enable_profiling: ${ENABLE_PROFILING:-false}           # Detailed performance profiling
   log_level: ${PERF_LOG_LEVEL:-INFO}                    # Performance logging level
-
-# Streaming Configuration
-streaming:
-  buffer_size: ${STREAM_BUFFER_SIZE:-8192}              # Bytes for streaming buffer
-  chunk_delay: ${STREAM_CHUNK_DELAY:-0.01}              # Seconds between chunks
-  enable_compression: ${STREAM_COMPRESSION:-false}       # Enable response compression
-  heartbeat_interval: ${HEARTBEAT_INTERVAL:-30}         # Seconds between keepalive messages
 
 # Performance Profiles
 # The active profile is set by the 'active_profile' key below.
@@ -61,25 +47,21 @@ profiles:
     markdown_conversion.max_workers: 5
     ai_processing.batch_size: 5
     ai_processing.max_concurrent_batches: 2
-    resource_limits.max_total_memory_mb: 500
     
   # Balanced profile (default)
   balanced:
     markdown_conversion.max_workers: 10
     ai_processing.batch_size: 10
     ai_processing.max_concurrent_batches: 3
-    resource_limits.max_total_memory_mb: 1000
     
   # High performance profile for powerful servers
   high_performance:
     markdown_conversion.max_workers: 20
     ai_processing.batch_size: 15
     ai_processing.max_concurrent_batches: 5
-    resource_limits.max_total_memory_mb: 2000
     
   # Ultra profile for maximum throughput
   ultra:
     markdown_conversion.max_workers: 50
     ai_processing.batch_size: 25
     ai_processing.max_concurrent_batches: 10
-    resource_limits.max_total_memory_mb: 4000

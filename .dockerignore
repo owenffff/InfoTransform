@@ -21,15 +21,20 @@ dmypy.json
 .pyre/
 .ruff_cache/
 
-# Node
+# Node.js
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .npm
+package-lock.json
 
-# Frontend build artifacts (will be built in Docker)
+# Frontend build artifacts
+frontend/.next/
+frontend/out/
 frontend/dist/
+frontend/build/
+frontend-legacy/dist/
 
 # Environment files
 .env
@@ -71,8 +76,10 @@ data/temp_extracts/*
 
 # Docker
 Dockerfile
+Dockerfile.*
 docker-compose*.yml
 .dockerignore
+docker-entrypoint*.sh
 
 # CI/CD
 .github/

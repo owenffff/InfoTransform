@@ -195,23 +195,19 @@ class Config:
     def ALLOWED_ARCHIVE_EXTENSIONS(self):
         return set(self.get('processing.upload.allowed_extensions.archives', []))
     
-    # Batch processing from YAML
+    # File conversion from YAML (renamed from 'batch' for clarity)
     @property
     def MAX_CONCURRENT_PROCESSES(self):
-        return self.get('processing.batch.max_concurrent', 5)
-    
-    @property
-    def BATCH_TIMEOUT(self):
-        return self.get('processing.batch.timeout_seconds', 300)
+        return self.get('processing.conversion.max_concurrent', 10)
     
     @property
     def MAX_ZIP_SIZE(self):
-        return self.get('processing.batch.max_zip_size_mb', 100) * 1024 * 1024
+        return self.get('processing.conversion.max_zip_size_mb', 100) * 1024 * 1024
     
     @property
     def TEMP_EXTRACT_DIR(self):
         # Use data directory in project root
-        folder = self.get('processing.batch.temp_extract_dir', 'temp_extracts')
+        folder = self.get('processing.conversion.temp_extract_dir', 'temp_extracts')
         return str(Path(__file__).parent.parent.parent / 'data' / folder)
     
     # Feature flags
@@ -347,6 +343,5 @@ ALLOWED_AUDIO_EXTENSIONS = config.ALLOWED_AUDIO_EXTENSIONS
 ALLOWED_DOCUMENT_EXTENSIONS = config.ALLOWED_DOCUMENT_EXTENSIONS
 ALLOWED_ARCHIVE_EXTENSIONS = config.ALLOWED_ARCHIVE_EXTENSIONS
 MAX_CONCURRENT_PROCESSES = config.MAX_CONCURRENT_PROCESSES
-BATCH_TIMEOUT = config.BATCH_TIMEOUT
 MAX_ZIP_SIZE = config.MAX_ZIP_SIZE
 TEMP_EXTRACT_DIR = config.TEMP_EXTRACT_DIR

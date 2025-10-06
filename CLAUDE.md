@@ -84,7 +84,7 @@ npm run clean
 
 ### Backend API (FastAPI - Port 8000)
 - `POST /api/transform` - Process files with streaming response (SSE)
-- `GET /api/models` - List available analysis models  
+- `GET /api/models` - List available document schemas  
 - `POST /api/download-results` - Export results as Excel/CSV
 - `GET /docs` - Swagger API documentation
 - `GET /redoc` - ReDoc API documentation
@@ -93,7 +93,7 @@ npm run clean
 - `/` - Main application interface
 - API calls are proxied from frontend to backend
 
-## Adding New Analysis Models
+## Adding New document schemas
 
 Edit `config/analysis_schemas.py`:
 
@@ -192,6 +192,41 @@ class YourModel(BaseModel):
 - CORS configured for all origins (restrict in production)
 - File size limits: 50MB single file, 100MB for ZIP archives
 - Automatic cleanup of uploaded files after processing
+
+## Cross-Platform Compatibility
+
+### Platform Support
+InfoTransform is designed to run on **Windows**, **WSL**, and **macOS/Linux**. The codebase uses cross-platform tools and conventions:
+
+- **Path Handling**: Backend uses `pathlib.Path` throughout for OS-agnostic path operations
+- **Environment Variables**: Uses `cross-env` and `dotenv-cli` for consistent env var handling
+- **npm Scripts**: Updated to work across all platforms without shell-specific syntax
+- **Python Execution**: Uses `uv run python` which works on all platforms
+
+### Platform-Specific Notes
+
+#### Windows Users
+- Use provided batch files for convenience:
+  - `setup.bat` - One-time setup script
+  - `dev.bat` - Start development server
+- Ensure Python is accessible as `python` command
+- PowerShell users may need to adjust execution policy
+
+#### WSL Users  
+- Follow Linux setup instructions
+- Ensure LF line endings (not CRLF)
+- May need additional system dependencies for markitdown
+
+#### macOS/Linux Users
+- No special considerations needed
+- Use standard bash/zsh commands
+
+### When Making Changes
+- Always use `pathlib.Path` for file operations, never hardcoded paths
+- Test path separators work on all platforms (`/` and `\`)
+- Use `os.makedirs()` with `exist_ok=True` for directory creation
+- Avoid shell-specific commands in npm scripts
+- Use cross-platform npm packages (`cross-env`, `concurrently`, etc.)
 
 ## Legacy Frontend
 

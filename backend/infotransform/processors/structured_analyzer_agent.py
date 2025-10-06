@@ -321,7 +321,7 @@ Content to analyze:
             List of analysis results
         """
         # Get max concurrent analyses from config
-        max_concurrent = self.config.get('processing.analysis.max_concurrent_analyses', 5)
+        max_concurrent = self.config.get('processing.analysis.max_concurrent', 5)
         semaphore = asyncio.Semaphore(max_concurrent)
         
         async def analyze_with_limit(filename: str, content: str) -> Dict[str, Any]:
@@ -339,7 +339,7 @@ Content to analyze:
         ]
         
         # Set timeout for batch analysis
-        batch_timeout = self.config.get('processing.analysis.timeouts.batch', 300)
+        batch_timeout = self.config.get('processing.analysis.batch_timeout', 300)
         
         try:
             results = await asyncio.wait_for(
@@ -352,7 +352,7 @@ Content to analyze:
             raise TimeoutError("Batch analysis timeout")
     
     def get_available_models(self) -> Dict[str, Dict[str, Any]]:
-        """Get information about available analysis models with detailed field info"""
+        """Get information about available document schemas with detailed field info"""
         import typing
         from typing import get_origin, get_args
         

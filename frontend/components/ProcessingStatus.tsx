@@ -180,7 +180,6 @@ export function ProcessingStatus() {
     <Card className="shadow-lg border-gray-200">
       <CardHeader>
         <CardTitle className="text-2xl flex items-center gap-2">
-          <span className="text-primary">3.</span>
           Processing Status
           {currentPhase !== 'complete' ? (
             <Badge variant="default" className="ml-auto">Processing</Badge>

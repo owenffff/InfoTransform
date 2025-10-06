@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  infotransform-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: infotransform-dev
+    ports:
+      - "${PORT:-8000}:${PORT:-8000}"
+      - "${FRONTEND_PORT:-3000}:${FRONTEND_PORT:-3000}"
+    env_file:
+      - .env
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      - PORT=${PORT:-8000}
+      - FRONTEND_PORT=${FRONTEND_PORT:-3000}
+      - QUIET_MODE=${QUIET_MODE:-false}
+      - NODE_ENV=development
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./backend:/app/backend
+      - ./config:/app/config
+      - ./frontend:/app/frontend
+      - ./app.py:/app/app.py
+      - ./data/uploads:/app/data/uploads
+      - ./data/temp_extracts:/app/data/temp_extracts
+      - ./logs:/app/logs
+      - /app/frontend/node_modules
+      - /app/frontend/.next
+    restart: unless-stopped
+    networks:
+      - infotransform-network
+    stdin_open: true
+    tty: true
+
+networks:
+  infotransform-network:
+    driver: bridge

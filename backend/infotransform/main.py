@@ -136,7 +136,7 @@ async def index():
 
 @app.get("/api/models")
 async def list_analysis_models():
-    """List available analysis models"""
+    """List available document schemas"""
     if not structured_analyzer:
         raise HTTPException(status_code=503, detail="Analyzer not initialized")
     

@@ -151,7 +151,6 @@ export function FileUpload() {
     <Card className="shadow-lg border-gray-200">
       <CardHeader>
         <CardTitle className="text-2xl flex items-center gap-2">
-          <span className="text-primary">1.</span>
           Upload Files
           {selectedFiles.length > 0 && (
             <Badge variant="secondary" className="ml-2">

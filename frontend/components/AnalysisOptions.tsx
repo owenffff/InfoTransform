@@ -312,7 +312,6 @@ export function AnalysisOptions({ onTransformStart }: { onTransformStart: () => 
     <Card className="shadow-lg border-gray-200">
       <CardHeader>
         <CardTitle className="text-2xl flex items-center gap-2">
-          <span className="text-primary">2.</span>
           Configure Extraction
           {estimatedTime && (
             <Badge variant="outline" className="ml-auto">
@@ -504,7 +503,7 @@ export function AnalysisOptions({ onTransformStart }: { onTransformStart: () => 
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground mt-2">
-                Choose the AI model for processing. GPT-4o recommended for best results.
+                Choose the AI model for processing.
               </p>
             </div>
 
