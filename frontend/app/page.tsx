@@ -12,7 +12,6 @@ import { showToast } from '@/components/Toast';
 import { Sparkles, FileText, Activity } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import ProcessingTasks from '@/components/ProcessingTasks';
-import { TooltipTest } from '@/components/TooltipTest';
 
 export default function Home() {
   const { 
@@ -163,8 +162,6 @@ export default function Home() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8 max-w-7xl">
-        {/* Tooltip Test Component */}
-        <TooltipTest />
         
         {/* Mobile Progress */}
         <div className="lg:hidden mb-6">
