@@ -18,7 +18,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
-        <TooltipProvider delayDuration={400}>
+        <TooltipProvider delayDuration={200}>
           {children}
         </TooltipProvider>
       </body>
