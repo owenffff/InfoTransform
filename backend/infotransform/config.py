@@ -20,13 +20,13 @@ class Config:
             # Fallback to old location for backward compatibility
             config_path = Path(__file__).parent.parent.parent / 'config.yaml'
         
-        with open(config_path, 'r') as f:
+        with open(config_path, 'r', encoding='utf-8') as f:
             self.yaml_config = yaml.safe_load(f)
         
         # Load performance configuration
         perf_config_path = Path(__file__).parent.parent.parent / 'config' / 'performance.yaml'
         if perf_config_path.exists():
-            with open(perf_config_path, 'r') as f:
+            with open(perf_config_path, 'r', encoding='utf-8') as f:
                 self.performance_config = yaml.safe_load(f)
         else:
             logger.info("Performance config not found, using defaults")

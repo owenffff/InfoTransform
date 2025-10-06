@@ -20,7 +20,7 @@
     "dev:api": "PORT=8000 python app.py",
     "dev": "concurrently -k --names \"next,api\" \"npm run dev:next\" \"PORT=8000 python app.py\"",
     "build": "npm run build:next",
-    "clean": "rm -rf frontend/.next frontend/out frontend-legacy/dist/*"
+    "clean": "node -e \"const fs=require('fs'); const path=require('path'); const dirs=['frontend/.next','frontend/out','frontend-legacy/dist']; dirs.forEach(d=>{try{fs.rmSync(d,{recursive:true,force:true})}catch(e){}});\""
   },
   "repository": {
     "type": "git",

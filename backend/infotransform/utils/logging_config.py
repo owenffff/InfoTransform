@@ -20,7 +20,7 @@ def _load_logging_config() -> Dict[str, Any]:
     if not config_path.exists():
         raise FileNotFoundError(f"Logging config not found at {config_path}")
     
-    with open(config_path, 'r') as f:
+    with open(config_path, 'r', encoding='utf-8') as f:
         return yaml.safe_load(f)
 
 def _parse_size(size_str: str) -> int:

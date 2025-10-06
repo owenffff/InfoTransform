@@ -22,7 +22,7 @@ import uvicorn
 
 from infotransform.config import config
 from infotransform.processors import VisionProcessor, AudioProcessor, BatchProcessor, StructuredAnalyzerAgent
-from backend.infotransform.api.document_transform_api import transform, shutdown_processor
+from infotransform.api.document_transform_api import transform, shutdown_processor
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -327,8 +327,8 @@ async def general_exception_handler(request: Request, exc: Exception):
 
 if __name__ == "__main__":
     # Run the FastAPI app with Uvicorn
-    print(f"🚀 Starting server on http://localhost:{config.PORT}")
-    print(f"📚 API documentation available at http://localhost:{config.PORT}/docs")
+    print(f"[START] Starting server on http://localhost:{config.PORT}")
+    print(f"[DOCS] API documentation available at http://localhost:{config.PORT}/docs")
     
     uvicorn.run(
         app,

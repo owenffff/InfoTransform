@@ -17,7 +17,7 @@ from infotransform.utils.logging_config import setup_logging, enable_quiet_mode
 if os.getenv('QUIET_MODE', '').lower() in ('true', '1', 'yes'):
     setup_logging()
     enable_quiet_mode()
-    print("🔇 Quiet mode enabled - reduced logging output")
+    print("[QUIET] Quiet mode enabled - reduced logging output")
 else:
     setup_logging()
 
@@ -27,8 +27,8 @@ if __name__ == "__main__":
     import uvicorn
     from infotransform.config import config
     
-    print(f"🚀 Starting server on http://localhost:{config.PORT}")
-    print(f"📚 API documentation available at http://localhost:{config.PORT}/docs")
+    print(f"[START] Starting server on http://localhost:{config.PORT}")
+    print(f"[DOCS] API documentation available at http://localhost:{config.PORT}/docs")
     
     uvicorn.run(
         "infotransform.main:app",

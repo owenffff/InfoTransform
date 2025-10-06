@@ -25,10 +25,8 @@ import {
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Command,
   CommandEmpty,
@@ -61,7 +59,6 @@ export function AnalysisOptions({ onTransformStart }: { onTransformStart: () => 
   const [activeTab, setActiveTab] = useState('model');
   const [estimatedTime, setEstimatedTime] = useState<string>('');
   const [open, setOpen] = useState(false);
-  const scrollAreaRef = React.useRef(null);
 
   useEffect(() => {
     if (modelsData?.ai_models?.default_model) {
@@ -371,8 +368,7 @@ export function AnalysisOptions({ onTransformStart }: { onTransformStart: () => 
                   <Command>
                     <CommandInput placeholder="Search models..." className="h-9" />
                     <CommandEmpty>No model found.</CommandEmpty>
-                    <CommandGroup>
-                      <ScrollArea className="h-72">
+                    <CommandGroup className="max-h-72 overflow-y-auto">
                         {modelsData?.models && Object.entries(modelsData.models).map(([key, model]) => (
                           <CommandItem
                             key={key}
@@ -393,7 +389,6 @@ export function AnalysisOptions({ onTransformStart }: { onTransformStart: () => 
                             </div>
                           </CommandItem>
                         ))}
-                      </ScrollArea>
                     </CommandGroup>
                   </Command>
                 </PopoverContent>
@@ -417,9 +412,8 @@ export function AnalysisOptions({ onTransformStart }: { onTransformStart: () => 
                     {Object.keys(schemaFields).length} fields
                   </Badge>
                 </div>
-                <TooltipProvider>
-                  <ScrollArea ref={scrollAreaRef} className="h-32 w-full rounded-lg border bg-muted/20 p-3">
-                    <div className="flex flex-wrap gap-2">
+                <div className="h-32 w-full rounded-lg border bg-muted/20 p-3 overflow-y-auto custom-scrollbar">
+                  <div className="flex flex-wrap gap-2">
                       {Object.keys(schemaFields).map((fieldName) => {
                         const fieldInfo = getFieldInfo(fieldName);
                         return (
@@ -479,9 +473,8 @@ export function AnalysisOptions({ onTransformStart }: { onTransformStart: () => 
                           </Tooltip>
                         );
                       })}
-                    </div>
-                  </ScrollArea>
-                </TooltipProvider>
+                  </div>
+                </div>
               </div>
             )}
           </TabsContent>
