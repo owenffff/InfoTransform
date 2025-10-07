@@ -173,7 +173,7 @@ app:
 # API server configuration
 api:
   host: "0.0.0.0"  # Server bind address (use 0.0.0.0 to allow external connections)
-  port: 8000       # Default backend port (can be overridden by PORT environment variable)
+  port: 8000       # Default backend port (can be overridden by BACKEND_PORT or PORT environment variables)
 
 # ============================================================================
 # PROCESSING CONFIGURATION

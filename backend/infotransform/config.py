@@ -123,7 +123,8 @@ class Config:
     # Server settings (environment-specific)
     @property
     def PORT(self):
-        port_str = os.getenv('PORT', str(self.get('api.port', 8000))).strip()
+        # Try BACKEND_PORT first, then fall back to PORT (for Next.js compatibility), then YAML config
+        port_str = os.getenv('BACKEND_PORT', os.getenv('PORT', str(self.get('api.port', 8000)))).strip()
         try:
             return int(port_str)
         except ValueError:

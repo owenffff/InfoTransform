@@ -5,15 +5,15 @@ services:
       dockerfile: Dockerfile.dev
     container_name: infotransform
     ports:
-      - "${PORT:-8000}:${PORT:-8000}"
-      - "${FRONTEND_PORT:-3000}:${FRONTEND_PORT:-3000}"
+      - "${BACKEND_PORT:-8000}:${BACKEND_PORT:-8000}"
+      - "${PORT:-3000}:${PORT:-3000}"
     env_file:
       - .env
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.openai.com/v1}
-      - PORT=${PORT:-8000}
-      - FRONTEND_PORT=${FRONTEND_PORT:-3000}
+      - PORT=${PORT:-3000}
+      - BACKEND_PORT=${BACKEND_PORT:-8000}
       - QUIET_MODE=${QUIET_MODE:-false}
       - NODE_ENV=development
       - PYTHONUNBUFFERED=1

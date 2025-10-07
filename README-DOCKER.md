@@ -121,17 +121,18 @@ docker stats
 Default ports can be changed in your `.env` file:
 
 ```bash
-# External port mappings (host:container)
-PORT=8000          # Backend API port
-FRONTEND_PORT=3000 # Frontend UI port
+# Port configuration
+PORT=3000                 # Frontend Next.js port
+BACKEND_PORT=8000         # Backend FastAPI port
+NEXT_PUBLIC_BACKEND_PORT=8000  # Must match BACKEND_PORT
 ```
 
 To use different ports, modify `docker-compose.yml`:
 
 ```yaml
 ports:
-  - "8080:8000"  # Map host port 8080 to container port 8000
-  - "3001:3000"  # Map host port 3001 to container port 3000
+  - "8080:8000"  # Map host port 8080 to backend container port 8000
+  - "3001:3000"  # Map host port 3001 to frontend container port 3000
 ```
 
 ### Volume Mounts

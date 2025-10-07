@@ -56,8 +56,8 @@ RUN mkdir -p data/uploads data/temp_extracts logs
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV NODE_ENV=development
-ENV PORT=8000
-ENV FRONTEND_PORT=3000
+ENV PORT=3000
+ENV BACKEND_PORT=8000
 ENV PATH="/app/.venv/bin:$PATH"
 
 # Expose application ports

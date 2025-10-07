@@ -80,13 +80,14 @@ This guide will get you a copy of the project up and running on your local machi
     Copy-Item .env.example .env
     ```
 
-    Then, open the `.env` file and add your `OPENAI_API_KEY`. You can also adjust the `PORT` and `FRONTEND_PORT` if needed.
+    Then, open the `.env` file and add your `OPENAI_API_KEY`. You can also adjust the port numbers if needed.
 
     ```env
     # .env
     OPENAI_API_KEY="your_openai_api_key_here"
-    PORT=8000
-    FRONTEND_PORT=3000
+    PORT=3000                          # Frontend Next.js port
+    BACKEND_PORT=8000                  # Backend FastAPI port
+    NEXT_PUBLIC_BACKEND_PORT=8000      # Must match BACKEND_PORT
     ```
 
 ### Running the Application
@@ -97,7 +98,7 @@ Once you've completed the setup, you can start the development server:
 npm run dev
 ```
 
-This single command will start both the backend API and the frontend application concurrently. The application will be available at `http://localhost:3000` (or whatever `FRONTEND_PORT` you have set).
+This single command will start both the backend API and the frontend application concurrently. The application will be available at `http://localhost:3000` (or whatever `PORT` you have set for the frontend).
 
 ## 📁 Project Structure
 
