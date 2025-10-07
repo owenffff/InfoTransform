@@ -23,6 +23,7 @@ import uvicorn
 from infotransform.config import config
 from infotransform.processors import VisionProcessor, AudioProcessor, BatchProcessor, StructuredAnalyzerAgent
 from infotransform.api.document_transform_api import transform, shutdown_processor
+from infotransform.api.review_api import router as review_router
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -150,6 +151,9 @@ async def list_analysis_models():
 
 # Add the new optimized streaming endpoint
 app.post("/api/transform")(transform)
+
+# Include review API router
+app.include_router(review_router)
 
 
 

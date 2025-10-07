@@ -69,3 +69,63 @@ export interface ModelsData {
     default_model: string;
   };
 }
+
+export interface FieldEdit {
+  field_name: string;
+  original_value: any;
+  edited_value: any;
+  edited_at: string;
+  edited_by?: string;
+  validation_status: 'valid' | 'invalid' | 'warning';
+  validation_message?: string;
+}
+
+export interface ApprovalMetadata {
+  approved_at: string;
+  approved_by: string;
+  comments?: string;
+  approval_status: 'approved' | 'rejected';
+  rejection_reason?: string;
+}
+
+export interface FileReviewStatus {
+  file_id: string;
+  filename: string;
+  display_name: string;
+  status: 'not_reviewed' | 'in_review' | 'approved' | 'rejected' | 'has_errors';
+  document_type: 'pdf' | 'image' | 'office' | 'audio';
+  document_url: string;
+  markdown_url?: string;
+  extracted_data: Record<string, any> | Record<string, any>[];
+  edits?: FieldEdit[];
+  approval_metadata?: ApprovalMetadata;
+  processing_metadata: {
+    model_used?: string;
+    processing_time?: number;
+    confidence_scores?: Record<string, number>;
+    markdown_content?: string;
+    was_summarized?: boolean;
+  };
+  source_file?: string;
+  is_zip_content?: boolean;
+}
+
+export interface ReviewSession {
+  session_id: string;
+  files: FileReviewStatus[];
+  created_at: string;
+  updated_at: string;
+  user_id?: string;
+  batch_metadata?: {
+    total_files: number;
+    approved_count: number;
+    rejected_count: number;
+  };
+}
+
+export interface MarkdownResponse {
+  markdown_content: string;
+  conversion_method: string;
+  original_length: number;
+  was_summarized: boolean;
+}

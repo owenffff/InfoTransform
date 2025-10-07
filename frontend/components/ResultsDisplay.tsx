@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { Download, Table, Grid3X3, Search, RotateCcw, ChevronUp, ChevronDown, Loader2, ArrowDown } from 'lucide-react';
+import { Download, Table, Grid3X3, Search, RotateCcw, ChevronUp, ChevronDown, Loader2, ArrowDown, UserCheck } from 'lucide-react';
 import { useStore } from '@/lib/store';
-import { downloadResults } from '@/lib/api';
+import { downloadResults, createReviewSession } from '@/lib/api';
 import { showToast } from './Toast';
 import { cn } from '@/lib/utils';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
+import { useRouter } from 'next/navigation';
 
 export function ResultsDisplay() {
   const {
@@ -189,6 +190,56 @@ export function ResultsDisplay() {
     showToast('info', 'All edits cleared');
   };
 
+  const router = useRouter();
+  
+  const handleOpenReviewWorkspace = async () => {
+    try {
+      const successfulResults = streamingResults.filter(
+        r => r.status === 'success' && r.structured_data
+      );
+      
+      if (successfulResults.length === 0) {
+        showToast('error', 'No successful results to review');
+        return;
+      }
+
+      const fileGroups = new Map<string, typeof successfulResults>();
+      
+      for (const result of successfulResults) {
+        const key = result.source_file || result.filename;
+        if (!fileGroups.has(key)) {
+          fileGroups.set(key, []);
+        }
+        fileGroups.get(key)!.push(result);
+      }
+
+      const files = Array.from(fileGroups.entries()).map(([filename, results]) => {
+        const firstResult = results[0];
+        const allData = results.map(r => r.structured_data || {});
+        
+        return {
+          filename: filename,
+          extracted_data: allData.length === 1 ? allData[0] : allData,
+          document_url: `/api/documents/${filename}`,
+          processing_metadata: {
+            model_used: firstResult.model_fields?.join(', ') || '',
+            processing_time: firstResult.processing_time,
+            markdown_content: firstResult.markdown_content,
+            was_summarized: firstResult.was_summarized
+          },
+          source_file: firstResult.source_file,
+          record_count: results.length
+        };
+      });
+
+      const sessionId = await createReviewSession(files);
+      router.push(`/review-workspace/${sessionId}`);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to open review workspace';
+      showToast('error', msg);
+    }
+  };
+
   if (streamingResults.length === 0) return null;
 
   return (
@@ -262,6 +313,15 @@ export function ResultsDisplay() {
                 >
                   <ArrowDown className={cn("w-4 h-4", autoScroll && "animate-bounce")} />
                   <span className="ml-2 hidden sm:inline">Auto-scroll</span>
+                </button>
+              )}
+              {successfulResults.length > 0 && !isProcessing && (
+                <button
+                  onClick={handleOpenReviewWorkspace}
+                  className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  <UserCheck className="w-4 h-4 mr-2" />
+                  Review Workspace
                 </button>
               )}
               <Select value={downloadFormat} onValueChange={(v) => setDownloadFormat(v as 'excel' | 'csv')}>

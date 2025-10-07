@@ -113,3 +113,66 @@ export async function downloadResults(
   document.body.removeChild(a);
   window.URL.revokeObjectURL(url);
 }
+
+export async function createReviewSession(files: any[]): Promise<string> {
+  const response = await fetch(`${API_BASE_URL}/api/review/session`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ files })
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to create review session');
+  }
+
+  const { session_id } = await response.json();
+  return session_id;
+}
+
+export async function getReviewSession(sessionId: string): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/api/review/${sessionId}`);
+  
+  if (!response.ok) {
+    throw new Error('Failed to load review session');
+  }
+  
+  return response.json();
+}
+
+export async function updateFileFields(sessionId: string, fileId: string, edits: any[]): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/api/review/${sessionId}/files/${fileId}/update`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ edits })
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to update fields');
+  }
+  
+  return response.json();
+}
+
+export async function approveFile(sessionId: string, fileId: string, approval: any): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/api/review/${sessionId}/files/${fileId}/approve`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(approval)
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to approve file');
+  }
+  
+  return response.json();
+}
+
+export async function getMarkdownContent(sessionId: string, fileId: string): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/api/review/${sessionId}/files/${fileId}/markdown`);
+  
+  if (!response.ok) {
+    throw new Error('Failed to load markdown content');
+  }
+  
+  return response.json();
+}
