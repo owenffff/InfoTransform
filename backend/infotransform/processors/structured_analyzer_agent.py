@@ -338,8 +338,10 @@ Content to analyze:
             for filename, content in contents.items()
         ]
         
-        # Set timeout for batch analysis
-        batch_timeout = self.config.get('processing.analysis.batch_timeout', 300)
+        # Set timeout for batch analysis from performance config
+        batch_timeout = float(self.config.get_performance(
+            'ai_processing.timeout_per_batch', 300
+        ))
         
         try:
             results = await asyncio.wait_for(

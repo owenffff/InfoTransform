@@ -230,13 +230,13 @@ class Config:
                 'max_workers': 10,
                 'worker_type': 'thread',
                 'queue_size': 100,
-                'timeout_per_file': 30
+                'timeout_per_file': 120
             },
             'ai_processing': {
                 'batch_size': 10,
                 'max_wait_time': 2.0,
                 'max_concurrent_batches': 3,
-                'timeout_per_batch': 60,
+                'timeout_per_batch': 300,
                 'retry_attempts': 3
             },
             'file_management': {

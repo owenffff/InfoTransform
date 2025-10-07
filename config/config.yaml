@@ -173,6 +173,7 @@ app:
 # API server configuration
 api:
   host: "0.0.0.0"  # Server bind address (use 0.0.0.0 to allow external connections)
+  port: 8000       # Default backend port (can be overridden by PORT environment variable)
 
 # ============================================================================
 # PROCESSING CONFIGURATION
@@ -213,9 +214,9 @@ processing:
   
   # AI Analysis Stage (Step 3: markdown → structured data)
   # Controls how files are analyzed by AI to extract structured information
+  # Note: Timeout configuration is in performance.yaml (ai_processing.timeout_per_batch)
   analysis:
     max_concurrent: 10                  # How many files can be analyzed by AI simultaneously
-    batch_timeout: 300                 # Max seconds to wait for batch AI analysis to complete
   
   # File Conversion Stage (Step 1: raw files → markdown)
   # Controls how uploaded files are converted to markdown text
