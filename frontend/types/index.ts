@@ -14,6 +14,7 @@ export interface FileResult {
   };
   is_primary_result?: boolean;
   source_file?: string;
+  file_path?: string;  // Original file path for review session
 }
 
 export interface StreamingEvent {
@@ -78,6 +79,7 @@ export interface FieldEdit {
   edited_by?: string;
   validation_status: 'valid' | 'invalid' | 'warning';
   validation_message?: string;
+  record_index?: number;
 }
 
 export interface ApprovalMetadata {

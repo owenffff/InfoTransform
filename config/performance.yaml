@@ -25,7 +25,7 @@ ai_processing:
 # File Management Performance
 file_management:
   cleanup_strategy: ${CLEANUP_STRATEGY:-stream_complete}  # "stream_complete" or "reference_counting"
-  max_file_retention: ${MAX_FILE_RETENTION:-300}          # Maximum seconds to keep files
+  max_file_retention: ${MAX_FILE_RETENTION:-1800}         # Maximum seconds to keep files (30 minutes for review workspace)
   cleanup_check_interval: ${CLEANUP_INTERVAL:-10}         # Seconds between cleanup checks
   use_temp_directory: ${USE_TEMP_DIR:-true}               # Use system temp directory
 

@@ -248,7 +248,7 @@ export function FileUpload() {
                         {group.files.map((file, index) => (
                           <div
                             key={index}
-                            className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded"
+                            className="flex items-center gap-3 p-2 hover:bg-brand-gray-50 rounded"
                           >
                             <span className="text-sm">{getFileTypeIcon(file.name)}</span>
                             <span className="flex-1 text-sm truncate">{file.name}</span>
@@ -281,14 +281,14 @@ export function FileUpload() {
                       return (
                         <div
                           key={index}
-                          className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50"
+                          className="flex items-center gap-3 px-4 py-2 hover:bg-brand-gray-50"
                         >
                           <span className="text-lg">{getFileTypeIcon(file.name)}</span>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 truncate">
+                            <p className="text-sm font-medium text-black truncate">
                               {file.name}
                             </p>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-brand-gray-500">
                               {formatFileSize(file.size)}
                             </p>
                           </div>

@@ -216,16 +216,16 @@ export function ResultsDisplay() {
       const files = Array.from(fileGroups.entries()).map(([filename, results]) => {
         const firstResult = results[0];
         const allData = results.map(r => r.structured_data || {});
-        
+
         return {
           filename: filename,
           extracted_data: allData.length === 1 ? allData[0] : allData,
-          document_url: `/api/documents/${filename}`,
           processing_metadata: {
             model_used: firstResult.model_fields?.join(', ') || '',
             processing_time: firstResult.processing_time,
             markdown_content: firstResult.markdown_content,
-            was_summarized: firstResult.was_summarized
+            was_summarized: firstResult.was_summarized,
+            original_file_path: firstResult.file_path  // Add original file path
           },
           source_file: firstResult.source_file,
           record_count: results.length
@@ -257,7 +257,7 @@ export function ResultsDisplay() {
                 </span>
               )}
             </h2>
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-sm text-black mt-1">
               {isProcessing 
                 ? (
                   <span className="flex items-center gap-2">
@@ -278,7 +278,7 @@ export function ResultsDisplay() {
                   'inline-flex items-center px-4 py-2 text-sm font-medium border rounded-l-md',
                   viewMode === 'table'
                     ? 'text-brand-orange-700 bg-brand-orange-50 border-brand-orange-300'
-                    : 'text-gray-900 bg-white border-gray-200 hover:bg-gray-100'
+                    : 'text-black bg-white border-brand-gray-200 hover:bg-brand-gray-100'
                 )}
               >
                 <Table className="w-4 h-4 mr-2" />
@@ -290,7 +290,7 @@ export function ResultsDisplay() {
                   'inline-flex items-center px-4 py-2 text-sm font-medium border rounded-r-md',
                   viewMode === 'cards'
                     ? 'text-brand-orange-700 bg-brand-orange-50 border-brand-orange-300'
-                    : 'text-gray-900 bg-white border-gray-200 hover:bg-gray-100'
+                    : 'text-black bg-white border-brand-gray-200 hover:bg-brand-gray-100'
                 )}
               >
                 <Grid3X3 className="w-4 h-4 mr-2" />
@@ -307,7 +307,7 @@ export function ResultsDisplay() {
                     "inline-flex items-center px-3 py-2 text-sm font-medium rounded-md shadow-sm transition-all",
                     autoScroll 
                       ? "bg-brand-orange-500 text-white hover:bg-brand-orange-600"
-                      : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                      : "bg-white text-black border border-brand-gray-300 hover:bg-brand-gray-50"
                   )}
                   title={autoScroll ? "Auto-scroll enabled" : "Auto-scroll disabled"}
                 >
@@ -318,7 +318,7 @@ export function ResultsDisplay() {
               {successfulResults.length > 0 && !isProcessing && (
                 <button
                   onClick={handleOpenReviewWorkspace}
-                  className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-brand-orange-500 border border-transparent rounded-md shadow-sm hover:bg-brand-orange-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-orange-500"
                 >
                   <UserCheck className="w-4 h-4 mr-2" />
                   Review Workspace
@@ -336,7 +336,7 @@ export function ResultsDisplay() {
               <button
                 onClick={handleDownload}
                 disabled={successfulResults.length === 0}
-                className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-orange-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center px-4 py-2 text-sm font-medium text-black bg-white border border-brand-gray-300 rounded-md shadow-sm hover:bg-brand-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-orange-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Download className="w-4 h-4 mr-2" />
                 Download
@@ -348,11 +348,11 @@ export function ResultsDisplay() {
       
       {/* Summary */}
       {streamingResults.length > 0 && (
-        <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+        <div className="px-6 py-4 bg-brand-gray-50 border-b border-brand-gray-200">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-white rounded-lg border border-gray-200 px-4 py-3">
-              <p className="text-sm font-medium text-gray-500">Total Files</p>
-              <p className="text-2xl font-semibold text-gray-900">
+            <div className="bg-white rounded-lg border border-brand-gray-200 px-4 py-3">
+              <p className="text-sm font-medium text-brand-gray-500">Total Files</p>
+              <p className="text-2xl font-semibold text-black">
                 {(() => {
                   const primaryResults = streamingResults.filter(r => r.is_primary_result !== false);
                   console.log('Total files calculation:', {
@@ -416,13 +416,13 @@ export function ResultsDisplay() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search results..."
-              className="block w-full pl-10 pr-3 py-2 rounded-md border-gray-300 shadow-sm focus:border-brand-orange-500 focus:ring-brand-orange-500 sm:text-sm"
+              className="block w-full pl-10 pr-3 py-2 rounded-md border-brand-gray-300 shadow-sm focus:border-brand-orange-500 focus:ring-brand-orange-500 sm:text-sm"
             />
           </div>
           {Object.keys(editedData).length > 0 && (
             <button
               onClick={clearEdits}
-              className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50"
+              className="inline-flex items-center px-4 py-2 text-sm font-medium text-black bg-white border border-brand-gray-300 rounded-md shadow-sm hover:bg-brand-gray-50"
             >
               <RotateCcw className="w-4 h-4 mr-2" />
               Clear Edits ({Object.keys(editedData).length})
@@ -459,7 +459,7 @@ export function ResultsDisplay() {
         {/* No Results */}
         {filteredResults.length === 0 && searchQuery && (
           <div className="text-center py-8">
-            <p className="text-gray-500">No results found for "{searchQuery}"</p>
+            <p className="text-brand-gray-500">No results found for "{searchQuery}"</p>
           </div>
         )}
       </div>
@@ -485,7 +485,7 @@ export function ResultsDisplay() {
                   <li key={r.filename} className="p-3 rounded-md border border-red-200 bg-white">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                       <div>
-                        <div className="text-sm font-medium text-gray-900">{r.filename}</div>
+                        <div className="text-sm font-medium text-black">{r.filename}</div>
                         <div className="text-sm text-red-600">{r.error || 'Processing failed'}</div>
                       </div>
                       {info.label && (
@@ -495,7 +495,7 @@ export function ResultsDisplay() {
                       )}
                     </div>
                     {info.tip && (
-                      <div className="mt-2 text-xs text-gray-600">{info.tip}</div>
+                      <div className="mt-2 text-xs text-brand-gray-500">{info.tip}</div>
                     )}
                   </li>
                 );
@@ -518,14 +518,14 @@ function TableView({ results, fields, onSort, sortState, onEdit, editedData, new
   const fieldArray = Array.isArray(fields) ? fields : [];
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
+    <div className="overflow-x-auto rounded-lg border border-brand-gray-200 shadow-sm">
       <table className="min-w-full">
-        <thead className="bg-gray-50">
+        <thead className="bg-brand-gray-50">
           <tr>
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-brand-gray-500 uppercase tracking-wider">#</th>
             <th
               onClick={() => onSort('filename')}
-              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+              className="px-6 py-3 text-left text-xs font-medium text-brand-gray-500 uppercase tracking-wider cursor-pointer hover:bg-brand-gray-100"
             >
               <div className="flex items-center gap-1">
                 Filename
@@ -536,7 +536,7 @@ function TableView({ results, fields, onSort, sortState, onEdit, editedData, new
               <th
                 key={field}
                 onClick={() => onSort(field)}
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                className="px-6 py-3 text-left text-xs font-medium text-brand-gray-500 uppercase tracking-wider cursor-pointer hover:bg-brand-gray-100"
               >
                 <div className="flex items-center gap-1">
                   {field}
@@ -546,7 +546,7 @@ function TableView({ results, fields, onSort, sortState, onEdit, editedData, new
             ))}
           </tr>
         </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
+        <tbody className="bg-white divide-y divide-brand-gray-200">
           {results.map((result: any, idx: number) => {
             const hasEdits = editedData[result.filename];
             const isNew = newResultIds?.has(result.filename);
@@ -558,10 +558,10 @@ function TableView({ results, fields, onSort, sortState, onEdit, editedData, new
                   hasEdits ? 'bg-brand-orange-50/30' : '',
                   isNew ? 'animate-fadeIn bg-gradient-to-r from-brand-orange-50 to-transparent' : ''
                 )}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-brand-gray-500">
                   {idx + 1}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-black">
                   {result.filename}
                 </td>
                 {fieldArray.map((field: string) => {
@@ -570,7 +570,7 @@ function TableView({ results, fields, onSort, sortState, onEdit, editedData, new
                   return (
                     <td
                       key={field}
-                      className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 editable-cell"
+                      className="px-6 py-4 whitespace-nowrap text-sm text-black editable-cell"
                     >
                       <input
                         type="text"
@@ -608,11 +608,11 @@ function CardView({ results, fields, onEdit, editedData, newResultIds }: any) {
                 ? 'bg-red-50 border-red-200'
                 : hasEdits
                 ? 'bg-brand-orange-50/50 border-brand-orange-200'
-                : 'bg-white border-gray-200',
+                : 'bg-white border-brand-gray-200',
               isNew ? 'animate-fadeIn ring-2 ring-brand-orange-400 shadow-lg shadow-brand-orange-100' : ''
             )}
           >
-            <h3 className="font-medium text-gray-900 mb-3 truncate" title={result.filename}>
+            <h3 className="font-medium text-black mb-3 truncate" title={result.filename}>
               {result.filename}
             </h3>
             
@@ -622,12 +622,12 @@ function CardView({ results, fields, onEdit, editedData, newResultIds }: any) {
               <div className="space-y-2">
                 {fieldArray.map((field: string) => (
                   <div key={field}>
-                    <label className="text-xs font-medium text-gray-500">{field}</label>
+                    <label className="text-xs font-medium text-brand-gray-500">{field}</label>
                     <input
                       type="text"
                       value={result.structured_data?.[field] || ''}
                       onChange={(e) => onEdit(result.filename, field, e.target.value)}
-                      className="mt-1 block w-full text-sm bg-white border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-orange-500"
+                      className="mt-1 block w-full text-sm bg-white border border-brand-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-orange-500"
                     />
                   </div>
                 ))}

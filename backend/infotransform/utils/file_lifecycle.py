@@ -148,17 +148,23 @@ class FileLifecycleManager:
     
     async def mark_stream_complete(self, file_paths: List[str]):
         """
-        Mark that streaming is complete for a set of files
-        
+        Mark that streaming is complete for a set of files.
+        Files will NOT be cleaned up immediately - they will be retained
+        for the configured max_retention period to allow users to create
+        multiple review sessions from the same processing results.
+
         Args:
             file_paths: List of file paths
         """
         for file_path in file_paths:
-            if file_path in self.cleanup_events:
-                self.cleanup_events[file_path].set()
-            else:
-                # If file is not tracked, clean it up immediately
-                await self._cleanup_file(file_path)
+            # Track the file if not already tracked
+            if file_path not in self.file_creation_times:
+                self.file_creation_times[file_path] = datetime.now()
+                logger.info(f"File tracked for retention: {file_path} (will be deleted after {self.max_retention}s)")
+
+            # Do NOT set cleanup event - let files age naturally
+            # They will only be cleaned up when they exceed max_retention time
+            # This allows users to create multiple review sessions from the same files
     
     async def _cleanup_file(self, file_path: str):
         """
@@ -186,31 +192,28 @@ class FileLifecycleManager:
         while self._running:
             try:
                 await asyncio.sleep(self.cleanup_interval)
-                
+
                 now = datetime.now()
                 files_to_cleanup = []
-                
+
                 # Check for files that should be cleaned up
+                # Priority: Only cleanup files that have exceeded max_retention time
+                # AND have no active references
                 for file_path, creation_time in list(self.file_creation_times.items()):
-                    # Check if file is too old
                     age = (now - creation_time).total_seconds()
-                    if age > self.max_retention:
+
+                    # Only cleanup if file is too old AND has no active references
+                    if age > self.max_retention and self.file_refs.get(file_path, 0) <= 0:
                         files_to_cleanup.append(file_path)
-                        continue
-                    
-                    # Check if file is marked for cleanup
-                    if file_path in self.cleanup_events and self.cleanup_events[file_path].is_set():
-                        # Only cleanup if no active references
-                        if self.file_refs.get(file_path, 0) <= 0:
-                            files_to_cleanup.append(file_path)
-                
+                        logger.debug(f"File {file_path} marked for cleanup (age: {age:.1f}s)")
+
                 # Clean up identified files
                 for file_path in files_to_cleanup:
                     await self._cleanup_file(file_path)
-                
+
                 if files_to_cleanup:
-                    logger.info(f"Cleaned up {len(files_to_cleanup)} files")
-                    
+                    logger.info(f"Cleaned up {len(files_to_cleanup)} old files")
+
             except asyncio.CancelledError:
                 break
             except Exception as e:

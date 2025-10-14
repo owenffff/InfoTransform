@@ -326,20 +326,22 @@ class StreamingProcessor:
             for i, result in enumerate(markdown_results):
                 # Get the original file info to preserve metadata
                 original_file = managed_files[i]
-                
+
                 if result['success'] and result['markdown_content']:
                     successful_conversions.append({
                         'filename': result['filename'],
                         'display_name': original_file.get('display_name', result['filename']),
                         'markdown_content': result['markdown_content'],
-                        'original_index': i
+                        'original_index': i,
+                        'file_path': original_file.get('file_path')  # Store original file path
                     })
                 else:
                     failed_conversions.append({
                         'filename': result['filename'],
                         'display_name': original_file.get('display_name', result['filename']),
                         'error': result.get('error', 'Unknown error'),
-                        'original_index': i
+                        'original_index': i,
+                        'file_path': original_file.get('file_path')  # Store original file path
                     })
             
             # Identify password-protected PDFs among the failures so the UI can provide
@@ -467,6 +469,7 @@ class StreamingProcessor:
                                         "summarization_metrics": original_item.get('summarization_metrics', None),
                                         "is_primary_result": expanded_result.get('is_primary_result', True),
                                         "source_file": expanded_result.get('source_file', expanded_result['filename']),
+                                        "file_path": original_item.get('file_path'),  # Add file path for review session
                                         "progress": {
                                             "phase": 2,
                                             "phase_name": "Analyzing with AI",
@@ -536,6 +539,7 @@ class StreamingProcessor:
                     'error': failed['error'],
                     'is_primary_result': True,  # Failed files are primary results
                     'source_file': failed['filename'],
+                    'file_path': failed.get('file_path'),  # Add file path for review session
                     'progress': {
                         'current': len(successful_conversions) + failed_conversions.index(failed) + 1,
                         'total': total_files,

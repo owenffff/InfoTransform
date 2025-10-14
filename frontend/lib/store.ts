@@ -56,7 +56,7 @@ interface ReviewState {
   setCurrentFile: (index: number) => void;
   setActiveViewMode: (mode: 'form' | 'table' | 'json') => void;
   setActiveSourceTab: (tab: 'source' | 'markdown') => void;
-  updateField: (fieldName: string, value: any) => void;
+  updateField: (fieldName: string, value: any, recordIndex?: number) => void;
   saveChanges: () => Promise<void>;
   discardChanges: () => void;
   approveFile: (comments?: string) => Promise<void>;
@@ -98,22 +98,37 @@ export const useReviewStore = create<ReviewState>((set, get) => ({
   setActiveViewMode: (mode) => set({ activeViewMode: mode }),
   setActiveSourceTab: (tab) => set({ activeSourceTab: tab }),
   
-  updateField: (fieldName, value) => {
+  updateField: (fieldName, value, recordIndex) => {
     const state = get();
     const currentFile = state.currentSession?.files[state.currentFileIndex];
     if (!currentFile) return;
     
-    const originalValue = currentFile.extracted_data[fieldName];
+    const data = currentFile.extracted_data;
+    const isArray = Array.isArray(data);
+    
+    let originalValue;
+    let editKey;
+    
+    if (isArray && recordIndex !== undefined) {
+      originalValue = data[recordIndex]?.[fieldName];
+      editKey = `${recordIndex}.${fieldName}`;
+    } else if (!isArray) {
+      originalValue = data[fieldName];
+      editKey = fieldName;
+    } else {
+      return;
+    }
     
     set({
       pendingEdits: {
         ...state.pendingEdits,
-        [fieldName]: {
+        [editKey]: {
           field_name: fieldName,
           original_value: originalValue,
           edited_value: value,
           edited_at: new Date().toISOString(),
-          validation_status: 'valid'
+          validation_status: 'valid',
+          record_index: recordIndex
         }
       },
       hasUnsavedChanges: true

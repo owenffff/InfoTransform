@@ -6,14 +6,18 @@ import os
 import json
 import uuid
 import shutil
+import mimetypes
+import logging
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Union
 from pydantic import BaseModel, Field
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, HTTPException, UploadFile, File, Response
 from fastapi.responses import FileResponse, JSONResponse
 
 from infotransform.config import config
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -32,6 +36,7 @@ class FieldEdit(BaseModel):
     edited_by: Optional[str] = None
     validation_status: str = "valid"
     validation_message: Optional[str] = None
+    record_index: Optional[int] = None
 
 
 class ApprovalMetadata(BaseModel):
@@ -97,13 +102,37 @@ async def create_review_session(request: CreateSessionRequest):
             document_type = "audio"
         elif filename.lower().endswith(('.docx', '.pptx', '.xlsx')):
             document_type = "office"
-        
-        source_path = Path(config.UPLOAD_FOLDER) / filename
-        if source_path.exists():
-            dest_path = session_docs_dir / filename
-            shutil.copy2(source_path, dest_path)
-            document_url = f"/api/review/documents/{session_id}/{filename}"
+
+        # Try to get original file path from processing metadata first
+        original_file_path = file_data.get('processing_metadata', {}).get('original_file_path')
+        source_path = None
+
+        if original_file_path and Path(original_file_path).exists():
+            source_path = Path(original_file_path)
+            logger.info(f"Found file at original path: {source_path}")
         else:
+            # Fallback: try uploads folder
+            fallback_path = Path(config.UPLOAD_FOLDER) / filename
+            if fallback_path.exists():
+                source_path = fallback_path
+                logger.info(f"Found file in uploads folder: {source_path}")
+            else:
+                logger.warning(f"File not found in uploads folder: {fallback_path}")
+
+        if source_path:
+            # Copy file to session directory so it persists after cleanup
+            dest_path = session_docs_dir / filename
+            try:
+                shutil.copy2(source_path, dest_path)
+                document_url = f"/api/review/documents/{session_id}/{filename}"
+                logger.info(f"Successfully copied file from {source_path} to {dest_path}")
+            except Exception as e:
+                logger.error(f"Failed to copy file from {source_path} to {dest_path}: {e}")
+                # Even if copy fails, we can try to serve from original location
+                document_url = f"/api/review/documents/{session_id}/{filename}"
+        else:
+            # File not found - log error and use fallback URL
+            logger.error(f"Source file not found for {filename}, tried: {original_file_path}, {Path(config.UPLOAD_FOLDER) / filename}")
             document_url = file_data.get('document_url', '')
         
         file_status = FileReviewStatus(
@@ -193,8 +222,16 @@ async def update_field_data(session_id: str, file_id: str, request: UpdateFields
             
             for edit in request.edits:
                 edit_dict = edit.model_dump()
+                
+                if edit.record_index is not None:
+                    edit_key = f"{edit.record_index}.{edit.field_name}"
+                else:
+                    edit_key = edit.field_name
+                
                 existing_edit_idx = next(
-                    (i for i, e in enumerate(file['edits']) if e['field_name'] == edit.field_name),
+                    (i for i, e in enumerate(file['edits']) 
+                     if e['field_name'] == edit.field_name and 
+                     e.get('record_index') == edit.record_index),
                     None
                 )
                 
@@ -203,7 +240,12 @@ async def update_field_data(session_id: str, file_id: str, request: UpdateFields
                 else:
                     file['edits'].append(edit_dict)
                 
-                file['extracted_data'][edit.field_name] = edit.edited_value
+                extracted_data = file['extracted_data']
+                if isinstance(extracted_data, list) and edit.record_index is not None:
+                    if 0 <= edit.record_index < len(extracted_data):
+                        extracted_data[edit.record_index][edit.field_name] = edit.edited_value
+                elif isinstance(extracted_data, dict):
+                    extracted_data[edit.field_name] = edit.edited_value
             
             if file['status'] == 'not_reviewed':
                 file['status'] = 'in_review'
@@ -289,6 +331,19 @@ async def get_markdown_content(session_id: str, file_id: str):
     raise HTTPException(status_code=404, detail="File not found in session")
 
 
+@router.options("/api/review/documents/{session_id}/{filename}")
+async def serve_document_options(session_id: str, filename: str):
+    """Handle CORS preflight for document serving"""
+    return Response(
+        status_code=200,
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, OPTIONS",
+            "Access-Control-Allow-Headers": "*"
+        }
+    )
+
+
 @router.get("/api/review/documents/{session_id}/{filename}")
 async def serve_document(session_id: str, filename: str):
     """Serve a document file from the review session"""
@@ -297,4 +352,18 @@ async def serve_document(session_id: str, filename: str):
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="Document not found")
     
-    return FileResponse(file_path)
+    mime_type, _ = mimetypes.guess_type(str(file_path))
+    if mime_type is None:
+        mime_type = "application/octet-stream"
+    
+    return FileResponse(
+        file_path,
+        media_type=mime_type,
+        headers={
+            "Content-Disposition": f"inline; filename={filename}",
+            "Cache-Control": "public, max-age=3600",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, OPTIONS",
+            "Access-Control-Allow-Headers": "*"
+        }
+    )

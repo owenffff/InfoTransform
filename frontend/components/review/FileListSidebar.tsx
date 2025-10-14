@@ -18,6 +18,16 @@ export function FileListSidebar({ files }: FileListSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedZips, setExpandedZips] = useState<Set<string>>(new Set());
 
+  const truncateFilename = (filename: string, maxLength = 30) => {
+    if (filename.length <= maxLength) return filename;
+    const ext = filename.substring(filename.lastIndexOf('.'));
+    const nameOnly = filename.substring(0, filename.lastIndexOf('.'));
+    const charsForName = maxLength - ext.length - 3;
+    if (charsForName <= 0) return filename.substring(0, maxLength - 3) + '...';
+    const partLength = Math.floor(charsForName / 2);
+    return nameOnly.substring(0, partLength) + '...' + nameOnly.substring(nameOnly.length - partLength) + ext;
+  };
+
   const groupedFiles = files.reduce((acc, file, index) => {
     if (file.source_file) {
       if (!acc[file.source_file]) {
@@ -77,7 +87,7 @@ export function FileListSidebar({ files }: FileListSidebarProps) {
 
   if (isSidebarCollapsed) {
     return (
-      <div className="w-12 bg-gray-50 border-r flex flex-col items-center py-4">
+      <div className="w-12 bg-brand-gray-50 border-r flex flex-col items-center py-4">
         <Button
           variant="ghost"
           size="sm"
@@ -91,7 +101,7 @@ export function FileListSidebar({ files }: FileListSidebarProps) {
   }
 
   return (
-    <div className="w-80 bg-gray-50 border-r flex flex-col">
+    <div className="w-80 bg-brand-gray-50 border-r flex flex-col">
       <div className="p-4 border-b bg-white">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-semibold text-sm">Files</h2>
@@ -115,7 +125,7 @@ export function FileListSidebar({ files }: FileListSidebarProps) {
           />
         </div>
         
-        <div className="mt-3 text-xs text-gray-600">
+        <div className="mt-3 text-xs text-black">
           {approvedCount} of {files.length} approved
         </div>
       </div>
@@ -131,7 +141,7 @@ export function FileListSidebar({ files }: FileListSidebarProps) {
                 <div key={groupKey} className="mb-1">
                   <button
                     onClick={() => toggleZip(groupKey)}
-                    className="w-full flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 text-sm"
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded hover:bg-brand-gray-100 text-sm"
                   >
                     {isExpanded ? (
                       <ChevronDown className="w-4 h-4" />
@@ -139,8 +149,8 @@ export function FileListSidebar({ files }: FileListSidebarProps) {
                       <ChevronRight className="w-4 h-4" />
                     )}
                     <FileArchive className="w-4 h-4 text-gray-600" />
-                    <span className="flex-1 text-left truncate">{groupKey}</span>
-                    <span className="text-xs text-gray-500">({items.length})</span>
+                    <span className="flex-1 text-left" title={groupKey}>{truncateFilename(groupKey)}</span>
+                    <span className="text-xs text-brand-gray-500">({items.length})</span>
                   </button>
                   
                   {isExpanded && (
@@ -152,15 +162,15 @@ export function FileListSidebar({ files }: FileListSidebarProps) {
                           className={cn(
                             'w-full flex items-center gap-2 px-3 py-2 rounded text-sm transition-colors',
                             currentFileIndex === index
-                              ? 'bg-brand-orange-100 text-brand-orange-900'
-                              : 'hover:bg-gray-100'
+                              ? 'bg-brand-orange-100 text-black'
+                              : 'hover:bg-brand-gray-100'
                           )}
                         >
-                          {getFileIcon(file.document_type)}
-                          <span className="flex-1 text-left truncate text-xs">
-                            {file.filename}
-                          </span>
                           {getStatusIcon(file.status)}
+                          {getFileIcon(file.document_type)}
+                          <span className="flex-1 text-left text-xs" title={file.filename}>
+                            {truncateFilename(file.filename, 25)}
+                          </span>
                         </button>
                       ))}
                     </div>
@@ -176,15 +186,15 @@ export function FileListSidebar({ files }: FileListSidebarProps) {
                   className={cn(
                     'w-full flex items-center gap-2 px-3 py-2 rounded text-sm transition-colors',
                     currentFileIndex === index
-                      ? 'bg-brand-orange-100 text-brand-orange-900'
-                      : 'hover:bg-gray-100'
+                      ? 'bg-brand-orange-100 text-black'
+                      : 'hover:bg-brand-gray-100'
                   )}
                 >
-                  {getFileIcon(file.document_type)}
-                  <span className="flex-1 text-left truncate">
-                    {file.filename}
-                  </span>
                   {getStatusIcon(file.status)}
+                  {getFileIcon(file.document_type)}
+                  <span className="flex-1 text-left" title={file.filename}>
+                    {truncateFilename(file.filename)}
+                  </span>
                 </button>
               );
             }
