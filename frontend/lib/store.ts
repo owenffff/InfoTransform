@@ -184,11 +184,12 @@ export const useReviewStore = create<ReviewState>((set, get) => ({
       const rejectedCount = updatedFiles.filter(f => f.status === 'rejected').length;
       
       set({
-        currentSession: { 
-          ...session, 
+        currentSession: {
+          ...session,
           files: updatedFiles,
           batch_metadata: {
             ...session.batch_metadata,
+            total_files: session.batch_metadata?.total_files || updatedFiles.length,
             approved_count: approvedCount,
             rejected_count: rejectedCount
           }

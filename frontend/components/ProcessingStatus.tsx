@@ -7,7 +7,9 @@ import { Task, TaskContent, TaskItem, TaskTrigger } from '@/components/ai-elemen
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader as AiLoader } from '@/components/ai-elements/loader';
+import { Progress } from '@/components/ui/progress';
 import { useStore } from '@/lib/store';
+import { cn } from '@/lib/utils';
 
 export interface StreamingEvent {
   type: 'start' | 'markdown_conversion' | 'ai_analysis' | 'result' | 'complete' | 'error' | 'reset';
@@ -177,7 +179,7 @@ export function ProcessingStatus() {
 
 
   return (
-    <Card className="shadow-lg border-gray-200">
+    <Card className="shadow-lg border-gray-200" role="region" aria-label="File processing status">
       <CardHeader>
         <CardTitle className="text-2xl flex items-center gap-2">
           Processing Status
@@ -193,81 +195,133 @@ export function ProcessingStatus() {
       </CardHeader>
       
       <CardContent className="space-y-6">
-        {/* Overall Pipeline */}
-        <Task defaultOpen>
-          <TaskTrigger title={`Overall processing — ${Math.min(processedCount, totalCount || processedCount)}/${totalCount} files • ${Math.round(overallProgress)}%`} />
-          <TaskContent aria-live="polite" role="status">
-            {estimatedTimeRemaining && (
-              <div className="text-xs text-muted-foreground mb-2 flex items-center gap-2">
-                <Clock className="w-3 h-3" />
-                <span>{estimatedTimeRemaining}</span>
-              </div>
-            )}
-            <TaskItem aria-busy={currentPhase === 'converting'}>
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4" />
-                <span>Converting</span>
-                {currentPhase === 'converting' && <AiLoader size={14} className="text-blue-600" />}
-                {currentPhase !== 'converting' && overallProgress > 0 && <CheckCircle className="w-4 h-4 text-green-600" />}
-              </div>
-            </TaskItem>
-            <TaskItem aria-busy={currentPhase === 'analyzing'}>
-              <div className="flex items-center gap-2">
-                <Activity className="w-4 h-4" />
-                <span>Analyzing</span>
-                {currentPhase === 'analyzing' && <AiLoader size={14} className="text-blue-600" />}
-                {currentPhase === 'complete' && <CheckCircle className="w-4 h-4 text-green-600" />}
-              </div>
-            </TaskItem>
-            <TaskItem>
-              <div className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4" />
-                <span>Complete</span>
-                {currentPhase === 'complete' && <span className="text-green-700 text-xs font-medium">Done</span>}
-              </div>
-            </TaskItem>
-          </TaskContent>
-        </Task>
-
-
-        {/* Statistics */}
-        <div className="grid grid-cols-3 gap-4">
-          <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <CheckCircle className="w-4 h-4 text-green-600" />
-              <span className="text-sm font-medium text-green-900">Success</span>
-            </div>
-            <p className="text-2xl font-bold text-green-700">{successCount}</p>
-          </div>
-          
-          <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <span className="text-sm font-medium text-blue-900">Processing</span>
-            </div>
-            <p className="text-2xl font-bold text-blue-700">
-              {Math.max(0, processedCount - successCount - errorCount)}
-            </p>
-          </div>
-          
-          <div className="text-center p-3 bg-red-50 rounded-lg border border-red-200">
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <XCircle className="w-4 h-4 text-red-600" />
-              <span className="text-sm font-medium text-red-900">Failed</span>
-            </div>
-            <p className="text-2xl font-bold text-red-700">{errorCount}</p>
-          </div>
+        {/* Screen reader live region for progress updates */}
+        <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+          {currentPhase === 'converting' && `Converting files: ${Math.round(overallProgress)}% complete. ${currentFile ? `Currently processing ${currentFile}` : ''}`}
+          {currentPhase === 'analyzing' && `Analyzing files with AI: ${Math.round(overallProgress)}% complete. ${currentFile ? `Currently processing ${currentFile}` : ''}`}
+          {currentPhase === 'complete' && `Transformation complete. ${successCount} successful, ${errorCount} failed.`}
         </div>
 
-        {/* Current File */}
-        {currentFile && (
-          <Alert className="border-primary/20 bg-primary/5">
-            <Activity className="h-4 w-4 text-primary animate-pulse" />
-            <AlertDescription className="text-sm">
-              <strong>Processing:</strong> {currentFile}
-            </AlertDescription>
-          </Alert>
-        )}
+        {/* Large Progress Bar with Phase Indicator */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className={cn(
+                "p-1.5 rounded-lg transition-colors",
+                currentPhase === 'converting' && "bg-blue-100",
+                currentPhase === 'analyzing' && "bg-purple-100",
+                currentPhase === 'complete' && "bg-green-100"
+              )}>
+                {currentPhase === 'converting' && <FileText className="w-5 h-5 text-blue-600" />}
+                {currentPhase === 'analyzing' && <Activity className="w-5 h-5 text-purple-600 animate-pulse" />}
+                {currentPhase === 'complete' && <CheckCircle className="w-5 h-5 text-green-600" />}
+              </div>
+              <div>
+                <h4 className="text-sm font-semibold">
+                  {currentPhase === 'converting' && 'Converting to markdown...'}
+                  {currentPhase === 'analyzing' && 'Analyzing with AI...'}
+                  {currentPhase === 'complete' && 'Transformation Complete!'}
+                </h4>
+                <p className="text-xs text-muted-foreground">
+                  {Math.min(processedCount, totalCount || processedCount)}/{totalCount} files processed
+                </p>
+              </div>
+            </div>
 
+            <div className="text-right">
+              <div className="text-2xl font-bold">
+                {Math.round(overallProgress)}%
+              </div>
+              {estimatedTimeRemaining && (
+                <div className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  <span>{estimatedTimeRemaining}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Large Progress Bar - Unified Blue Color */}
+          <div className="relative">
+            <Progress
+              value={overallProgress}
+              className="h-3 transition-all duration-500"
+              aria-label={`Overall progress: ${Math.round(overallProgress)}%`}
+              aria-valuenow={Math.round(overallProgress)}
+              aria-valuemin={0}
+              aria-valuemax={100}
+            />
+          </div>
+
+          {/* Current File Display */}
+          {currentFile && currentPhase !== 'complete' && (
+            <div className="flex items-center gap-2 text-sm">
+              <Badge variant="outline" className="font-mono text-xs">
+                {currentFile}
+              </Badge>
+              {currentPhase === 'converting' && (
+                <span className="text-xs text-muted-foreground">({processedCount + 1} of {totalCount})</span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Phase Pills */}
+        <div className="flex items-center gap-2">
+          <div className={cn(
+            "flex-1 flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all",
+            currentPhase === 'converting'
+              ? "border-blue-500 bg-blue-50"
+              : overallProgress > 0
+                ? "border-green-500 bg-green-50"
+                : "border-gray-200 bg-gray-50"
+          )}>
+            {overallProgress > 0 && currentPhase !== 'converting' ? (
+              <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
+            ) : currentPhase === 'converting' ? (
+              <AiLoader size={16} className="text-blue-600 flex-shrink-0" />
+            ) : (
+              <div className="w-4 h-4 rounded-full border-2 border-gray-400 flex-shrink-0" />
+            )}
+            <span className="text-xs font-medium">Convert</span>
+          </div>
+
+          <div className="w-8 border-t-2 border-dashed border-gray-300" />
+
+          <div className={cn(
+            "flex-1 flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all",
+            currentPhase === 'analyzing'
+              ? "border-purple-500 bg-purple-50"
+              : currentPhase === 'complete'
+                ? "border-green-500 bg-green-50"
+                : "border-gray-200 bg-gray-50"
+          )}>
+            {currentPhase === 'complete' ? (
+              <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
+            ) : currentPhase === 'analyzing' ? (
+              <AiLoader size={16} className="text-purple-600 flex-shrink-0" />
+            ) : (
+              <div className="w-4 h-4 rounded-full border-2 border-gray-400 flex-shrink-0" />
+            )}
+            <span className="text-xs font-medium">Analyze</span>
+          </div>
+
+          <div className="w-8 border-t-2 border-dashed border-gray-300" />
+
+          <div className={cn(
+            "flex-1 flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all",
+            currentPhase === 'complete'
+              ? "border-green-500 bg-green-50"
+              : "border-gray-200 bg-gray-50"
+          )}>
+            {currentPhase === 'complete' ? (
+              <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
+            ) : (
+              <div className="w-4 h-4 rounded-full border-2 border-gray-400 flex-shrink-0" />
+            )}
+            <span className="text-xs font-medium">Complete</span>
+          </div>
+        </div>
 
         {/* Error Summary */}
         {errorCount > 0 && currentPhase === 'complete' && (

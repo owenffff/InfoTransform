@@ -42,9 +42,9 @@ import {
 import { cn } from '@/lib/utils';
 
 export function AnalysisOptions({ onTransformStart }: { onTransformStart: () => void }) {
-  const { 
-    selectedFiles, 
-    modelsData, 
+  const {
+    selectedFiles,
+    modelsData,
     addStreamingResult,
     setModelFields,
     setIsProcessing,
@@ -558,7 +558,7 @@ Examples:
           <div className="text-sm text-muted-foreground">
             Ready to process {selectedFiles.length} file{selectedFiles.length > 1 ? 's' : ''}
           </div>
-          
+
           <Button
             onClick={handleTransform}
             size="lg"

@@ -237,19 +237,19 @@ function TableView({ file }: { file: FileReviewStatus }) {
   };
   
   const getFieldValue = (fieldName: string, recordIndex?: number): any => {
-    const editKey = recordIndex !== undefined 
-      ? `${recordIndex}.${fieldName}` 
+    const editKey = recordIndex !== undefined
+      ? `${recordIndex}.${fieldName}`
       : fieldName;
-    
+
     if (pendingEdits[editKey]) {
       return pendingEdits[editKey].edited_value;
     }
-    
+
     if (recordIndex !== undefined && isArray) {
-      return data[recordIndex]?.[fieldName];
+      return (data as Record<string, any>[])[recordIndex]?.[fieldName];
     }
-    
-    return data[fieldName];
+
+    return (data as Record<string, any>)[fieldName];
   };
   
   const hasEdit = (fieldName: string, recordIndex?: number): boolean => {
