@@ -239,10 +239,11 @@ export function AnalysisOptions({ onTransformStart }: { onTransformStart: () => 
       'Any': 'Any type',
     };
     
-    // Handle Optional types
+    // Handle Optional types - extract inner type without adding "(Optional)" suffix
+    // since we have a dedicated "Required" field in the tooltip
     if (cleanType.includes('Optional[')) {
       const innerType = cleanType.match(/Optional\[(.+)\]/)?.[1] || cleanType;
-      return `${formatPythonType(innerType)} (Optional)`;
+      return formatPythonType(innerType);
     }
     
     // Handle Union types
@@ -283,27 +284,32 @@ export function AnalysisOptions({ onTransformStart }: { onTransformStart: () => 
 
   const getFieldInfo = (fieldName: string) => {
     const field = schemaFields[fieldName];
-    if (!field) return { 
-      type: 'Text', 
+    if (!field) return {
+      type: 'Text',
       description: `Extract ${fieldName}`,
       required: false,
-      constraints: null 
+      constraints: null
     };
-    
+
     if (typeof field === 'object') {
+      const rawType = field.type || field.data_type || 'str';
+      // Check if type contains Optional - if so, treat as not required
+      const isOptional = rawType.includes('Optional[');
+
       return {
-        type: formatPythonType(field.type || field.data_type || 'str'),
+        type: formatPythonType(rawType),
         description: field.description || field.help_text || `Extract ${fieldName} information`,
-        required: field.required !== undefined ? field.required : false,
+        // If type is Optional, always set required to false regardless of backend value
+        required: isOptional ? false : (field.required !== undefined ? field.required : false),
         constraints: field.constraints || null
       };
     }
-    
-    return { 
-      type: 'Text', 
+
+    return {
+      type: 'Text',
       description: `Extract ${fieldName}`,
       required: false,
-      constraints: null 
+      constraints: null
     };
   };
 
@@ -507,15 +513,6 @@ export function AnalysisOptions({ onTransformStart }: { onTransformStart: () => 
                 Choose the AI model for processing.
               </p>
             </div>
-
-            {selectedAIModel && modelsData?.ai_models?.models[selectedAIModel] && (
-              <Alert className="border-blue-200 bg-blue-50">
-                <Info className="h-4 w-4 text-blue-600" />
-                <AlertDescription className="text-sm">
-                  <strong>Model Info:</strong> {`Using ${modelsData.ai_models.models[selectedAIModel].display_name} for analysis`}
-                </AlertDescription>
-              </Alert>
-            )}
           </TabsContent>
 
           <TabsContent value="advanced" className="mt-6 space-y-4">
@@ -542,14 +539,6 @@ Examples:
                 Provide additional context or specific requirements for the analysis
               </p>
             </div>
-
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertDescription className="text-sm">
-                <strong>Batch Processing:</strong> Files will be processed in batches of 5 for optimal performance.
-                Large files may be automatically summarized to fit context limits.
-              </AlertDescription>
-            </Alert>
           </TabsContent>
         </Tabs>
 
