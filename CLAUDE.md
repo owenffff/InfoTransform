@@ -64,8 +64,6 @@ cd frontend && npm run dev
 
 # Build production frontend
 npm run build
-# Or
-npm run build:next
 
 # Start production Next.js server (from frontend directory)
 cd frontend && npm run start
@@ -265,13 +263,3 @@ InfoTransform is designed to run on **Windows**, **WSL**, and **macOS/Linux**. T
 - Avoid bash-specific syntax in npm scripts (use `&&` not `;`, avoid `$VAR` expansion)
 - Use cross-platform npm packages (`concurrently`, `dotenv-cli`)
 - Test changes on both Windows and Unix if modifying paths or environment handling
-
-## Legacy Frontend
-
-The project maintains a legacy vanilla JavaScript frontend in `frontend-legacy/` directory. To use the legacy frontend:
-```bash
-# Build and run legacy frontend
-npm run dev:legacy
-# Or build only
-npm run build:legacy
-```

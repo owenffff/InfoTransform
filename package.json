@@ -8,12 +8,6 @@
     "test": "tests"
   },
   "scripts": {
-    "build:css:legacy": "tailwindcss -i ./frontend-legacy/src/css/input.css -o ./frontend-legacy/dist/css/style.css --minify",
-    "watch:css:legacy": "tailwindcss -i ./frontend-legacy/src/css/input.css -o ./frontend-legacy/dist/css/style.css --watch",
-    "build:js:legacy": "esbuild frontend-legacy/src/js/main.js --bundle --minify --outfile=frontend-legacy/dist/js/script.js",
-    "watch:js:legacy": "esbuild frontend-legacy/src/js/main.js --bundle --outfile=frontend-legacy/dist/js/script.js --watch",
-    "build:legacy": "npm run build:css:legacy && npm run build:js:legacy",
-    "dev:legacy": "concurrently \"npm run watch:css:legacy\" \"npm run watch:js:legacy\" \"npm run python:app\"",
     "python:app": "uv run python app.py",
     "build:next": "dotenv -- npm --prefix frontend run build",
     "dev:next": "dotenv -- npm --prefix frontend run dev",
@@ -22,7 +16,7 @@
     "dev:api": "dotenv -- npm run python:app",
     "dev": "dotenv -- concurrently -k --kill-others-on-fail --names \"next,api\" \"npm run dev:next\" \"npm run dev:api\"",
     "build": "npm run build:next",
-    "clean": "node -e \"const fs=require('fs'); const path=require('path'); const dirs=['frontend/.next','frontend/out','frontend-legacy/dist']; dirs.forEach(d=>{try{fs.rmSync(d,{recursive:true,force:true})}catch(e){}});\""
+    "clean": "node -e \"const fs=require('fs'); const path=require('path'); const dirs=['frontend/.next','frontend/out']; dirs.forEach(d=>{try{fs.rmSync(d,{recursive:true,force:true})}catch(e){}});\""
   },
   "repository": {
     "type": "git",

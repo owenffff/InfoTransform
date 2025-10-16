@@ -12,10 +12,8 @@ from io import BytesIO, StringIO
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, status
-from fastapi.responses import JSONResponse, HTMLResponse, StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.exceptions import RequestValidationError
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 import uvicorn
@@ -86,45 +84,10 @@ app.add_middleware(
 # Get paths relative to project root
 project_root = Path(__file__).parent.parent.parent
 
-# Mount static files
-# Mount legacy frontend dist for compiled assets (CSS, JS bundles)
-legacy_dist_path = project_root / "frontend-legacy" / "dist"
-if legacy_dist_path.exists():
-    app.mount("/static", StaticFiles(directory=str(legacy_dist_path)), name="static")
-
-# Mount legacy frontend/static for fonts, favicon, and other static assets
-legacy_static_path = project_root / "frontend-legacy" / "static"
-if legacy_static_path.exists():
-    app.mount("/assets", StaticFiles(directory=str(legacy_static_path)), name="assets")
-
-# Mount legacy src as fallback for development
-legacy_src_path = project_root / "frontend-legacy" / "src"
-if legacy_src_path.exists():
-    app.mount("/src", StaticFiles(directory=str(legacy_src_path)), name="src")
-
-# Setup templates - using legacy for now
-templates_path = project_root / "frontend-legacy" / "templates"
-templates = Jinja2Templates(directory=str(templates_path))
-
 # Create necessary directories
 os.makedirs(config.UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(config.TEMP_EXTRACT_DIR, exist_ok=True)
 
-
-def secure_filename(filename: str) -> str:
-    """Secure a filename by removing potentially dangerous characters"""
-    import re
-    # Remove any path separators
-    filename = filename.replace('/', '_').replace('\\', '_')
-    # Keep only alphanumeric, dash, underscore, and dot
-    filename = re.sub(r'[^a-zA-Z0-9._-]', '_', filename)
-    return filename
-
-
-@app.get("/legacy", response_class=HTMLResponse)
-async def legacy_index(request: Request):
-    """Render the legacy page"""
-    return templates.TemplateResponse("index.html", {"request": request})
 
 @app.get("/")
 async def index():
