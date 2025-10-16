@@ -135,17 +135,18 @@ export function AnalysisOptions({ onTransformStart }: { onTransformStart: () => 
     const handleEvent = (event: ApiStreamingEvent) => {
       // Convert API event to Processing event
       const processingEvent: ProcessingStreamingEvent = {
-        type: event.type === 'phase_start' && event.phase === 'markdown_conversion' ? 'markdown_conversion' :
-              event.type === 'phase_start' && event.phase === 'ai_analysis' ? 'ai_analysis' :
-              event.type === 'init' ? 'start' :
+        type: event.type === 'init' ? 'start' :
+              event.type === 'phase' && event.phase === 'markdown_conversion' && event.status === 'started' ? 'markdown_conversion' :
+              event.type === 'phase' && event.phase === 'ai_processing' && event.status === 'started' ? 'ai_analysis' :
+              event.type === 'conversion_progress' ? 'markdown_conversion' :
               event.type === 'result' ? 'result' :
               event.type === 'complete' ? 'complete' :
               event.type === 'error' ? 'error' : 'result',
         filename: event.filename || event.file,
-        status: event.status === 'success' ? 'success' : 
+        status: event.status === 'success' ? 'success' :
                 event.status === 'error' ? 'error' : 'processing',
         error: event.error,
-        progress: event.progress,
+        progress: event.progress !== undefined ? event.progress : event.current,
         total: event.total || event.total_files,
         markdown_content: event.markdown_content,
         structured_data: event.structured_data,

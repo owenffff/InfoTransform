@@ -248,7 +248,6 @@ export function ResultsDisplay() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h2 className="text-2xl font-semibold text-gray-900 flex items-center gap-3">
-              <span className="text-brand-orange-500">4.</span>
               Transformation Results
               {isProcessing && (
                 <span className="flex items-center gap-2 text-sm font-normal text-brand-orange-600 bg-brand-orange-50 px-3 py-1 rounded-full animate-pulse">
