@@ -9,6 +9,8 @@ import os
 import zipfile
 import tempfile
 import shutil
+import uuid
+from datetime import datetime, timezone
 from typing import List, Dict, Any, AsyncGenerator, Optional
 from fastapi import UploadFile, Form, HTTPException
 from fastapi.responses import StreamingResponse
@@ -18,6 +20,7 @@ from infotransform.processors import StructuredAnalyzerAgent, SummarizationAgent
 from infotransform.processors.async_converter import AsyncMarkdownConverter
 from infotransform.processors.ai_batch_processor import BatchProcessor
 from infotransform.utils.file_lifecycle import get_file_manager, ManagedStreamingResponse
+from infotransform.db import get_logs_db
 
 logger = logging.getLogger(__name__)
 
@@ -197,20 +200,25 @@ class StreamingProcessor:
         files: List[Dict[str, Any]],
         model_key: str,
         custom_instructions: str,
-        ai_model: str
+        ai_model: str,
+        run_id: str = None
     ) -> AsyncGenerator[str, None]:
         """
         Process files with optimized pipeline
-        
+
         Args:
             files: List of file info dictionaries
             model_key: Model key for structured analysis
             custom_instructions: Custom instructions
             ai_model: AI model to use
-            
+            run_id: Unique identifier for this processing run
+
         Yields:
             Server-sent events
         """
+        # Generate run_id if not provided
+        if run_id is None:
+            run_id = str(uuid.uuid4())
         # Pre-process files to extract ZIP archives
         expanded_files = []
         zip_count = 0
@@ -231,14 +239,30 @@ class StreamingProcessor:
         
         # Update files list to include extracted files
         if zip_count > 0:
-            logger.info(f"Processed {zip_count} ZIP files, total files: {len(expanded_files)}")
+            logger.info(f"[{run_id}] Processed {zip_count} ZIP files, total files: {len(expanded_files)}")
             files = expanded_files
         
         total_files = len(files)
         start_time = time.time()
-        
+        start_timestamp = datetime.now(timezone.utc).isoformat()
+
+        # Log run start with run_id
+        logger.info(f"[{run_id}] Starting processing run: {total_files} files, model={model_key}, ai_model={ai_model}")
+
         # Get model information
         model_info = self.structured_analyzer_agent.get_available_models().get(model_key, {})
+
+        # Log to database
+        logs_db = get_logs_db()
+        await logs_db.insert_run_start(
+            run_id=run_id,
+            start_timestamp=start_timestamp,
+            total_files=total_files,
+            model_key=model_key,
+            model_name=model_info.get("name", model_key),
+            ai_model_used=ai_model or config.get('models.ai_models.default_model'),
+            custom_instructions=custom_instructions if custom_instructions else None
+        )
         
         # Send initial event
         # Convert fields dict to array of field names for JavaScript
@@ -247,6 +271,8 @@ class StreamingProcessor:
         
         initial_event = {
             "type": "init",
+            "run_id": run_id,
+            "start_timestamp": start_timestamp,
             "total_files": total_files,
             "model_key": model_key,
             "model_name": model_info.get("name", model_key),
@@ -310,6 +336,7 @@ class StreamingProcessor:
                 markdown_results[index] = result
             
             conversion_time = time.time() - conversion_start
+            logger.info(f"[{run_id}] Markdown conversion complete: {len(files)} files in {conversion_time:.2f}s")
             phase_complete_event = {
                 'type': 'phase',
                 'phase': 'markdown_conversion',
@@ -519,8 +546,9 @@ class StreamingProcessor:
                                     }
                             
                             yield f"data: {json.dumps(result_event)}\n\n"
-                
+
                 ai_time = time.time() - ai_start
+                logger.info(f"[{run_id}] AI processing complete: {len(successful_conversions)} files in {ai_time:.2f}s")
                 ai_complete_event = {
                     'type': 'phase',
                     'phase': 'ai_processing',
@@ -550,19 +578,39 @@ class StreamingProcessor:
                 yield f"data: {json.dumps(failed_result_event)}\n\n"
             
             # Send completion event with metrics
-            total_time = time.time() - start_time
-            
+            end_time = time.time()
+            total_time = end_time - start_time
+            end_timestamp = datetime.now(timezone.utc).isoformat()
+
             # Calculate summarization statistics
             summarized_count = sum(1 for item in successful_conversions if item.get('was_summarized', False))
             summarization_time = summarization_time if 'summarization_time' in locals() else 0
-            
+
+            # Get batch metrics with token usage
+            batch_metrics = self.batch_processor.get_metrics()
+            token_usage = batch_metrics.get('token_usage', {})
+
             completion_event = {
                 "type": "complete",
+                "run_id": run_id,
+                "timestamps": {
+                    "start": start_timestamp,
+                    "end": end_timestamp,
+                    "duration": total_time
+                },
                 "total_files": total_files,
                 "successful": successful_ai,
                 "failed": failed_ai + len(failed_conversions),
                 "model_used": model_key,
                 "ai_model_used": ai_model or config.get('models.ai_models.default_model'),
+                "token_usage": {
+                    "input_tokens": token_usage.get('input_tokens', 0),
+                    "output_tokens": token_usage.get('output_tokens', 0),
+                    "total_tokens": token_usage.get('total_tokens', 0),
+                    "cache_read_tokens": token_usage.get('cache_read_tokens', 0),
+                    "cache_write_tokens": token_usage.get('cache_write_tokens', 0),
+                    "requests": token_usage.get('requests', 0)
+                },
                 "summarization": {
                     "files_summarized": summarized_count,
                     "summarization_duration": summarization_time,
@@ -576,9 +624,27 @@ class StreamingProcessor:
                     "ai_duration": ai_time if successful_conversions else 0,
                     "files_per_second": total_files / total_time if total_time > 0 else 0,
                     "conversion_metrics": self.markdown_converter.get_metrics(),
-                    "batch_metrics": self.batch_processor.get_metrics()
+                    "batch_metrics": batch_metrics
                 }
             }
+
+            # Log completion with run_id
+            logger.info(
+                f"[{run_id}] Processing complete: {successful_ai} successful, {failed_ai + len(failed_conversions)} failed, "
+                f"{total_time:.2f}s total, {token_usage.get('total_tokens', 0)} tokens"
+            )
+
+            # Update database with completion data
+            await logs_db.update_run_complete(
+                run_id=run_id,
+                end_timestamp=end_timestamp,
+                duration_seconds=total_time,
+                successful_files=successful_ai,
+                failed_files=failed_ai + len(failed_conversions),
+                token_usage=token_usage,
+                status='completed'
+            )
+
             yield f"data: {json.dumps(completion_event)}\n\n"
 
 
@@ -614,11 +680,14 @@ async def transform(
         StreamingResponse with server-sent events
     """
     processor = await get_processor()
-    
+
+    # Generate unique run ID for this request
+    run_id = str(uuid.uuid4())
+
     # Validate inputs
     if not files:
         raise HTTPException(status_code=400, detail="No files provided")
-    
+
     # Check if model exists
     available_models = processor.structured_analyzer_agent.get_available_models()
     if model_key not in available_models:
@@ -626,7 +695,7 @@ async def transform(
             status_code=400,
             detail=f"Model '{model_key}' not found. Available models: {list(available_models.keys())}"
         )
-    
+
     # Save uploaded files
     saved_files = []
     file_infos = []
@@ -649,15 +718,15 @@ async def transform(
                 'filename': file.filename
             })
             
-            logger.info(f"Saved file: {file.filename} to {file_path}")
-    
+            logger.info(f"[{run_id}] Saved file: {file.filename} to {file_path}")
+
     except Exception as e:
         # Clean up any saved files on error
         for file_path in saved_files:
             if os.path.exists(file_path):
                 os.remove(file_path)
-        
-        logger.error(f"Error saving files: {str(e)}")
+
+        logger.error(f"[{run_id}] Error saving files: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error saving files: {str(e)}")
     
     # Create managed streaming response
@@ -666,17 +735,19 @@ async def transform(
             file_infos,
             model_key,
             custom_instructions,
-            ai_model
+            ai_model,
+            run_id=run_id
         ),
         saved_files,
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
-            "X-Accel-Buffering": "no"  # Disable nginx buffering
+            "X-Accel-Buffering": "no",  # Disable nginx buffering
+            "X-Run-ID": run_id  # Include run ID in response headers
         }
     )
-    
+
     return managed_response.create_response()
 
 

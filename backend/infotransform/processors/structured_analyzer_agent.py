@@ -142,12 +142,24 @@ Content to analyze:
                         validated_result = await result.validate_structured_output(message)
                         result_dict = validated_result.model_dump()
                         result_dict = self._convert_enums_to_strings(result_dict)
-                        
+
+                        # Capture usage information
+                        usage = result.usage()
+                        usage_dict = {
+                            'input_tokens': usage.input_tokens or 0,
+                            'output_tokens': usage.output_tokens or 0,
+                            'cache_read_tokens': usage.cache_read_tokens or 0,
+                            'cache_write_tokens': usage.cache_write_tokens or 0,
+                            'total_tokens': (usage.input_tokens or 0) + (usage.output_tokens or 0),
+                            'requests': usage.requests or 0
+                        }
+
                         yield {
                             'success': True,
                             'model_used': model_class.__name__,
                             'ai_model_used': model_name,
                             'result': result_dict,
+                            'usage': usage_dict,
                             'final': True
                         }
                     else:
@@ -256,29 +268,53 @@ Content to analyze:
                         if last:
                             validated_result = await result.validate_structured_output(message)
                             result_dict = validated_result.model_dump()
-                            
+
                             # Convert Enums to strings
                             result_dict = self._convert_enums_to_strings(result_dict)
-                            
+
+                            # Capture usage information
+                            usage = result.usage()
+                            usage_dict = {
+                                'input_tokens': usage.input_tokens or 0,
+                                'output_tokens': usage.output_tokens or 0,
+                                'cache_read_tokens': usage.cache_read_tokens or 0,
+                                'cache_write_tokens': usage.cache_write_tokens or 0,
+                                'total_tokens': (usage.input_tokens or 0) + (usage.output_tokens or 0),
+                                'requests': usage.requests or 0
+                            }
+
                             return {
                                 'success': True,
                                 'model_used': model_class.__name__,
                                 'ai_model_used': model_name,
-                                'result': result_dict
+                                'result': result_dict,
+                                'usage': usage_dict
                             }
             else:
                 # Non-streaming mode
                 result = await agent.run(prompt, model_settings=model_settings)
                 result_dict = result.output.model_dump()
-                
+
                 # Convert Enums to strings
                 result_dict = self._convert_enums_to_strings(result_dict)
-                
+
+                # Capture usage information
+                usage = result.usage()
+                usage_dict = {
+                    'input_tokens': usage.input_tokens or 0,
+                    'output_tokens': usage.output_tokens or 0,
+                    'cache_read_tokens': usage.cache_read_tokens or 0,
+                    'cache_write_tokens': usage.cache_write_tokens or 0,
+                    'total_tokens': (usage.input_tokens or 0) + (usage.output_tokens or 0),
+                    'requests': usage.requests or 0
+                }
+
                 return {
                     'success': True,
                     'model_used': model_class.__name__,
                     'ai_model_used': model_name,
-                    'result': result_dict
+                    'result': result_dict,
+                    'usage': usage_dict
                 }
                 
         except Exception as e:

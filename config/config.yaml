@@ -226,6 +226,17 @@ processing:
     temp_extract_dir: temp_extracts    # Temporary directory for ZIP file extraction
 
 # ============================================================================
+# DATABASE CONFIGURATION
+# ============================================================================
+# SQLite database for storing processing run logs
+
+database:
+  processing_logs:
+    enabled: true                                    # Enable/disable database logging
+    path: "backend/infotransform/data/processing_logs.db"  # Path to SQLite database file
+    wal_mode: true                                  # Enable Write-Ahead Logging for better concurrency
+
+# ============================================================================
 # FEATURE FLAGS
 # ============================================================================
 # Enable/disable specific features

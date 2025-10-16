@@ -57,6 +57,7 @@ class BatchResult:
     error: Optional[str] = None
     processing_time: float = 0.0
     final: bool = True  # Indicates if this is the final result or a partial update
+    usage: Optional[Dict[str, Any]] = None  # Token usage information
 
 
 class BatchProcessor:
@@ -100,7 +101,15 @@ class BatchProcessor:
             'total_items': 0,
             'total_time': 0.0,
             'recent_response_times': [],  # Last 10 batch response times
-            'current_batch_size': self.batch_size
+            'current_batch_size': self.batch_size,
+            'total_usage': {
+                'input_tokens': 0,
+                'output_tokens': 0,
+                'cache_read_tokens': 0,
+                'cache_write_tokens': 0,
+                'total_tokens': 0,
+                'requests': 0
+            }
         }
         
         # Background tasks
@@ -201,8 +210,13 @@ class BatchProcessor:
                 'structured_data': result.structured_data,
                 'error': result.error,
                 'processing_time': result.processing_time,
-                'final': result.final
+                'final': result.final,
+                'usage': result.usage
             }
+
+            # Aggregate usage for final results
+            if result.final and result.usage:
+                self._update_usage_metrics(result.usage)
             
             # Track final results
             if result.final:
@@ -353,7 +367,8 @@ class BatchProcessor:
                             success=True,
                             structured_data=result['result'],
                             processing_time=processing_time,
-                            final=result.get('final', True)
+                            final=result.get('final', True),
+                            usage=result.get('usage')
                         ))
                     else:
                         await self.result_queue.put(BatchResult(
@@ -361,7 +376,8 @@ class BatchProcessor:
                             success=False,
                             error=result.get('error', 'Analysis failed'),
                             processing_time=processing_time,
-                            final=result.get('final', True)
+                            final=result.get('final', True),
+                            usage=result.get('usage')
                         ))
                         
                     # If this was the final result or an error, we're done
@@ -384,7 +400,8 @@ class BatchProcessor:
                         success=True,
                         structured_data=result['result'],
                         processing_time=processing_time,
-                        final=True
+                        final=True,
+                        usage=result.get('usage')
                     ))
                 else:
                     await self.result_queue.put(BatchResult(
@@ -392,7 +409,8 @@ class BatchProcessor:
                         success=False,
                         error=result.get('error', 'Analysis failed'),
                         processing_time=processing_time,
-                        final=True
+                        final=True,
+                        usage=result.get('usage')
                     ))
                     
         except Exception as e:
@@ -494,12 +512,25 @@ class BatchProcessor:
         self.metrics['total_batches'] += 1
         self.metrics['total_items'] += batch_size
         self.metrics['total_time'] += processing_time
-        
+
         # Update recent response times (keep last 10)
         response_time_per_item = processing_time / batch_size
         self.metrics['recent_response_times'].append(response_time_per_item)
         if len(self.metrics['recent_response_times']) > 10:
             self.metrics['recent_response_times'].pop(0)
+
+    def _update_usage_metrics(self, usage: Dict[str, Any]):
+        """Update token usage metrics"""
+        if not usage:
+            return
+
+        total_usage = self.metrics['total_usage']
+        total_usage['input_tokens'] += usage.get('input_tokens', 0)
+        total_usage['output_tokens'] += usage.get('output_tokens', 0)
+        total_usage['cache_read_tokens'] += usage.get('cache_read_tokens', 0)
+        total_usage['cache_write_tokens'] += usage.get('cache_write_tokens', 0)
+        total_usage['total_tokens'] += usage.get('total_tokens', 0)
+        total_usage['requests'] += usage.get('requests', 0)
     
     def get_metrics(self) -> Dict[str, Any]:
         """Get processing metrics"""
@@ -528,5 +559,6 @@ class BatchProcessor:
             'current_batch_size': self.metrics['current_batch_size'],
             'average_time_per_batch': avg_time_per_batch,
             'average_time_per_item': avg_time_per_item,
-            'total_processing_time': self.metrics['total_time']
+            'total_processing_time': self.metrics['total_time'],
+            'token_usage': self.metrics['total_usage']
         }
