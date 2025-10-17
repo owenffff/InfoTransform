@@ -18,9 +18,10 @@ export interface FileResult {
 }
 
 export interface StreamingEvent {
-  type: 'init' | 'phase' | 'phase_start' | 'phase_progress' | 'phase_complete' | 'result' | 'partial' | 'error' | 'complete' | 'conversion_summary';
+  type: 'init' | 'phase' | 'phase_start' | 'phase_progress' | 'phase_complete' | 'result' | 'partial' | 'error' | 'complete' | 'conversion_summary' | 'conversion_progress';
   phase?: string;
   progress?: number;
+  current?: number;
   total?: number;
   total_files?: number;
   model_key?: string;

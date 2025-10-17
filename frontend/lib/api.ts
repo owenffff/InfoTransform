@@ -1,9 +1,29 @@
 import { ModelsData, StreamingEvent } from '@/types';
 
-const API_BASE_URL = `http://localhost:${process.env.NEXT_PUBLIC_BACKEND_PORT || 8000}`;
+/**
+ * Get the API base URL dynamically based on the current environment
+ * - Client-side: Uses the current browser hostname with backend port
+ * - Server-side: Uses localhost (for SSR/build time)
+ *
+ * This ensures API calls work when accessing the app via:
+ * - localhost (http://localhost:3000)
+ * - Network IP (http://192.168.1.100:3000)
+ * - Domain name (http://example.com)
+ */
+const getApiBaseUrl = (): string => {
+  // Client-side: use current browser hostname
+  if (typeof window !== 'undefined') {
+    const backendPort = process.env.NEXT_PUBLIC_BACKEND_PORT || '8000';
+    const hostname = window.location.hostname;
+    return `http://${hostname}:${backendPort}`;
+  }
+
+  // Server-side: use localhost (for SSR/build time)
+  return `http://localhost:${process.env.NEXT_PUBLIC_BACKEND_PORT || 8000}`;
+};
 
 export async function loadAnalysisModels(): Promise<ModelsData> {
-  const response = await fetch(`${API_BASE_URL}/api/models`);
+  const response = await fetch(`${getApiBaseUrl()}/api/models`);
   if (!response.ok) {
     throw new Error('Failed to load document schemas');
   }
@@ -29,7 +49,7 @@ export async function transformFiles(
   }
   
   try {
-    const response = await fetch(`${API_BASE_URL}/api/transform`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/transform`, {
       method: 'POST',
       body: formData
     });
@@ -81,7 +101,7 @@ export async function downloadResults(
   format: 'excel' | 'csv',
   fields: string[]
 ): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/api/download-results`, {
+  const response = await fetch(`${getApiBaseUrl()}/api/download-results`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -115,7 +135,7 @@ export async function downloadResults(
 }
 
 export async function createReviewSession(files: any[]): Promise<string> {
-  const response = await fetch(`${API_BASE_URL}/api/review/session`, {
+  const response = await fetch(`${getApiBaseUrl()}/api/review/session`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ files })
@@ -130,7 +150,7 @@ export async function createReviewSession(files: any[]): Promise<string> {
 }
 
 export async function getReviewSession(sessionId: string): Promise<any> {
-  const response = await fetch(`${API_BASE_URL}/api/review/${sessionId}`);
+  const response = await fetch(`${getApiBaseUrl()}/api/review/${sessionId}`);
   
   if (!response.ok) {
     throw new Error('Failed to load review session');
@@ -140,7 +160,7 @@ export async function getReviewSession(sessionId: string): Promise<any> {
 }
 
 export async function updateFileFields(sessionId: string, fileId: string, edits: any[]): Promise<any> {
-  const response = await fetch(`${API_BASE_URL}/api/review/${sessionId}/files/${fileId}/update`, {
+  const response = await fetch(`${getApiBaseUrl()}/api/review/${sessionId}/files/${fileId}/update`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ edits })
@@ -154,7 +174,7 @@ export async function updateFileFields(sessionId: string, fileId: string, edits:
 }
 
 export async function approveFile(sessionId: string, fileId: string, approval: any): Promise<any> {
-  const response = await fetch(`${API_BASE_URL}/api/review/${sessionId}/files/${fileId}/approve`, {
+  const response = await fetch(`${getApiBaseUrl()}/api/review/${sessionId}/files/${fileId}/approve`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(approval)
@@ -168,7 +188,7 @@ export async function approveFile(sessionId: string, fileId: string, approval: a
 }
 
 export async function getMarkdownContent(sessionId: string, fileId: string): Promise<any> {
-  const response = await fetch(`${API_BASE_URL}/api/review/${sessionId}/files/${fileId}/markdown`);
+  const response = await fetch(`${getApiBaseUrl()}/api/review/${sessionId}/files/${fileId}/markdown`);
   
   if (!response.ok) {
     throw new Error('Failed to load markdown content');
