@@ -16,6 +16,10 @@
     "dev:api": "dotenv -- npm run python:app",
     "dev": "dotenv -- concurrently -k --kill-others-on-fail --names \"next,api\" \"npm run dev:next\" \"npm run dev:api\"",
     "build": "npm run build:next",
+    "start": "npm run start:production",
+    "start:production": "concurrently -k --names \"next,api\" \"cross-env ENV=production npm --prefix frontend run start\" \"cross-env ENV=production npm run python:app\"",
+    "start:staging": "concurrently -k --names \"next,api\" \"cross-env ENV=staging npm --prefix frontend run start\" \"cross-env ENV=staging npm run python:app\"",
+    "start:development": "concurrently -k --names \"next,api\" \"cross-env ENV=development npm --prefix frontend run start\" \"cross-env ENV=development npm run python:app\"",
     "clean": "node -e \"const fs=require('fs'); const path=require('path'); const dirs=['frontend/.next','frontend/out']; dirs.forEach(d=>{try{fs.rmSync(d,{recursive:true,force:true})}catch(e){}});\""
   },
   "repository": {

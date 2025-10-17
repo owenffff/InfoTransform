@@ -72,15 +72,15 @@ This guide will get you a copy of the project up and running on your local machi
     ```bash
     # On macOS/Linux:
     cp .env.example .env
-    
+
     # On Windows (Command Prompt):
     copy .env.example .env
-    
+
     # On Windows (PowerShell):
     Copy-Item .env.example .env
     ```
 
-    Then, open the `.env` file and add your `OPENAI_API_KEY`. You can also adjust the port numbers if needed.
+    Then, open the `.env` file and add your `OPENAI_API_KEY`. You can also adjust the port numbers and environment if needed.
 
     ```env
     # .env
@@ -88,17 +88,52 @@ This guide will get you a copy of the project up and running on your local machi
     PORT=3000                          # Frontend Next.js port
     BACKEND_PORT=8000                  # Backend FastAPI port
     NEXT_PUBLIC_BACKEND_PORT=8000      # Must match BACKEND_PORT
+    ENV=development                    # Environment: development, staging, or production
     ```
 
 ### Running the Application
 
-Once you've completed the setup, you can start the development server:
+#### Development Mode
+
+For local development with hot-reloading:
 
 ```bash
 npm run dev
 ```
 
-This single command will start both the backend API and the frontend application concurrently. The application will be available at `http://localhost:3000` (or whatever `PORT` you have set for the frontend).
+This single command will start both the backend API and the frontend application concurrently with live reloading. The application will be available at `http://localhost:3000`.
+
+#### Production Mode
+
+For production deployment:
+
+```bash
+# 1. Build the frontend
+npm run build
+
+# 2. Start in production mode
+npm run start
+```
+
+**Environment-Specific Deployment:**
+
+You can run the application in different environments (development, staging, production):
+
+```bash
+# Production (uses config/config.production.yaml)
+npm run start:production
+
+# Staging (uses config/config.staging.yaml)
+npm run start:staging
+
+# Development with production build (uses config/config.development.yaml)
+npm run start:development
+```
+
+Each environment command:
+- Automatically loads the correct configuration file
+- Starts both the Next.js frontend and FastAPI backend
+- Uses optimized production builds for better performance
 
 ## 📁 Project Structure
 
@@ -118,7 +153,10 @@ InfoTransform/
 │   │   └── js/               # Bundled JavaScript
 │   └── templates/             # HTML templates
 ├── config/                     # Configuration files
-│   ├── config.yaml           # Main configuration
+│   ├── config.yaml           # Default configuration
+│   ├── config.development.yaml   # Development environment config
+│   ├── config.staging.yaml      # Staging environment config
+│   ├── config.production.yaml   # Production environment config
 │   ├── performance.yaml      # Performance settings
 │   └── document_schemas.py   # Data extraction schemas
 ├── data/                      # Data directories
@@ -138,20 +176,18 @@ InfoTransform/
 ### Available NPM Scripts
 
 ```bash
-# Build CSS and JavaScript for production
-npm run build
+# Development
+npm run dev                   # Start development server (hot-reload enabled)
 
-# Watch mode for development
-npm run dev
+# Production
+npm run build                 # Build frontend for production
+npm run start                 # Start production server (default: production env)
+npm run start:production      # Start with production config
+npm run start:staging         # Start with staging config
+npm run start:development     # Start with development config
 
-# Build/watch individual assets
-npm run build:css    # Build Tailwind CSS
-npm run watch:css    # Watch CSS changes
-npm run build:js     # Build JavaScript
-npm run watch:js     # Watch JS changes
-
-# Clean build artifacts
-npm run clean
+# Utilities
+npm run clean                 # Clean build artifacts
 ```
 
 ### Adding New document schemas
@@ -181,44 +217,71 @@ npm run clean
 
 ## 🔧 Configuration
 
-### Main Configuration (`config/config.yaml`)
+InfoTransform uses a flexible configuration system with environment-specific settings.
+
+### Environment Configuration
+
+The application supports three environments: **development**, **staging**, and **production**. Each environment can have its own configuration file:
+
+- `config/config.yaml` - Default/fallback configuration
+- `config/config.development.yaml` - Development-specific settings
+- `config/config.staging.yaml` - Staging-specific settings
+- `config/config.production.yaml` - Production-specific settings
+
+**How it works:**
+1. Set the `ENV` environment variable (defaults to `development`)
+2. The backend automatically loads `config/config.{ENV}.yaml`
+3. If no environment-specific file exists, falls back to `config/config.yaml`
+
+**Example configurations for different environments:**
 
 ```yaml
+# config/config.production.yaml
 app:
   name: "Information Transformer"
-  version: "2.0.0"
-  port: 8000
+  environment: "production"    # Used by application logic
 
-storage:
-  upload_folder: "data/uploads"
-  temp_extract_dir: "data/temp_extracts"
-  max_file_size: 52428800  # 50MB
-  max_zip_size: 104857600  # 100MB
+ai_pipeline:
+  structured_analysis:
+    default_model: "openai.gpt-5-2025-08-07"  # Use premium model in production
 
-models:
-  ai_models:
-    default_model: "gpt-4o-mini"
-    models:
-      gpt-4o-mini:
-        max_tokens: 16000
-        temperature: 0.1
-      gpt-4o:
-        max_tokens: 4096
-        temperature: 0.1
+processing:
+  analysis:
+    max_concurrent: 20         # More workers for production
+  conversion:
+    max_concurrent: 20
+```
+
+```yaml
+# config/config.development.yaml
+app:
+  name: "Information Transformer"
+  environment: "development"
+
+ai_pipeline:
+  structured_analysis:
+    default_model: "openai.gpt-5-mini-2025-08-07"  # Use cheaper model for dev
+
+processing:
+  analysis:
+    max_concurrent: 5          # Fewer workers for local dev
+  conversion:
+    max_concurrent: 5
 ```
 
 ### Performance Configuration (`config/performance.yaml`)
 
+Controls processing performance across all environments:
+
 ```yaml
-processing:
-  parallel_conversion:
-    enabled: true
-    max_workers: 4
-  
-  batch_processing:
-    enabled: true
-    batch_size: 5
-    max_concurrent_batches: 2
+markdown_conversion:
+  max_workers: 10              # Parallel markdown conversion
+  timeout_per_file: 120
+
+ai_processing:
+  batch_size: 10               # Files per AI batch
+  max_concurrent_batches: 3
+  timeout_per_batch: 300
 
 monitoring:
   enable_metrics: true
@@ -280,6 +343,29 @@ Once the application is running, you can access the interactive API documentatio
 #### macOS/Linux
 - No special considerations needed
 - Ensure execute permissions on Python files if needed
+
+### Environment Configuration Issues
+
+If you need to manually control which config is loaded:
+
+```bash
+# macOS/Linux:
+export ENV=production
+npm run start
+
+# Windows Command Prompt:
+set ENV=production
+npm run start
+
+# Windows PowerShell:
+$env:ENV="production"
+npm run start
+
+# Or add to .env file:
+ENV=production
+```
+
+The backend will log which config file it loads on startup.
 
 ### Debug Mode
 

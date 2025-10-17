@@ -14,12 +14,24 @@ logger = logging.getLogger(__name__)
 class Config:
     def __init__(self):
         # Load YAML configuration
-        # Look for config.yaml in the project root (two levels up from this file)
-        config_path = Path(__file__).parent.parent.parent / 'config' / 'config.yaml'
+        # Check for environment-specific config first (ENV=production → config.production.yaml)
+        env = os.getenv('ENV', 'development')
+        config_dir = Path(__file__).parent.parent.parent / 'config'
+
+        # Try environment-specific config first
+        config_path = config_dir / f'config.{env}.yaml'
+
+        # Fallback to default config.yaml if env-specific doesn't exist
+        if not config_path.exists():
+            logger.info(f"Environment-specific config not found: {config_path}, using default config.yaml")
+            config_path = config_dir / 'config.yaml'
+        else:
+            logger.info(f"Loading environment-specific config: {config_path}")
+
         if not config_path.exists():
             # Fallback to old location for backward compatibility
             config_path = Path(__file__).parent.parent.parent / 'config.yaml'
-        
+
         with open(config_path, 'r', encoding='utf-8') as f:
             self.yaml_config = yaml.safe_load(f)
         

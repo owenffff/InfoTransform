@@ -65,8 +65,12 @@ cd frontend && npm run dev
 # Build production frontend
 npm run build
 
-# Start production Next.js server (from frontend directory)
-cd frontend && npm run start
+# Production deployment (frontend + backend with production config)
+npm run start
+# Or explicitly specify environment:
+npm run start:production   # Uses config/config.production.yaml
+npm run start:staging      # Uses config/config.staging.yaml
+npm run start:development  # Uses config/config.development.yaml
 
 # Clean build artifacts
 npm run clean
@@ -139,9 +143,19 @@ class YourModel(BaseModel):
 - **Environment Variables**: Copy `.env.example` to `.env` and set:
   - `OPENAI_API_KEY` (required)
   - `PORT`, `UPLOAD_FOLDER`, `TEMP_EXTRACT_DIR` (optional)
-  
-- **Main Config**: `config/config.yaml` - App settings, storage paths, model configurations
+  - `ENV` (optional) - Sets which config file to use: `development` (default), `staging`, or `production`
+
+- **Main Config**: `config/config.yaml` - Default app settings, storage paths, model configurations
+- **Environment-Specific Configs**:
+  - `config/config.development.yaml` - Development environment settings
+  - `config/config.staging.yaml` - Staging environment settings
+  - `config/config.production.yaml` - Production environment settings
 - **Performance**: `config/performance.yaml` - Parallel processing, batch sizes, monitoring
+
+**How Environment Selection Works:**
+1. The backend checks the `ENV` environment variable (defaults to `development`)
+2. Loads `config/config.{ENV}.yaml` if it exists, otherwise falls back to `config/config.yaml`
+3. This allows different settings for development vs production (e.g., different AI models, logging levels, resource limits)
 
 ### Frontend Configuration
 - **Next.js Config**: `frontend/next.config.js` - Next.js configuration

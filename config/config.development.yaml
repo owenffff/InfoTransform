@@ -1,0 +1,256 @@
+# ============================================================================
+# INFOTRANSFORM CONFIGURATION
+# ============================================================================
+#
+# This file controls all aspects of InfoTransform's document processing pipeline.
+#
+# ARCHITECTURE OVERVIEW:
+# ---------------------
+# InfoTransform processes documents in 3 stages:
+#
+#   ┌─────────────┐      ┌──────────────┐      ┌────────────────┐
+#   │  Raw Files  │  →   │   Markdown   │  →   │  Structured    │
+#   │ (PDF, IMG)  │      │     Text     │      │     JSON       │
+#   └─────────────┘      └──────────────┘      └────────────────┘
+#    Stage 1: Conversion  Stage 2: Summary     Stage 3: Analysis
+#    (processing.conversion)  (ai_pipeline.summarization)  (processing.analysis)
+#
+# STAGE 1 - FILE CONVERSION (processing.conversion.*):
+#   • Input: Raw files (images, PDFs, audio, documents)
+#   • Process: Convert to markdown using markitdown + AI vision/audio models
+#   • Output: Plain text markdown
+#   • Parallelism: Controlled by conversion.max_concurrent
+#   • Used by: async_converter.py, vision.py, audio.py
+#
+# STAGE 2 - SUMMARIZATION (ai_pipeline.summarization.*):
+#   • Input: Markdown text from Stage 1
+#   • Process: Condense large files to reduce tokens
+#   • Trigger: When file size > token_threshold
+#   • Output: Condensed markdown
+#   • Used by: summarization_agent.py
+#
+# STAGE 3 - STRUCTURED ANALYSIS (processing.analysis.*):
+#   • Input: Markdown text (original or summarized)
+#   • Process: Extract structured data using Pydantic AI schemas
+#   • Output: Structured JSON matching schema definitions
+#   • Parallelism: Controlled by analysis.max_concurrent
+#   • Used by: structured_analyzer_agent.py, ai_batch_processor.py
+#
+# PERFORMANCE TUNING:
+# ------------------
+# Adjust concurrency based on your system resources:
+#
+#   Low RAM (< 8GB):     conversion.max_concurrent = 5,  analysis.max_concurrent = 3
+#   Medium (8-16GB):     conversion.max_concurrent = 10, analysis.max_concurrent = 5
+#   High RAM (16GB+):    conversion.max_concurrent = 20, analysis.max_concurrent = 10
+#
+# Or use performance profiles in performance.yaml (conservative/balanced/high/ultra)
+#
+# ============================================================================
+
+# ============================================================================
+# AI PIPELINE CONFIGURATION
+# ============================================================================
+# Controls the AI models, prompts, and behavior for all 3 processing stages
+
+ai_pipeline:
+  
+  # Step 1: File-to-Markdown Conversion
+  # Converts uploaded files (images, audio, documents) into markdown text
+  markdown_conversion:
+    vision_model: "openai.gpt-5-mini-2025-08-07"      # Model for processing images/documents
+    audio_model: "openai.whisper"          # Model for processing audio files
+    
+    # Prompt for vision processing (how to extract text from images)
+    vision_prompt: |
+      Please analyze this image and provide output in the following format:
+
+      1. If the image contains text (documents, screenshots, signs, etc.):
+         - Extract ALL visible text exactly as it appears
+         - Preserve the original formatting, line breaks, and structure
+         - Include any headers, bullet points, or special formatting
+         - If there are multiple columns, process them in reading order
+
+      2. If the image contains no text or minimal text:
+         - Provide a detailed description of the image content
+         - Mention key visual elements, objects, people, or scenes
+         - Note any important details or context
+
+      3. If the image contains both text and visual elements:
+         - First extract all text content
+         - Then provide a brief description of non-text elements
+
+      Format your response as clean markdown.
+  
+  # Step 2: Content Summarization (for large files)
+  # Automatically summarizes files that exceed the token threshold
+  summarization:
+    model: "vertex_ai.gemini-2.5-flash"  # Model used for summarization
+    token_threshold: 1000000             # Files over this size get summarized (set to 0 to disable)
+    temperature: 0.1                    # Lower = more focused, higher = more creative
+    
+    # Prompt for summarization (how to condense long documents)
+    prompt: |
+      You are a helpful admin expert who excels at summarising long documents. 
+      Your job is to produce a condensed version that still preserves all data points necessary 
+      for extraction according to the following fields: {fields}.
+      
+      Ensure the summary retains specific details, numbers, dates, and any other critical information 
+      that might be needed for data extraction. Your output should be in a report format.
+  
+  # Step 3: Structured Data Extraction
+  # Extracts structured information from markdown content using AI analysis
+  structured_analysis:
+    # Default model to use
+    default_model: "openai.gpt-5-mini-2025-08-07"
+
+    # Models available for user selection in frontend
+    available_models:
+      "openai.gpt-5-2025-08-07":
+        display_name: "gpt-5"
+        temperature: 0
+        seed: 123
+
+      "openai.gpt-5-mini-2025-08-07":
+        display_name: "gpt-5 mini"
+        temperature: 0
+        seed: 123 
+
+      "openai.gpt-4.1-mini-2025-04-14":
+        display_name: "gpt-4.1 mini"
+        temperature: 0
+        seed: 123
+        
+      "openai.gpt-4.1-2025-04-14":
+        display_name: "gpt-4.1"
+        temperature: 0
+        seed: 123
+    
+    # Streaming configuration
+    streaming:
+      enabled: true                    # Enable real-time streaming of results
+      debounce_by: 0.01                # Delay between streaming updates (seconds)
+      enable_partial: false           # Enable streaming of partial field updates (experimental)
+    
+    # Analysis prompts for different types of content
+    prompts:
+      # Default prompt used for all analysis types
+      default: |
+        You are an expert document analyzer. 
+        Your task is to analyze markdown content and extract structured information according to the provided schema.
+        Be accurate, thorough, and follow the schema exactly.
+      
+      # Specialized prompts for specific document schemas
+      content_compliance: |
+        You are a content compliance specialist. 
+        Analyze documents for policy violations with high accuracy.
+        Be thorough in identifying potential issues while avoiding false positives.
+      
+      document_metadata: |
+        You are a document metadata extraction expert.
+        Extract key information about documents including titles, authors, and summaries.
+        Be concise but comprehensive in your analysis.
+      
+      technical_analysis: |
+        You are a technical documentation analyst.
+        Focus on identifying technical content, code snippets, and documentation quality.
+        Assess complexity levels accurately based on content depth and prerequisites.
+    
+    # Template for analysis prompts (how custom instructions are integrated)
+    prompt_template: |
+      Analyze the following content.
+      
+      Task: {model_description}
+      
+      You should extract information according to the {model_name} schema.
+      {custom_instructions}
+      
+      Content to analyze:
+      
+      {content}
+
+# ============================================================================
+# APPLICATION SETTINGS
+# ============================================================================
+# Basic application configuration
+
+app:
+  name: "Information Transformer"
+  version: "1.0.0"
+  description: "Transform any file type into structured, actionable data"
+  environment: "development"          # development, staging, production
+
+# API server configuration
+api:
+  host: "0.0.0.0"  # Server bind address (use 0.0.0.0 to allow external connections)
+  port: 8000       # Default backend port (can be overridden by BACKEND_PORT or PORT environment variables)
+
+# ============================================================================
+# PROCESSING CONFIGURATION
+# ============================================================================
+# Settings that control how files are processed
+
+processing:
+  # File upload settings
+  upload:
+    folder: uploads
+    max_file_size_mb: 16
+    allowed_extensions:
+      images:
+        - png
+        - jpg
+        - jpeg
+        - gif
+        - bmp
+        - webp
+      audio:
+        - mp3
+        - wav
+        - m4a
+        - flac
+        - ogg
+        - webm
+      documents:
+        - pdf
+        - docx
+        - pptx
+        - xlsx
+        - txt
+        - md
+        - html
+        - msg
+      archives:
+        - zip
+  
+  # AI Analysis Stage (Step 3: markdown → structured data)
+  # Controls how files are analyzed by AI to extract structured information
+  # Note: Timeout configuration is in performance.yaml (ai_processing.timeout_per_batch)
+  analysis:
+    max_concurrent: 10                  # How many files can be analyzed by AI simultaneously
+  
+  # File Conversion Stage (Step 1: raw files → markdown)
+  # Controls how uploaded files are converted to markdown text
+  conversion:
+    max_concurrent: 10                 # How many files can be converted to markdown simultaneously
+    max_zip_size_mb: 100              # Maximum size for ZIP file uploads
+    temp_extract_dir: temp_extracts    # Temporary directory for ZIP file extraction
+
+# ============================================================================
+# DATABASE CONFIGURATION
+# ============================================================================
+# SQLite database for storing processing run logs
+
+database:
+  processing_logs:
+    enabled: true                                    # Enable/disable database logging
+    path: "backend/infotransform/data/processing_logs.db"  # Path to SQLite database file
+    wal_mode: true                                  # Enable Write-Ahead Logging for better concurrency
+
+# ============================================================================
+# FEATURE FLAGS
+# ============================================================================
+# Enable/disable specific features
+
+features:
+  streaming_responses: true            # Stream results in real-time
+  batch_processing: true               # Allow processing multiple files
