@@ -1,5 +1,5 @@
 """
-analysis_schemas.py
+document_schemas.py
 
 Schema definitions for structured data document schemas.
 These Pydantic models define the structure of data extracted by the analysis system.

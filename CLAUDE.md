@@ -118,7 +118,7 @@ docker-compose up --build
 
 ## Adding New document schemas
 
-Edit `config/analysis_schemas.py`:
+Edit `config/document_schemas.py`:
 
 1. Create a Pydantic model class inheriting from BaseModel
 2. Add Field descriptions for each attribute

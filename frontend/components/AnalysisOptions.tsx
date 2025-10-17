@@ -276,7 +276,7 @@ export function AnalysisOptions({ onTransformStart }: { onTransformStart: () => 
     
     // Clean up any remaining typing module prefixes and config module paths
     cleanType = cleanType.replace(/typing\./gi, '');
-    cleanType = cleanType.replace(/config\.analysis_schemas\./gi, '');
+    cleanType = cleanType.replace(/config\.document_schemas\./gi, '');
     
     // If it's still a complex type, just return the cleaned version
     return cleanType;

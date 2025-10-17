@@ -120,7 +120,7 @@ InfoTransform/
 ├── config/                     # Configuration files
 │   ├── config.yaml           # Main configuration
 │   ├── performance.yaml      # Performance settings
-│   └── analysis_schemas.py   # Data extraction schemas
+│   └── document_schemas.py   # Data extraction schemas
 ├── data/                      # Data directories
 │   ├── uploads/              # Uploaded files (temporary)
 │   └── temp_extracts/        # Extracted files (temporary)
@@ -156,7 +156,7 @@ npm run clean
 
 ### Adding New document schemas
 
-1. Edit `config/analysis_schemas.py`
+1. Edit `config/document_schemas.py`
 2. Add your model configuration:
    ```python
    "your_model_key": {

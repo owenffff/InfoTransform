@@ -19,7 +19,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
-from config.analysis_schemas import AVAILABLE_MODELS
+from config.document_schemas import AVAILABLE_MODELS
 
 logger = logging.getLogger(__name__)
 

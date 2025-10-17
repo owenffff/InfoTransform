@@ -58,8 +58,8 @@ ai_pipeline:
   # Step 1: File-to-Markdown Conversion
   # Converts uploaded files (images, audio, documents) into markdown text
   markdown_conversion:
-    vision_model: "openai.gpt-4.1-mini-2025-04-14"      # Model for processing images/documents
-    audio_model: "whisper-1"          # Model for processing audio files
+    vision_model: "openai.gpt-5-mini-2025-08-07"      # Model for processing images/documents
+    audio_model: "openai.whisper"          # Model for processing audio files
     
     # Prompt for vision processing (how to extract text from images)
     vision_prompt: |
@@ -85,8 +85,8 @@ ai_pipeline:
   # Step 2: Content Summarization (for large files)
   # Automatically summarizes files that exceed the token threshold
   summarization:
-    model: "vertex_ai.gemini-1.5-pro"  # Model used for summarization
-    token_threshold: 200000             # Files over this size get summarized (set to 0 to disable)
+    model: "vertex_ai.gemini-2.5-flash"  # Model used for summarization
+    token_threshold: 1000000             # Files over this size get summarized (set to 0 to disable)
     temperature: 0.1                    # Lower = more focused, higher = more creative
     
     # Prompt for summarization (how to condense long documents)
@@ -102,10 +102,20 @@ ai_pipeline:
   # Extracts structured information from markdown content using AI analysis
   structured_analysis:
     # Default model to use
-    default_model: "openai.gpt-4.1-mini-2025-04-14"
+    default_model: "openai.gpt-5-mini-2025-08-07"
 
     # Models available for user selection in frontend
     available_models:
+      "openai.gpt-5-2025-08-07":
+        display_name: "gpt-5"
+        temperature: 0
+        seed: 123
+
+      "openai.gpt-5-mini-2025-08-07":
+        display_name: "gpt-5 mini"
+        temperature: 0
+        seed: 123 
+
       "openai.gpt-4.1-mini-2025-04-14":
         display_name: "gpt-4.1 mini"
         temperature: 0
