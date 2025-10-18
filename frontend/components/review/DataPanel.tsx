@@ -227,15 +227,67 @@ function EditableCell({ value, fieldName, recordIndex, hasEdit, onEdit, columnTy
   );
 }
 
+interface EditableFieldRowProps {
+  fieldName: string;
+  value: any;
+  hasEdit: boolean;
+  onEdit: (value: string) => void;
+}
+
+function EditableFieldRow({ fieldName, value, hasEdit, onEdit }: EditableFieldRowProps) {
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const displayValue = formatValue(value);
+
+  return (
+    <tr className="border-b hover:bg-gray-50">
+      <td className="py-2 px-3 text-sm font-medium text-black align-top">
+        {formatFieldName(fieldName)}
+      </td>
+      <td className="py-2 px-3 text-sm">
+        <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+          <PopoverTrigger asChild>
+            <input
+              type="text"
+              value={displayValue}
+              onChange={(e) => onEdit(e.target.value)}
+              onDoubleClick={() => setIsPopoverOpen(true)}
+              className={`w-full bg-transparent border-0 p-1 focus:outline-none focus:ring-1 focus:ring-brand-orange-500 focus:bg-white rounded cursor-text ${
+                hasEdit ? 'border-l-2 border-l-orange-500 pl-2' : ''
+              }`}
+              title="Double-click to edit in expanded view"
+            />
+          </PopoverTrigger>
+          <PopoverContent className="w-96 max-h-96 overflow-y-auto">
+            <div className="space-y-2">
+              <div className="font-medium text-sm">{formatFieldName(fieldName)}</div>
+              <textarea
+                value={displayValue}
+                onChange={(e) => onEdit(e.target.value)}
+                className="w-full min-h-[200px] p-2 text-sm border rounded resize-none focus:outline-none focus:ring-2 focus:ring-brand-orange-500"
+                autoFocus
+              />
+              <div className="flex justify-end">
+                <Button size="sm" onClick={() => setIsPopoverOpen(false)}>
+                  Done
+                </Button>
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
+      </td>
+    </tr>
+  );
+}
+
 function TableView({ file }: { file: FileReviewStatus }) {
   const { updateField, pendingEdits } = useReviewStore();
   const data = file.extracted_data;
   const isArray = Array.isArray(data);
-  
+
   const handleCellEdit = (fieldName: string, value: any, recordIndex?: number) => {
     updateField(fieldName, value, recordIndex);
   };
-  
+
   const getFieldValue = (fieldName: string, recordIndex?: number): any => {
     const editKey = recordIndex !== undefined
       ? `${recordIndex}.${fieldName}`
@@ -251,30 +303,37 @@ function TableView({ file }: { file: FileReviewStatus }) {
 
     return (data as Record<string, any>)[fieldName];
   };
-  
+
   const hasEdit = (fieldName: string, recordIndex?: number): boolean => {
-    const editKey = recordIndex !== undefined 
-      ? `${recordIndex}.${fieldName}` 
+    const editKey = recordIndex !== undefined
+      ? `${recordIndex}.${fieldName}`
       : fieldName;
     return editKey in pendingEdits;
   };
-  
+
   if (isArray && data.length > 0) {
     const allKeys = new Set<string>();
     data.forEach(record => {
       Object.keys(record).forEach(key => allKeys.add(key));
     });
     const columns = Array.from(allKeys);
-    
+
     const columnTypes = columns.map(col => ({
       name: col,
       type: getColumnType(col, data.map(r => r[col]))
     }));
-    
+
     return (
       <div className="p-6">
-        <div className="text-sm text-black mb-3">
-          {data.length} record{data.length !== 1 ? 's' : ''} extracted
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-sm text-black">
+            {data.length} record{data.length !== 1 ? 's' : ''} extracted
+          </div>
+          {data.length > 1 && (
+            <div className="text-xs text-brand-gray-500 bg-brand-gray-100 px-2 py-1 rounded">
+              Multiple records from one file
+            </div>
+          )}
         </div>
         <div className="relative">
           <div className="overflow-x-auto border rounded-lg shadow-sm">
@@ -283,8 +342,8 @@ function TableView({ file }: { file: FileReviewStatus }) {
                 <tr className="border-b bg-gray-50">
                   <th className="sticky left-0 z-10 bg-gray-50 text-left py-2 px-3 font-medium text-sm text-gray-700 border-r">#</th>
                   {columnTypes.map(({ name, type }) => (
-                    <th 
-                      key={name} 
+                    <th
+                      key={name}
                       className={`text-left py-2 px-3 font-medium text-sm text-black ${getColumnWidthClass(type)}`}
                     >
                       {formatFieldName(name)}
@@ -316,9 +375,9 @@ function TableView({ file }: { file: FileReviewStatus }) {
       </div>
     );
   }
-  
+
   const entries = Object.entries(data);
-  
+
   return (
     <div className="p-6">
       <div className="border rounded-lg shadow-sm overflow-hidden">
@@ -330,50 +389,15 @@ function TableView({ file }: { file: FileReviewStatus }) {
             </tr>
           </thead>
           <tbody>
-            {entries.map(([fieldName, value]) => {
-              const displayValue = formatValue(getFieldValue(fieldName));
-              const [isPopoverOpen, setIsPopoverOpen] = useState(false);
-              
-              return (
-                <tr key={fieldName} className="border-b hover:bg-gray-50">
-                  <td className="py-2 px-3 text-sm font-medium text-black align-top">
-                    {formatFieldName(fieldName)}
-                  </td>
-                  <td className="py-2 px-3 text-sm">
-                    <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
-                      <PopoverTrigger asChild>
-                        <input
-                          type="text"
-                          value={displayValue}
-                          onChange={(e) => handleCellEdit(fieldName, e.target.value)}
-                          onDoubleClick={() => setIsPopoverOpen(true)}
-                          className={`w-full bg-transparent border-0 p-1 focus:outline-none focus:ring-1 focus:ring-brand-orange-500 focus:bg-white rounded cursor-text ${
-                            hasEdit(fieldName) ? 'border-l-2 border-l-orange-500 pl-2' : ''
-                          }`}
-                          title="Double-click to edit in expanded view"
-                        />
-                      </PopoverTrigger>
-                      <PopoverContent className="w-96 max-h-96 overflow-y-auto">
-                        <div className="space-y-2">
-                          <div className="font-medium text-sm">{formatFieldName(fieldName)}</div>
-                          <textarea
-                            value={displayValue}
-                            onChange={(e) => handleCellEdit(fieldName, e.target.value)}
-                            className="w-full min-h-[200px] p-2 text-sm border rounded resize-none focus:outline-none focus:ring-2 focus:ring-brand-orange-500"
-                            autoFocus
-                          />
-                          <div className="flex justify-end">
-                            <Button size="sm" onClick={() => setIsPopoverOpen(false)}>
-                              Done
-                            </Button>
-                          </div>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  </td>
-                </tr>
-              );
-            })}
+            {entries.map(([fieldName, value]) => (
+              <EditableFieldRow
+                key={fieldName}
+                fieldName={fieldName}
+                value={getFieldValue(fieldName)}
+                hasEdit={hasEdit(fieldName)}
+                onEdit={(val) => handleCellEdit(fieldName, val)}
+              />
+            ))}
           </tbody>
         </table>
       </div>

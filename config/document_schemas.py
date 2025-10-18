@@ -106,7 +106,7 @@ class OpenAICompatibleBaseModel(BaseModel):
 class report_item(BaseModel):
     """data model for report item"""
 
-    # title: str = Field(..., description="title of the content")
+    title: str = Field(..., description="title of the content")
     summary: str = Field(..., description="summary of the content")
 
 
@@ -115,7 +115,7 @@ class report_response(BaseModel):
     model_config = ConfigDict(critical_fields=[])
 
 
-class ONE_item(BaseModel):
+class ONE_item(OpenAICompatibleBaseModel):
     client_name: str = Field(..., description="Name of the client (e.g., ABC Ltd).")
     meeting_title: str = Field(
         ...,

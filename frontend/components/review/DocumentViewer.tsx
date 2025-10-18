@@ -14,6 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { getDocumentUrl, canPreviewNatively } from '@/lib/document-utils';
 import { SourceEmptyState } from './SourceEmptyState';
 import { MarkdownInfoBanner } from './MarkdownInfoBanner';
+import MarkdownRenderer from './MarkdownRenderer';
 
 interface DocumentViewerProps {
   file: FileReviewStatus;
@@ -428,12 +429,11 @@ function MarkdownViewer({ markdown, file }: { markdown: MarkdownResponse | null;
           </p>
         </div>
       )}
-      
-      <div className="prose prose-sm max-w-none">
-        <pre className="whitespace-pre-wrap bg-gray-50 p-4 rounded-lg text-sm">
-          {markdown.markdown_content}
-        </pre>
-      </div>
+
+      <MarkdownRenderer
+        content={markdown.markdown_content}
+        className="bg-white rounded-lg"
+      />
     </div>
   );
 }

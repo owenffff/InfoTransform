@@ -155,30 +155,39 @@ export function FileListSidebar({ files }: FileListSidebarProps) {
                   
                   {isExpanded && (
                     <div className="ml-6 mt-1 space-y-1">
-                      {items.map(({ file, index }) => (
-                        <button
-                          key={file.file_id}
-                          onClick={() => setCurrentFile(index)}
-                          className={cn(
-                            'w-full flex items-center gap-2 px-3 py-2 rounded text-sm transition-colors',
-                            currentFileIndex === index
-                              ? 'bg-brand-orange-100 text-black'
-                              : 'hover:bg-brand-gray-100'
-                          )}
-                        >
-                          {getStatusIcon(file.status)}
-                          {getFileIcon(file.document_type)}
-                          <span className="flex-1 text-left text-xs" title={file.filename}>
-                            {truncateFilename(file.filename, 25)}
-                          </span>
-                        </button>
-                      ))}
+                      {items.map(({ file, index }) => {
+                        const recordCount = Array.isArray(file.extracted_data) ? file.extracted_data.length : 1;
+                        return (
+                          <button
+                            key={file.file_id}
+                            onClick={() => setCurrentFile(index)}
+                            className={cn(
+                              'w-full flex items-center gap-2 px-3 py-2 rounded text-sm transition-colors',
+                              currentFileIndex === index
+                                ? 'bg-brand-orange-100 text-black'
+                                : 'hover:bg-brand-gray-100'
+                            )}
+                          >
+                            {getStatusIcon(file.status)}
+                            {getFileIcon(file.document_type)}
+                            <span className="flex-1 text-left text-xs" title={file.filename}>
+                              {truncateFilename(file.filename, 25)}
+                            </span>
+                            {recordCount > 1 && (
+                              <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium">
+                                {recordCount}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
               );
             } else {
               const { file, index } = items[0];
+              const recordCount = Array.isArray(file.extracted_data) ? file.extracted_data.length : 1;
               return (
                 <button
                   key={file.file_id}
@@ -195,6 +204,11 @@ export function FileListSidebar({ files }: FileListSidebarProps) {
                   <span className="flex-1 text-left" title={file.filename}>
                     {truncateFilename(file.filename)}
                   </span>
+                  {recordCount > 1 && (
+                    <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium">
+                      {recordCount}
+                    </span>
+                  )}
                 </button>
               );
             }

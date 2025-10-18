@@ -6,6 +6,4 @@
 *.p7b
 *.p7c
 
-# Keep README
-!README.md
 !.gitignore
