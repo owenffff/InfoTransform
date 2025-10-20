@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Settings2, Wand2, Info, Clock, Check, ChevronsUpDown, Search } from 'lucide-react';
+import { Sparkles, Settings2, Wand2, Info, Clock, Check, ChevronsUpDown, Search, MessageCircle } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { transformFiles } from '@/lib/api';
 import { showToast } from './Toast';
@@ -400,6 +400,18 @@ export function AnalysisOptions({ onTransformStart }: { onTransformStart: () => 
                 </PopoverContent>
               </Popover>
             </div>
+
+            {/* Custom Schema Help - Contact AI Factory */}
+            <Alert className="border-blue-200 bg-blue-50/50 mt-3">
+              <MessageCircle className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="text-sm">
+                <span className="font-medium text-blue-900">Don't see what you need?</span>
+                <span className="text-blue-800 ml-1">
+                  Contact <span className="font-semibold">AI Factory</span> to discuss your use case.
+                  We'll create a custom document schema tailored to your requirements.
+                </span>
+              </AlertDescription>
+            </Alert>
 
             {modelDescription && (
               <Alert className="border-primary/20 bg-primary/5">
