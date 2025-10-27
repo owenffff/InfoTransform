@@ -334,16 +334,34 @@ export function AnalysisOptions({ onTransformStart }: { onTransformStart: () => 
       
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="model" className="flex items-center gap-2">
+          <TabsList className="flex w-full">
+            <TabsTrigger
+              value="model"
+              className={cn(
+                "flex items-center gap-2 transition-all duration-300 ease-in-out",
+                activeTab === "model" ? "flex-[3]" : "flex-1"
+              )}
+            >
               <Wand2 className="w-4 h-4" />
               Document Schema
             </TabsTrigger>
-            <TabsTrigger value="ai" className="flex items-center gap-2">
+            <TabsTrigger
+              value="ai"
+              className={cn(
+                "flex items-center gap-2 transition-all duration-300 ease-in-out",
+                activeTab === "ai" ? "flex-[3]" : "flex-1"
+              )}
+            >
               <Settings2 className="w-4 h-4" />
               AI Settings
             </TabsTrigger>
-            <TabsTrigger value="advanced" className="flex items-center gap-2">
+            <TabsTrigger
+              value="advanced"
+              className={cn(
+                "flex items-center gap-2 transition-all duration-300 ease-in-out",
+                activeTab === "advanced" ? "flex-[3]" : "flex-1"
+              )}
+            >
               <Sparkles className="w-4 h-4" />
               Advanced
             </TabsTrigger>

@@ -20,7 +20,11 @@
     "start:production": "concurrently -k --names \"next,api\" \"cross-env ENV=production npm --prefix frontend run start\" \"cross-env ENV=production npm run python:app\"",
     "start:staging": "concurrently -k --names \"next,api\" \"cross-env ENV=staging npm --prefix frontend run start\" \"cross-env ENV=staging npm run python:app\"",
     "start:development": "concurrently -k --names \"next,api\" \"cross-env ENV=development npm --prefix frontend run start\" \"cross-env ENV=development npm run python:app\"",
-    "clean": "node -e \"const fs=require('fs'); const path=require('path'); const dirs=['frontend/.next','frontend/out']; dirs.forEach(d=>{try{fs.rmSync(d,{recursive:true,force:true})}catch(e){}});\""
+    "clean": "node -e \"const fs=require('fs'); const path=require('path'); const dirs=['frontend/.next','frontend/out']; dirs.forEach(d=>{try{fs.rmSync(d,{recursive:true,force:true})}catch(e){}});\"",
+    "licenses": "uv run python scripts/generate_licenses.py",
+    "licenses:csv": "uv run python scripts/generate_licenses.py --format csv --output licenses.csv",
+    "licenses:markdown": "uv run python scripts/generate_licenses.py --format markdown --output LICENSES.md",
+    "licenses:json": "uv run python scripts/generate_licenses.py --format json --output licenses.json"
   },
   "repository": {
     "type": "git",

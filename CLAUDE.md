@@ -83,8 +83,12 @@ npm run clean
 ```
 
 ### Docker Development
+
+InfoTransform uses a **multi-stage Dockerfile** that supports both development and production environments.
+
+#### Development Environment
 ```bash
-# Build and start development environment with Docker
+# Build and start development environment
 docker-compose up --build
 
 # Start existing containers
@@ -98,23 +102,94 @@ docker-compose logs -f
 
 # Rebuild after dependency changes
 docker-compose up --build
+
+# View specific service logs
+docker-compose logs -f infotransform
 ```
 
-**Docker Features:**
+#### Production Environment
+```bash
+# Build production image
+docker build --target production -t infotransform:prod .
+
+# Run with production compose file
+docker-compose -f docker-compose.prod.yml up -d
+
+# View production logs
+docker-compose -f docker-compose.prod.yml logs -f
+
+# Scale backend workers (adjust WORKERS in .env)
+WORKERS=8 docker-compose -f docker-compose.prod.yml up -d
+
+# Stop production services
+docker-compose -f docker-compose.prod.yml down
+
+# View health status
+docker-compose -f docker-compose.prod.yml ps
+```
+
+#### Docker Features
+
+**Development Features:**
 - Hot-reloading for both frontend and backend
 - Source code mounted as volumes for live changes
 - Corporate CA certificate support (place cert at `certs/corporate-ca.crt`)
 - UV installed via pip for better corporate network compatibility
 - All services accessible at same ports (3000, 8000)
+- Automatic restart on code changes
+
+**Production Features:**
+- Multi-worker backend with uvicorn (configurable via `WORKERS` env var)
+- Optimized Next.js production build
+- Non-root user for security hardening
+- Named volumes for data persistence
+- Health checks for monitoring
+- Resource limits and restart policies
+- Reduced image size (~40% smaller than development)
+
+**Data Persistence (All Environments):**
+- `data/uploads` - Uploaded files
+- `data/temp_extracts` - Temporary extraction directory
+- `data/uploads/review_sessions` - Review workspace sessions
+- `data/uploads/review_documents` - Review documents
+- `backend/infotransform/data` - SQLite database files (processing logs)
+- `logs` - Application logs
+
+**Environment Configuration:**
+Set the `ENV` environment variable to load different config files:
+- `ENV=development` → `config/config.development.yaml`
+- `ENV=staging` → `config/config.staging.yaml`
+- `ENV=production` → `config/config.production.yaml`
+
+**Health Monitoring:**
+Both development and production containers include health checks:
+```bash
+# Check container health
+docker ps
+
+# View health check logs
+docker inspect --format='{{json .State.Health}}' infotransform-prod | jq
+```
 
 ## Key API Endpoints
 
 ### Backend API (FastAPI - Port 8000)
 - `POST /api/transform` - Process files with streaming response (SSE)
-- `GET /api/models` - List available document schemas  
+- `GET /api/models` - List available document schemas
 - `POST /api/download-results` - Export results as Excel/CSV
+- `GET /health` - Health check endpoint (used by Docker health checks)
 - `GET /docs` - Swagger API documentation
 - `GET /redoc` - ReDoc API documentation
+
+**Review Workspace API:**
+- `POST /api/review/session` - Create new review session
+- `GET /api/review/session/{session_id}` - Get review session
+- `PUT /api/review/session/{session_id}` - Update review session
+- `DELETE /api/review/session/{session_id}` - Delete review session
+- `GET /api/review/sessions` - List all review sessions
+- `POST /api/review/document/{document_id}` - Upload document for review
+- `GET /api/review/document/{document_id}` - Get review document
+- And more review-related endpoints...
 
 ### Frontend (Next.js - Port 3000)
 - `/` - Main application interface

@@ -1,0 +1,110 @@
+# ============================================================================
+# Production Docker Compose Configuration for InfoTransform
+# ============================================================================
+# This configuration is optimized for production deployments with:
+# - Multi-worker backend setup for better performance
+# - Named volumes for data persistence
+# - Resource limits and restart policies
+# - Health checks with proper timeouts
+#
+# Usage:
+#   docker-compose -f docker-compose.prod.yml up -d
+#   docker-compose -f docker-compose.prod.yml down
+#   docker-compose -f docker-compose.prod.yml logs -f
+
+version: '3.8'
+
+services:
+  infotransform:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    image: infotransform:latest
+    container_name: infotransform-prod
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+      - "${PORT:-3000}:3000"
+    env_file:
+      - .env
+    environment:
+      # API Keys and endpoints
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      - AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT=${AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT:-}
+
+      # Port configuration
+      - PORT=3000
+      - BACKEND_PORT=8000
+      - NEXT_PUBLIC_BACKEND_PORT=8000
+
+      # Environment settings
+      - ENV=production
+      - NODE_ENV=production
+      - PYTHONUNBUFFERED=1
+      - QUIET_MODE=${QUIET_MODE:-false}
+
+      # Production optimizations
+      - WORKERS=${WORKERS:-4}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - MAX_REQUESTS=${MAX_REQUESTS:-1000}
+      - MAX_REQUESTS_JITTER=${MAX_REQUESTS_JITTER:-50}
+
+    volumes:
+      # Named volumes for data persistence
+      - uploads_data:/app/data/uploads
+      - temp_extracts:/app/data/temp_extracts
+      - review_sessions:/app/data/uploads/review_sessions
+      - review_documents:/app/data/uploads/review_documents
+      - processing_logs:/app/backend/infotransform/data
+      - app_logs:/app/logs
+
+      # Configuration (can be overridden)
+      - ./config:/app/config:ro
+      - ./.env:/app/.env:ro
+
+    restart: always
+
+    networks:
+      - infotransform-network
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '1.0'
+          memory: 2G
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  infotransform-network:
+    driver: bridge
+
+volumes:
+  # Named volumes for persistent data
+  uploads_data:
+    driver: local
+  temp_extracts:
+    driver: local
+  review_sessions:
+    driver: local
+  review_documents:
+    driver: local
+  processing_logs:
+    driver: local
+  app_logs:
+    driver: local

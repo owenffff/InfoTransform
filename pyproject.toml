@@ -26,3 +26,8 @@ dependencies = [
     "pytest-mock>=3.12.0",
     "httpx>=0.25.0",
 ]
+
+[dependency-groups]
+dev = [
+    "pip-licenses>=5.5.0",
+]

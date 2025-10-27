@@ -61,8 +61,10 @@ docs/
 
 # Tests
 tests/
+backend/tests/
 test_*.py
 *_test.py
+conftest.py
 
 # Logs
 logs/
@@ -74,18 +76,40 @@ data/temp_extracts/*
 !data/uploads/.gitkeep
 !data/temp_extracts/.gitkeep
 
+# Database files (should be mounted as volumes)
+backend/infotransform/data/*.db
+backend/infotransform/data/*.db-shm
+backend/infotransform/data/*.db-wal
+
+# Review workspace data (should be mounted as volumes)
+data/uploads/review_sessions/
+data/uploads/review_documents/
+
 # Docker
 Dockerfile
 Dockerfile.*
 docker-compose*.yml
 .dockerignore
+docker-entrypoint*.sh
 
 # CI/CD
 .github/
 .gitlab-ci.yml
 .travis.yml
 
+# Claude Code configuration
+.claude/
+
+# Scripts
+scripts/
+
+# License files
+*-licenses.csv
+LICENSES.md
+licenses.json
+
 # Misc
 .editorconfig
 .prettierrc
 .eslintrc*
+.pre-commit-config.yaml

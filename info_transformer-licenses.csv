@@ -1,0 +1,183 @@
+# Information Transformer  - OSS Dependencies License Report,,,
+,,,
+,,,
+Name,Version,License,Description
+Jinja2,3.1.6,BSD License,A very fast and expressive template engine.
+MarkupSafe,3.0.3,BSD-3-Clause,Safely add untrusted strings to HTML/XML markup.
+PyJWT,2.10.1,MIT License,JSON Web Token implementation in Python
+PyYAML,6.0.3,MIT License,YAML parser and emitter for Python
+Pygments,2.19.2,BSD License,Pygments is a syntax highlighting package written in Python.
+SpeechRecognition,3.14.3,BSD License,"Library for performing speech recognition, with support for several engines and APIs, online and offline."
+aiofiles,25.1.0,Apache Software License,File support for asyncio.
+aiohappyeyeballs,2.6.1,Python Software Foundation License,Happy Eyeballs for asyncio
+aiohttp,3.13.0,Apache-2.0 AND MIT,Async http client/server framework (asyncio)
+aiosignal,1.4.0,Apache Software License,aiosignal: a list of registered asynchronous callbacks
+annotated-types,0.7.0,MIT License,Reusable constraint types to use with typing.Annotated
+anthropic,0.69.0,MIT License,The official Python library for the anthropic API
+anyio,4.11.0,MIT,High-level concurrency and networking framework on top of asyncio or Trio
+argcomplete,3.6.2,Apache Software License,Bash tab completion for argparse
+attrs,25.4.0,MIT,Classes Without Boilerplate
+azure-ai-documentintelligence,1.0.2,MIT License,Microsoft Azure AI Document Intelligence Client Library for Python
+azure-core,1.35.1,MIT License,Microsoft Azure Core Library for Python
+azure-identity,1.25.1,MIT,Microsoft Azure Identity Library for Python
+beautifulsoup4,4.14.2,MIT License,Screen-scraping library
+boto3,1.40.50,Apache Software License,The AWS SDK for Python
+botocore,1.40.50,Apache Software License,"Low-level, data-driven core of boto 3."
+cachetools,6.2.1,MIT License,Extensible memoizing collections and decorators
+certifi,2025.10.5,Mozilla Public License 2.0 (MPL 2.0),Python package for providing Mozilla's CA Bundle.
+cffi,2.0.0,MIT,Foreign Function Interface for Python calling C code.
+charset-normalizer,3.4.3,MIT,"The Real First Universal Charset Detector. Open, modern and actively maintained alternative to Chardet."
+click,8.3.0,BSD-3-Clause,Composable command line interface toolkit
+cobble,0.1.4,BSD License,Create data objects
+cohere,5.18.0,MIT License,
+colorama,0.4.6,BSD License,Cross-platform colored terminal text.
+coloredlogs,15.0.1,MIT License,Colored terminal output for Python's logging module
+coverage,7.11.0,Apache-2.0,Code coverage measurement for Python
+cryptography,46.0.2,Apache-2.0 OR BSD-3-Clause,cryptography is a package which provides cryptographic recipes and primitives to Python developers.
+defusedxml,0.7.1,Python Software Foundation License,XML bomb protection for Python stdlib modules
+distro,1.9.0,Apache Software License,Distro - an OS platform information API
+docstring_parser,0.17.0,MIT License,"Parse Python docstrings in reST, Google and Numpydoc format"
+et_xmlfile,2.0.0,MIT License,An implementation of lxml.xmlfile for the standard library
+eval_type_backport,0.2.2,MIT License,"Like `typing._eval_type`, but lets older Python versions use newer typing features."
+executing,2.2.1,MIT License,"Get the currently executing AST node of a frame, and other information"
+fastapi,0.119.0,MIT License,"FastAPI framework, high performance, easy to learn, fast to code, ready for production"
+fastavro,1.12.1,MIT,Fast read/write of AVRO files
+filelock,3.20.0,Unlicense,A platform independent file lock.
+flatbuffers,25.9.23,Apache Software License,The FlatBuffers serialization format for Python
+frozenlist,1.8.0,Apache-2.0,A list-like structure which implements collections.abc.MutableSequence
+fsspec,2025.9.0,BSD-3-Clause,File-system specification
+genai-prices,0.0.31,MIT,Calculate prices for calling LLM inference APIs.
+google-auth,2.41.1,Apache Software License,Google Authentication Library
+google-genai,1.43.0,Apache Software License,GenAI Python SDK
+googleapis-common-protos,1.70.0,Apache Software License,Common protobufs used in Google APIs
+griffe,1.14.0,ISC,"Signatures for entire Python programs. Extract the structure, the frame, the skeleton of your project, to generate API documentation or find breaking changes in your API."
+groq,0.32.0,Apache Software License,The official Python library for the groq API
+h11,0.16.0,MIT License,"A pure-Python, bring-your-own-I/O implementation of HTTP/1.1"
+hf-xet,1.1.10,Apache-2.0,Fast transfer of large files with the Hugging Face Hub.
+httpcore,1.0.9,BSD-3-Clause,A minimal low-level HTTP client.
+httptools,0.7.1,MIT,A collection of framework independent HTTP protocol utils.
+httpx,0.28.1,BSD License,The next generation HTTP client.
+httpx-sse,0.4.0,MIT,Consume Server-Sent Event (SSE) messages with HTTPX.
+huggingface-hub,0.35.3,Apache Software License,"Client library to download and publish models, datasets and other repos on the huggingface.co hub"
+humanfriendly,10,MIT License,Human friendly output for text interfaces using Python
+idna,3.11,BSD-3-Clause,Internationalized Domain Names in Applications (IDNA)
+importlib_metadata,8.7.0,Apache Software License,Read metadata from Python packages
+iniconfig,2.3.0,MIT,brain-dead simple config-ini parsing
+invoke,2.2.1,BSD License,Pythonic task execution
+isodate,0.7.2,BSD License,An ISO 8601 date/time/duration parser and formatter
+jiter,0.11.0,MIT,Fast iterable JSON parser.
+jmespath,1.0.1,MIT License,JSON Matching Expressions
+jsonschema,4.25.1,MIT,An implementation of JSON Schema validation for Python
+jsonschema-specifications,2025.9.1,MIT,"The JSON Schema meta-schemas and vocabularies, exposed as a Registry"
+logfire,4.13.0,MIT,The best Python observability tool! 🪵🔥
+logfire-api,4.13.0,MIT,Shim for the Logfire SDK which does nothing unless Logfire is installed
+lxml,6.0.2,BSD-3-Clause,Powerful and Pythonic XML processing library combining libxml2/libxslt with the ElementTree API.
+magika,0.6.2,Apache Software License,A tool to determine the content type of a file with deep learning
+mammoth,1.10.0,BSD License,Convert Word documents from docx to simple and clean HTML and Markdown
+markdown-it-py,4.0.0,MIT License,"Python port of markdown-it. Markdown parsing, done right!"
+markdownify,1.2.0,MIT License,Convert HTML to markdown.
+markitdown,0.1.3,MIT,Utility tool for converting various files to Markdown
+mcp,1.17.0,MIT License,Model Context Protocol SDK
+mdurl,0.1.2,MIT License,Markdown URL utilities
+mpmath,1.3.0,BSD License,Python library for arbitrary-precision floating-point arithmetic
+msal,1.34.0,MIT License,The Microsoft Authentication Library (MSAL) for Python library enables your app to access the Microsoft Cloud by supporting authentication of users with Microsoft Azure Active Directory accounts (AAD) and Microsoft Accounts (MSA) using industry standard OAuth2 and OpenID Connect.
+msal-extensions,1.3.1,MIT License,"Microsoft Authentication Library extensions (MSAL EX) provides a persistence API that can save your data on disk, encrypted on Windows, macOS and Linux. Concurrent data access will be coordinated by a file lock mechanism."
+multidict,6.7.0,Apache License 2.0,multidict implementation
+numpy,2.3.3,BSD License,Fundamental package for array computing in Python
+olefile,0.47,BSD License,"Python package to parse, read and write Microsoft OLE2 files (Structured Storage or Compound Document, Microsoft Office)"
+onnxruntime,1.20.1,MIT License,ONNX Runtime is a runtime accelerator for Machine Learning models
+openai,2.3.0,Apache Software License,The official Python library for the openai API
+openpyxl,3.1.5,MIT License,A Python library to read/write Excel 2010 xlsx/xlsm files
+opentelemetry-api,1.37.0,Apache-2.0,OpenTelemetry Python API
+opentelemetry-exporter-otlp-proto-common,1.37.0,Apache-2.0,OpenTelemetry Protobuf encoding
+opentelemetry-exporter-otlp-proto-http,1.37.0,Apache-2.0,OpenTelemetry Collector Protobuf over HTTP Exporter
+opentelemetry-instrumentation,0.58b0,Apache-2.0,Instrumentation Tools & Auto Instrumentation for OpenTelemetry Python
+opentelemetry-instrumentation-httpx,0.58b0,Apache-2.0,OpenTelemetry HTTPX Instrumentation
+opentelemetry-proto,1.37.0,Apache-2.0,OpenTelemetry Python Proto
+opentelemetry-sdk,1.37.0,Apache-2.0,OpenTelemetry Python SDK
+opentelemetry-semantic-conventions,0.58b0,Apache-2.0,OpenTelemetry Semantic Conventions
+opentelemetry-util-http,0.58b0,Apache-2.0,Web util for OpenTelemetry
+packaging,25,Apache Software License; BSD License,Core utilities for Python packages
+pandas,2.3.3,BSD License,"Powerful data structures for data analysis, time series, and statistics"
+pdfminer.six,20250506,MIT,PDF parser and analyzer
+pillow,11.3.0,MIT-CMU,Python Imaging Library (Fork)
+pluggy,1.6.0,MIT License,plugin and hook calling mechanisms for python
+prompt_toolkit,3.0.52,BSD License,Library for building powerful interactive command lines in Python
+propcache,0.4.1,Apache Software License,Accelerated property cache
+protobuf,6.32.1,3-Clause BSD License,
+pyasn1,0.6.1,BSD License,Pure-Python implementation of ASN.1 types and DER/BER/CER codecs (X.208)
+pyasn1_modules,0.4.2,BSD License,A collection of ASN.1-based protocols modules
+pycparser,2.23,BSD License,C parser in Python
+pydantic,2.12.0,MIT,Data validation using Python type hints
+pydantic-ai,1.0.17,MIT,Agent Framework / shim to use Pydantic with LLMs
+pydantic-ai-slim,1.0.17,MIT,"Agent Framework / shim to use Pydantic with LLMs, slim package"
+pydantic-evals,1.0.17,MIT,"Framework for evaluating stochastic code execution, especially code making use of LLMs"
+pydantic-graph,1.0.17,MIT,Graph and state machine library
+pydantic-settings,2.11.0,MIT,Settings management using Pydantic
+pydantic_core,2.41.1,MIT,Core functionality for Pydantic validation and serialization
+pydub,0.25.1,MIT License,Manipulate audio with an simple and easy high level interface
+pyperclip,1.11.0,BSD License,A cross-platform clipboard module for Python. (Only handles plain text for now.)
+pytest,8.4.2,MIT License,pytest: simple powerful testing with Python
+pytest-asyncio,1.2.0,Apache-2.0,Pytest support for asyncio
+pytest-cov,7.0.0,MIT,Pytest plugin for measuring coverage.
+pytest-mock,3.15.1,MIT License,Thin-wrapper around the mock package for easier use with pytest
+python-dateutil,2.9.0.post0,Apache Software License; BSD License,Extensions to the standard Python datetime module
+python-dotenv,1.1.1,BSD License,Read key-value pairs from a .env file and set them as environment variables
+python-multipart,0.0.20,Apache-2.0,A streaming multipart parser for Python
+python-pptx,1.0.2,MIT License,"Create, read, and update PowerPoint 2007+ (.pptx) files."
+pytz,2025.2,MIT License,"World timezone definitions, modern and historical"
+referencing,0.36.2,MIT,JSON Referencing + Python
+regex,2025.9.18,Apache-2.0 AND CNRI-Python,"Alternative regular expression module, to replace re."
+requests,2.32.5,Apache Software License,Python HTTP for Humans.
+rich,14.2.0,MIT License,"Render rich text, tables, progress bars, syntax highlighting, markdown and more to the terminal"
+rpds-py,0.27.1,MIT,Python bindings to Rust's persistent data structures (rpds)
+rsa,4.9.1,Apache Software License,Pure-Python RSA implementation
+ruff,0.14.0,MIT License,"An extremely fast Python linter and code formatter, written in Rust."
+s3transfer,0.14.0,Apache Software License,An Amazon S3 Transfer Manager
+six,1.17.0,MIT License,Python 2 and 3 compatibility utilities
+sniffio,1.3.1,Apache Software License; MIT License,Sniff out which async library your code is running under
+soupsieve,2.8,MIT,A modern CSS selector implementation for Beautiful Soup.
+sse-starlette,3.0.2,BSD-3-Clause,SSE plugin for Starlette
+starlette,0.48.0,BSD-3-Clause,The little ASGI library that shines.
+sympy,1.14.0,BSD License,Computer algebra system (CAS) in Python
+tenacity,9.1.2,Apache Software License,Retry code until it succeeds
+tiktoken,0.12.0,"MIT License
+
+Copyright (c) 2022 OpenAI, Shantanu Jain
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the ""Software""), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED ""AS IS"", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+",tiktoken is a fast BPE tokeniser for use with OpenAI's models
+tokenizers,0.22.1,Apache Software License,
+tqdm,4.67.1,MIT License; Mozilla Public License 2.0 (MPL 2.0),"Fast, Extensible Progress Meter"
+types-protobuf,6.32.1.20250918,Apache-2.0,Typing stubs for protobuf
+types-requests,2.32.4.20250913,Apache-2.0,Typing stubs for requests
+typing-inspection,0.4.2,MIT,Runtime typing introspection tools
+typing_extensions,4.15.0,PSF-2.0,Backported and Experimental Type Hints for Python 3.9+
+tzdata,2025.2,Apache Software License,Provider of IANA time zone data
+urllib3,2.5.0,MIT,"HTTP library with thread-safe connection pooling, file post, and more."
+uvicorn,0.37.0,BSD-3-Clause,The lightning-fast ASGI server.
+uvloop,0.21.0,Apache Software License; MIT License,Fast implementation of asyncio event loop on top of libuv
+watchfiles,1.1.0,MIT License,"Simple, modern and high performance file watching and code reload in python."
+websockets,15.0.1,BSD License,An implementation of the WebSocket Protocol (RFC 6455 & 7692)
+wrapt,1.17.3,BSD License,"Module for decorators, wrappers and monkey patching."
+xlrd,2.0.2,BSD License,Library for developers to extract data from Microsoft Excel (tm) .xls spreadsheet files
+xlsxwriter,3.2.9,BSD License,A Python module for creating Excel XLSX files.
+yarl,1.22.0,Apache Software License,Yet another URL library
+youtube-transcript-api,1.0.3,MIT License,"This is an python API which allows you to get the transcripts/subtitles for a given YouTube video. It also works for automatically generated subtitles, supports translating subtitles and it does not require a headless browser, like other selenium based solutions do!"
+zipp,3.23.0,MIT,Backport of pathlib-compatible object wrapper for zip files

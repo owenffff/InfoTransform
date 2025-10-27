@@ -2,8 +2,9 @@ services:
   infotransform:
     build:
       context: .
-      dockerfile: Dockerfile.dev
-    container_name: infotransform
+      dockerfile: Dockerfile
+      target: development
+    container_name: infotransform-dev
     ports:
       - "${BACKEND_PORT:-8000}:${BACKEND_PORT:-8000}"
       - "${PORT:-3000}:${PORT:-3000}"
@@ -15,21 +16,36 @@ services:
       - PORT=${PORT:-3000}
       - BACKEND_PORT=${BACKEND_PORT:-8000}
       - QUIET_MODE=${QUIET_MODE:-false}
+      - ENV=${ENV:-development}
       - NODE_ENV=development
       - PYTHONUNBUFFERED=1
+      # Azure Document Intelligence (optional)
+      - AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT=${AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT:-}
     volumes:
+      # Application source code (hot-reload)
       - ./backend:/app/backend
       - ./config:/app/config
       - ./frontend:/app/frontend
       - ./app.py:/app/app.py
+      # Data persistence
       - ./data/uploads:/app/data/uploads
       - ./data/temp_extracts:/app/data/temp_extracts
+      - ./data/uploads/review_sessions:/app/data/uploads/review_sessions
+      - ./data/uploads/review_documents:/app/data/uploads/review_documents
+      - ./backend/infotransform/data:/app/backend/infotransform/data
       - ./logs:/app/logs
+      # Node modules (prevent overwriting by host)
       - /app/frontend/node_modules
       - /app/frontend/.next
     restart: unless-stopped
     networks:
       - infotransform-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     stdin_open: true
     tty: true
 
