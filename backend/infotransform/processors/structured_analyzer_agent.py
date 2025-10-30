@@ -79,15 +79,19 @@ class StructuredAnalyzerAgent:
         model_key: str,
         custom_instructions: Optional[str] = None,
         ai_model: Optional[str] = None,
+        file_path: Optional[str] = None,
+        is_image: bool = False,
     ):
         """
-        Analyze markdown content and stream partial structured data updates
+        Analyze markdown content or image and stream partial structured data updates
 
         Args:
-            content: Markdown content to analyze
+            content: Markdown content to analyze (None for images)
             model_key: Key of the document schema to use
             custom_instructions: Optional custom instructions
             ai_model: Optional AI model override
+            file_path: Path to original file (for images)
+            is_image: Flag indicating if this is an image file
 
         Yields:
             Tuples of (partial_result, is_final) where partial_result is the current
@@ -116,24 +120,62 @@ class StructuredAnalyzerAgent:
             if "seed" in model_config:
                 model_settings["seed"] = model_config["seed"]
 
-            # Prepare prompt
+            # Prepare prompt - handle images vs. text content
             model_description = (
                 model_class.__doc__ or f"Analysis using {model_class.__name__}"
             )
 
-            prompt_template = self.config.get_prompt_template("analysis_prompt")
-            if prompt_template:
-                prompt = prompt_template.format(
-                    model_description=model_description,
-                    model_name=model_class.__name__,
-                    custom_instructions=custom_instructions
-                    if custom_instructions
-                    else "",
-                    content=content,
-                )
+            if is_image and file_path:
+                # For images: prepare prompt with image content
+                from pydantic_ai.messages import BinaryImage
+                import os
+
+                # Read image file
+                with open(file_path, "rb") as f:
+                    image_data = f.read()
+
+                # Determine media type from extension
+                ext = os.path.splitext(file_path)[1].lower()
+                media_type_map = {
+                    ".jpg": "image/jpeg",
+                    ".jpeg": "image/jpeg",
+                    ".png": "image/png",
+                    ".gif": "image/gif",
+                    ".bmp": "image/bmp",
+                    ".webp": "image/webp",
+                }
+                media_type = media_type_map.get(ext, "image/jpeg")
+
+                # Create BinaryImage
+                binary_image = BinaryImage(data=image_data, media_type=media_type)
+
+                # Create prompt with both text and image
+                text_prompt = f"""Analyze this image and extract structured information.
+
+Task: {model_description}
+
+You should extract information according to the {model_class.__name__} schema.
+{custom_instructions if custom_instructions else ""}
+
+Please analyze the image thoroughly and extract all relevant information.
+"""
+                # Pydantic AI accepts a list of UserContent items
+                prompt = [text_prompt, binary_image]
             else:
-                # Fallback prompt
-                prompt = f"""Analyze the following content.
+                # For text content: use template as before
+                prompt_template = self.config.get_prompt_template("analysis_prompt")
+                if prompt_template:
+                    prompt = prompt_template.format(
+                        model_description=model_description,
+                        model_name=model_class.__name__,
+                        custom_instructions=custom_instructions
+                        if custom_instructions
+                        else "",
+                        content=content,
+                    )
+                else:
+                    # Fallback prompt
+                    prompt = f"""Analyze the following content.
 
 Task: {model_description}
 
@@ -244,15 +286,19 @@ Content to analyze:
         model_key: str,
         custom_instructions: Optional[str] = None,
         ai_model: Optional[str] = None,
+        file_path: Optional[str] = None,
+        is_image: bool = False,
     ) -> Dict[str, Any]:
         """
-        Analyze markdown content and extract structured data
+        Analyze markdown content or image file and extract structured data
 
         Args:
-            content: Markdown content to analyze
+            content: Markdown content to analyze (None for images)
             model_key: Key of the document schema to use
             custom_instructions: Optional custom instructions
             ai_model: Optional AI model override
+            file_path: Path to original file (for images)
+            is_image: Flag indicating if this is an image file
 
         Returns:
             Dictionary containing the structured analysis result
@@ -280,24 +326,62 @@ Content to analyze:
             if "seed" in model_config:
                 model_settings["seed"] = model_config["seed"]
 
-            # Prepare prompt
+            # Prepare prompt - handle images vs. text content
             model_description = (
                 model_class.__doc__ or f"Analysis using {model_class.__name__}"
             )
 
-            prompt_template = self.config.get_prompt_template("analysis_prompt")
-            if prompt_template:
-                prompt = prompt_template.format(
-                    model_description=model_description,
-                    model_name=model_class.__name__,
-                    custom_instructions=custom_instructions
-                    if custom_instructions
-                    else "",
-                    content=content,
-                )
+            if is_image and file_path:
+                # For images: prepare prompt with image content
+                from pydantic_ai.messages import BinaryImage
+                import os
+
+                # Read image file
+                with open(file_path, "rb") as f:
+                    image_data = f.read()
+
+                # Determine media type from extension
+                ext = os.path.splitext(file_path)[1].lower()
+                media_type_map = {
+                    ".jpg": "image/jpeg",
+                    ".jpeg": "image/jpeg",
+                    ".png": "image/png",
+                    ".gif": "image/gif",
+                    ".bmp": "image/bmp",
+                    ".webp": "image/webp",
+                }
+                media_type = media_type_map.get(ext, "image/jpeg")
+
+                # Create BinaryImage
+                binary_image = BinaryImage(data=image_data, media_type=media_type)
+
+                # Create prompt with both text and image
+                text_prompt = f"""Analyze this image and extract structured information.
+
+Task: {model_description}
+
+You should extract information according to the {model_class.__name__} schema.
+{custom_instructions if custom_instructions else ""}
+
+Please analyze the image thoroughly and extract all relevant information.
+"""
+                # Pydantic AI accepts a list of UserContent items
+                prompt = [text_prompt, binary_image]
             else:
-                # Fallback prompt
-                prompt = f"""Analyze the following content.
+                # For text content: use template as before
+                prompt_template = self.config.get_prompt_template("analysis_prompt")
+                if prompt_template:
+                    prompt = prompt_template.format(
+                        model_description=model_description,
+                        model_name=model_class.__name__,
+                        custom_instructions=custom_instructions
+                        if custom_instructions
+                        else "",
+                        content=content,
+                    )
+                else:
+                    # Fallback prompt
+                    prompt = f"""Analyze the following content.
 
 Task: {model_description}
 

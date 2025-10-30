@@ -86,7 +86,7 @@ ai_pipeline:
   # Automatically summarizes files that exceed the token threshold
   summarization:
     model: "vertex_ai.gemini-2.5-flash"  # Model used for summarization
-    token_threshold: 1000000             # Files over this size get summarized (set to 0 to disable)
+    token_threshold: 271999             # Files over this size get summarized (set to 0 to disable)
     temperature: 0.1                    # Lower = more focused, higher = more creative
     
     # Prompt for summarization (how to condense long documents)

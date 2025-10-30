@@ -46,6 +46,7 @@ export function AnalysisOptions({ onTransformStart }: { onTransformStart: () => 
     selectedFiles,
     modelsData,
     addStreamingResult,
+    addStreamingResults,
     setModelFields,
     setIsProcessing,
     clearResults
@@ -141,6 +142,21 @@ export function AnalysisOptions({ onTransformStart }: { onTransformStart: () => 
       onTransformStart();
       console.log('[AnalysisOptions] State reset complete, starting transform...');
 
+      // Batching mechanism to reduce UI re-renders
+      let resultBuffer: any[] = [];
+      let flushTimeout: NodeJS.Timeout | null = null;
+      const BATCH_INTERVAL_MS = 150; // Flush buffer every 150ms
+
+      const flushResultBuffer = () => {
+        if (resultBuffer.length > 0) {
+          console.log(`[AnalysisOptions] Flushing ${resultBuffer.length} buffered results`);
+          // Add all buffered results in a single state update (batched)
+          addStreamingResults(resultBuffer);
+          resultBuffer = [];
+        }
+        flushTimeout = null;
+      };
+
       const handleEvent = (event: ApiStreamingEvent) => {
         console.log('[AnalysisOptions] Received event:', event.type, event);
         // Convert API event to Processing event
@@ -174,11 +190,11 @@ export function AnalysisOptions({ onTransformStart }: { onTransformStart: () => 
 
         dispatchStreamingEvent(processingEvent);
 
-        // Persist both successful and failed results so totals/failed counts are accurate
+        // Persist both successful and failed results - ADD TO BUFFER instead of immediate state update
         const fname = event.filename || event.file;
         if (event.type === 'result' && fname) {
           if (event.status === 'success' && event.structured_data) {
-            addStreamingResult({
+            resultBuffer.push({
               filename: fname,
               status: 'success',
               markdown_content: event.markdown_content,
@@ -191,7 +207,7 @@ export function AnalysisOptions({ onTransformStart }: { onTransformStart: () => 
               source_file: event.source_file
             });
           } else if (event.status === 'error') {
-            addStreamingResult({
+            resultBuffer.push({
               filename: fname,
               status: 'error',
               error: event.error || 'Processing failed',
@@ -200,9 +216,20 @@ export function AnalysisOptions({ onTransformStart }: { onTransformStart: () => 
               source_file: event.source_file
             });
           }
+
+          // Schedule buffer flush if not already scheduled
+          if (!flushTimeout) {
+            flushTimeout = setTimeout(flushResultBuffer, BATCH_INTERVAL_MS);
+          }
         }
         if (event.type === 'complete') {
           console.log('[AnalysisOptions] Processing complete');
+          // Flush any remaining buffered results immediately
+          if (flushTimeout) {
+            clearTimeout(flushTimeout);
+          }
+          flushResultBuffer();
+
           setIsProcessing(false);
           if (event.summary) {
             if (event.summary.successful_files > 0) {

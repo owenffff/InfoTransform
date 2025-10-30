@@ -52,6 +52,13 @@ class AsyncMarkdownConverter:
             "total_time": 0.0,
         }
 
+    def _is_pure_image(self, filename: str) -> bool:
+        """Check if file is a pure image (not a document that might contain text)"""
+        image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'}
+        import os
+        ext = os.path.splitext(filename.lower())[1]
+        return ext in image_extensions
+
     async def convert_file_async(self, file_info: Dict[str, str]) -> Dict[str, Any]:
         """
         Convert a single file to markdown asynchronously
@@ -66,6 +73,21 @@ class AsyncMarkdownConverter:
         filename = file_info["filename"]
 
         try:
+            # Optimization: Skip markdown conversion for pure images
+            # They will be sent directly to multi-modal LLMs in structured analysis
+            if self._is_pure_image(filename):
+                logger.debug(f"Skipping markdown conversion for image {filename} (will be sent directly to AI)")
+                self.metrics["total_processed"] += 1
+                self.metrics["successful"] += 1
+
+                return {
+                    "filename": filename,
+                    "success": True,
+                    "markdown_content": None,  # No markdown needed
+                    "is_image": True,  # Flag to indicate this is an image
+                    "file_path": file_path,  # Keep file path for direct access
+                }
+
             # Run the synchronous processor in executor
             loop = asyncio.get_event_loop()
 

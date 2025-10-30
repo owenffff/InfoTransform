@@ -77,6 +77,31 @@ class StreamingProcessor:
         """Check if file is a ZIP archive"""
         return filename.lower().endswith(".zip")
 
+    def _is_allowed_extension(self, filename: str) -> bool:
+        """
+        Check if file extension is in allowed types
+
+        Args:
+            filename: Name of the file to check
+
+        Returns:
+            bool: True if file extension is allowed, False otherwise
+        """
+        ext = filename.lower().split(".")[-1]
+
+        # Combine all allowed extension sets
+        allowed_extensions = (
+            config.ALLOWED_IMAGE_EXTENSIONS
+            | config.ALLOWED_AUDIO_EXTENSIONS
+            | config.ALLOWED_DOCUMENT_EXTENSIONS
+        )
+
+        # Don't allow nested ZIP files
+        if ext in config.ALLOWED_ARCHIVE_EXTENSIONS:
+            return False
+
+        return ext in allowed_extensions
+
     def _extract_zip_recursive(
         self, zip_path: str, archive_name: str
     ) -> List[Dict[str, Any]]:
@@ -96,6 +121,7 @@ class StreamingProcessor:
         self.temp_dirs.append(temp_dir)
 
         extracted_files = []
+        skipped_files = []
 
         try:
             with zipfile.ZipFile(zip_path, "r") as zip_ref:
@@ -107,6 +133,14 @@ class StreamingProcessor:
                     for filename in files:
                         # Skip hidden files and system files
                         if filename.startswith(".") or filename.startswith("__"):
+                            continue
+
+                        # Validate file extension
+                        if not self._is_allowed_extension(filename):
+                            skipped_files.append(filename)
+                            logger.warning(
+                                f"Skipped unsupported file in ZIP '{archive_name}': {filename}"
+                            )
                             continue
 
                         full_path = os.path.join(root, filename)
@@ -125,7 +159,13 @@ class StreamingProcessor:
                         extracted_files.append(file_info)
                         logger.debug(f"Extracted from ZIP: {relative_path}")
 
-            logger.info(f"Extracted {len(extracted_files)} files from {archive_name}")
+            if skipped_files:
+                logger.info(
+                    f"Skipped {len(skipped_files)} unsupported file(s) from {archive_name}: {', '.join(skipped_files[:5])}"
+                    + (f" and {len(skipped_files) - 5} more" if len(skipped_files) > 5 else "")
+                )
+
+            logger.info(f"Extracted {len(extracted_files)} valid files from {archive_name}")
 
         except Exception as e:
             logger.error(f"Failed to extract ZIP file {archive_name}: {str(e)}")
@@ -372,15 +412,17 @@ class StreamingProcessor:
                 yield f"data: {json.dumps(event)}\n\n"
 
                 # Progressive streaming: immediately add successful conversions to AI pipeline
-                if progressive_streaming and result["success"] and result["markdown_content"]:
+                # Note: Images have markdown_content=None but is_image=True, they are still successful
+                if progressive_streaming and result["success"]:
                     item = {
                         "filename": result["filename"],
                         "display_name": original_file.get(
                             "display_name", result["filename"]
                         ),
-                        "markdown_content": result["markdown_content"],
+                        "markdown_content": result.get("markdown_content"),
                         "original_index": index,
-                        "file_path": original_file.get("file_path"),
+                        "file_path": result.get("file_path") or original_file.get("file_path"),
+                        "is_image": result.get("is_image", False),  # Flag for images
                     }
                     successful_conversions.append(item)
 
@@ -391,9 +433,13 @@ class StreamingProcessor:
                         ai_model=ai_model,
                     )
                     await self.batch_processor.add_item(
-                        item["filename"], item["markdown_content"], context
+                        item["filename"],
+                        item["markdown_content"],
+                        context,
+                        file_path=item["file_path"],
+                        is_image=item["is_image"],
                     )
-                elif not result["success"] or not result["markdown_content"]:
+                elif not result["success"]:
                     # Track failures immediately
                     failed_conversions.append(
                         {
@@ -431,16 +477,18 @@ class StreamingProcessor:
                     # Get the original file info to preserve metadata
                     original_file = managed_files[i]
 
-                    if result["success"] and result["markdown_content"]:
+                    # Note: Images have markdown_content=None but is_image=True, they are still successful
+                    if result["success"]:
                         successful_conversions.append(
                             {
                                 "filename": result["filename"],
                                 "display_name": original_file.get(
                                     "display_name", result["filename"]
                                 ),
-                                "markdown_content": result["markdown_content"],
+                                "markdown_content": result.get("markdown_content"),
                                 "original_index": i,
-                                "file_path": original_file.get("file_path"),
+                                "file_path": result.get("file_path") or original_file.get("file_path"),
+                                "is_image": result.get("is_image", False),
                             }
                         )
                     else:
@@ -568,7 +616,11 @@ class StreamingProcessor:
                             ai_model=ai_model,
                         )
                         await self.batch_processor.add_item(
-                            item["filename"], item["markdown_content"], context
+                            item["filename"],
+                            item["markdown_content"],
+                            context,
+                            file_path=item.get("file_path"),
+                            is_image=item.get("is_image", False),
                         )
 
                 # Now stream results as they complete

@@ -33,6 +33,8 @@ class BatchItem:
     markdown_content: str
     context: ProcessingContext
     timestamp: float = None
+    file_path: Optional[str] = None  # Path to original file (for images)
+    is_image: bool = False  # Flag to indicate if this is an image file
 
     def __post_init__(self):
         if self.timestamp is None:
@@ -165,18 +167,29 @@ class BatchProcessor:
         logger.info("BatchProcessor stopped")
 
     async def add_item(
-        self, filename: str, markdown_content: str, context: ProcessingContext
+        self,
+        filename: str,
+        markdown_content: str,
+        context: ProcessingContext,
+        file_path: Optional[str] = None,
+        is_image: bool = False,
     ) -> None:
         """
         Add an item for batch processing
 
         Args:
             filename: Name of the file
-            markdown_content: Markdown content to process
+            markdown_content: Markdown content to process (None for images)
             context: Processing context with model parameters
+            file_path: Path to original file (for images)
+            is_image: Flag indicating if this is an image file
         """
         item = BatchItem(
-            filename=filename, markdown_content=markdown_content, context=context
+            filename=filename,
+            markdown_content=markdown_content,
+            context=context,
+            file_path=file_path,
+            is_image=is_image,
         )
         await self.batch_queue.put(item)
 
@@ -410,6 +423,8 @@ class BatchProcessor:
                     context.model_key,
                     context.custom_instructions,
                     context.ai_model,
+                    file_path=item.file_path,
+                    is_image=item.is_image,
                 ):
                     processing_time = time.time() - start_time
 
@@ -456,6 +471,8 @@ class BatchProcessor:
                     context.model_key,
                     context.custom_instructions,
                     context.ai_model,
+                    file_path=item.file_path,
+                    is_image=item.is_image,
                 )
 
                 processing_time = time.time() - start_time
@@ -524,6 +541,8 @@ class BatchProcessor:
                 context.model_key,
                 context.custom_instructions,
                 context.ai_model,
+                file_path=item.file_path,
+                is_image=item.is_image,
             )
 
             processing_time = time.time() - start_time

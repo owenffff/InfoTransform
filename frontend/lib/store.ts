@@ -15,6 +15,7 @@ interface AppState {
   streamingResults: FileResult[];
   setStreamingResults: (results: FileResult[]) => void;
   addStreamingResult: (result: FileResult) => void;
+  addStreamingResults: (results: FileResult[]) => void;
   
   // Model fields
   modelFields: string[];
@@ -265,6 +266,9 @@ export const useStore = create<AppState>((set) => ({
   setStreamingResults: (results) => set({ streamingResults: results }),
   addStreamingResult: (result) => set((state) => ({
     streamingResults: [...state.streamingResults, result]
+  })),
+  addStreamingResults: (results) => set((state) => ({
+    streamingResults: [...state.streamingResults, ...results]
   })),
   
   // Model fields
