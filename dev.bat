@@ -35,7 +35,7 @@ if not exist .venv (
         pause
         exit /b 1
     )
-    
+
     echo Installing Python dependencies...
     call uv sync
     if errorlevel 1 (
@@ -43,6 +43,22 @@ if not exist .venv (
         pause
         exit /b 1
     )
+)
+
+REM Check if this is first run (frontend not built yet)
+if not exist frontend\.next (
+    echo.
+    echo ========================================
+    echo FIRST RUN DETECTED
+    echo ========================================
+    echo This is your first time running the dev server.
+    echo Next.js will build the frontend, which takes 30-60 seconds.
+    echo.
+    echo Please wait for the "Ready" message before opening your browser.
+    echo You'll see compilation progress in the console.
+    echo ========================================
+    echo.
+    timeout /t 3 /nobreak >nul
 )
 
 REM Start the development server

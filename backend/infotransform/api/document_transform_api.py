@@ -18,7 +18,10 @@ from fastapi.responses import StreamingResponse
 from infotransform.config import config
 from infotransform.processors import StructuredAnalyzerAgent, SummarizationAgent
 from infotransform.processors.async_converter import AsyncMarkdownConverter
-from infotransform.processors.ai_batch_processor import BatchProcessor
+from infotransform.processors.ai_batch_processor import (
+    BatchProcessor,
+    ProcessingContext,
+)
 from infotransform.utils.file_lifecycle import (
     get_file_manager,
     ManagedStreamingResponse,
@@ -310,6 +313,11 @@ class StreamingProcessor:
         }
         yield f"data: {json.dumps(initial_event)}\n\n"
 
+        # Check if progressive streaming is enabled
+        progressive_streaming = config.get(
+            "processing.pipeline.progressive_streaming", True
+        )
+
         # Phase 1: Parallel markdown conversion with real-time progress
         conversion_start = time.time()
         yield f"data: {json.dumps({'type': 'phase', 'phase': 'markdown_conversion', 'status': 'started'})}\n\n"
@@ -329,11 +337,19 @@ class StreamingProcessor:
                 task = asyncio.create_task(convert_with_index(file_info, i))
                 tasks.append(task)
 
+            # Storage for results and converted items
+            markdown_results = [None] * len(tasks)
+            successful_conversions = []
+            failed_conversions = []
+
             # Process tasks as they complete and send progress
             completed = 0
             for task in asyncio.as_completed(tasks):
                 index, result = await task
                 completed += 1
+
+                # Store result at correct index
+                markdown_results[index] = result
 
                 # Send progress event for each completed file
                 elapsed = time.time() - conversion_start
@@ -355,12 +371,41 @@ class StreamingProcessor:
                 }
                 yield f"data: {json.dumps(event)}\n\n"
 
-            # Gather all results in original order
-            results_with_indices = await asyncio.gather(*tasks)
-            # Extract just the results, sorted by original index
-            markdown_results = [None] * len(results_with_indices)
-            for index, result in results_with_indices:
-                markdown_results[index] = result
+                # Progressive streaming: immediately add successful conversions to AI pipeline
+                if progressive_streaming and result["success"] and result["markdown_content"]:
+                    item = {
+                        "filename": result["filename"],
+                        "display_name": original_file.get(
+                            "display_name", result["filename"]
+                        ),
+                        "markdown_content": result["markdown_content"],
+                        "original_index": index,
+                        "file_path": original_file.get("file_path"),
+                    }
+                    successful_conversions.append(item)
+
+                    # Add to batch processor immediately
+                    context = ProcessingContext(
+                        model_key=model_key,
+                        custom_instructions=custom_instructions,
+                        ai_model=ai_model,
+                    )
+                    await self.batch_processor.add_item(
+                        item["filename"], item["markdown_content"], context
+                    )
+                elif not result["success"] or not result["markdown_content"]:
+                    # Track failures immediately
+                    failed_conversions.append(
+                        {
+                            "filename": result["filename"],
+                            "display_name": original_file.get(
+                                "display_name", result["filename"]
+                            ),
+                            "error": result.get("error", "Unknown error"),
+                            "original_index": index,
+                            "file_path": original_file.get("file_path"),
+                        }
+                    )
 
             conversion_time = time.time() - conversion_start
             logger.info(
@@ -377,42 +422,40 @@ class StreamingProcessor:
             }
             yield f"data: {json.dumps(phase_complete_event)}\n\n"
 
-            # Separate successful conversions from failures
-            successful_conversions = []
-            failed_conversions = []
+            # If NOT using progressive streaming, separate results here
+            if not progressive_streaming:
+                successful_conversions = []
+                failed_conversions = []
 
-            for i, result in enumerate(markdown_results):
-                # Get the original file info to preserve metadata
-                original_file = managed_files[i]
+                for i, result in enumerate(markdown_results):
+                    # Get the original file info to preserve metadata
+                    original_file = managed_files[i]
 
-                if result["success"] and result["markdown_content"]:
-                    successful_conversions.append(
-                        {
-                            "filename": result["filename"],
-                            "display_name": original_file.get(
-                                "display_name", result["filename"]
-                            ),
-                            "markdown_content": result["markdown_content"],
-                            "original_index": i,
-                            "file_path": original_file.get(
-                                "file_path"
-                            ),  # Store original file path
-                        }
-                    )
-                else:
-                    failed_conversions.append(
-                        {
-                            "filename": result["filename"],
-                            "display_name": original_file.get(
-                                "display_name", result["filename"]
-                            ),
-                            "error": result.get("error", "Unknown error"),
-                            "original_index": i,
-                            "file_path": original_file.get(
-                                "file_path"
-                            ),  # Store original file path
-                        }
-                    )
+                    if result["success"] and result["markdown_content"]:
+                        successful_conversions.append(
+                            {
+                                "filename": result["filename"],
+                                "display_name": original_file.get(
+                                    "display_name", result["filename"]
+                                ),
+                                "markdown_content": result["markdown_content"],
+                                "original_index": i,
+                                "file_path": original_file.get("file_path"),
+                            }
+                        )
+                    else:
+                        failed_conversions.append(
+                            {
+                                "filename": result["filename"],
+                                "display_name": original_file.get(
+                                    "display_name", result["filename"]
+                                ),
+                                "error": result.get("error", "Unknown error"),
+                                "original_index": i,
+                                "file_path": original_file.get("file_path"),
+                            }
+                        )
+            # else: successful_conversions and failed_conversions already populated in loop above
 
             # Identify password-protected PDFs among the failures so the UI can provide
             # a clear, user-friendly message instead of a generic “network error”.
@@ -439,198 +482,206 @@ class StreamingProcessor:
 
             # Phase 2: Summarization (if needed) and AI processing
             if successful_conversions:
-                # Check which files need summarization
-                summarization_start = time.time()
-                files_to_summarize = []
-                files_to_analyze_directly = []
-
-                for item in successful_conversions:
-                    if self.summarization_agent.should_summarize(
-                        item["markdown_content"]
-                    ):
-                        files_to_summarize.append(item)
-                    else:
-                        files_to_analyze_directly.append(item)
-
-                # Send summarization phase event if needed
-                if files_to_summarize:
-                    yield f"data: {json.dumps({'type': 'phase', 'phase': 'summarization', 'status': 'started', 'files_to_summarize': len(files_to_summarize)})}\n\n"
-
-                    # Process summarizations
-                    for item in files_to_summarize:
-                        summary_result = (
-                            await self.summarization_agent.summarize_content(
-                                item["markdown_content"], model_fields, item["filename"]
-                            )
-                        )
-
-                        if summary_result["success"]:
-                            # Replace markdown content with summary for analysis
-                            item["original_markdown_content"] = item["markdown_content"]
-                            item["markdown_content"] = summary_result["summary"]
-                            item["was_summarized"] = True
-                            item["summarization_metrics"] = {
-                                "original_length": summary_result["original_length"],
-                                "summary_length": summary_result["summary_length"],
-                                "compression_ratio": summary_result[
-                                    "compression_ratio"
-                                ],
-                            }
-                        else:
-                            # Log error but continue with original content
-                            logger.warning(
-                                f"Summarization failed for {item['filename']}: {summary_result.get('error')}"
-                            )
-                            item["was_summarized"] = False
-
-                    summarization_time = time.time() - summarization_start
-                    yield f"data: {json.dumps({'type': 'phase', 'phase': 'summarization', 'status': 'completed', 'duration': summarization_time})}\n\n"
-                else:
-                    # Mark all files as not summarized
-                    for item in files_to_analyze_directly:
-                        item["was_summarized"] = False
-
                 # Phase 3: Structured Analysis
                 ai_start = time.time()
                 yield f"data: {json.dumps({'type': 'phase', 'phase': 'ai_processing', 'status': 'started'})}\n\n"
 
-                # Process through batch processor
+                # Progressive streaming: we've already added items to the queue above
+                # For non-progressive mode, add all items to the batch processor now
+                if not progressive_streaming:
+                    # Check which files need summarization
+                    summarization_start = time.time()
+                    files_to_summarize = []
+                    files_to_analyze_directly = []
 
-                # Create a mapping to track original indices
-                result_map = {}
+                    for item in successful_conversions:
+                        if self.summarization_agent.should_summarize(
+                            item["markdown_content"]
+                        ):
+                            files_to_summarize.append(item)
+                        else:
+                            files_to_analyze_directly.append(item)
 
-                # Process items and stream results
-                async for ai_result in self.batch_processor.process_items_stream(
-                    successful_conversions, model_key, custom_instructions, ai_model
-                ):
-                    # Check if this is a partial or final result
-                    is_final = ai_result.get("final", True)
+                    # Send summarization phase event if needed
+                    if files_to_summarize:
+                        yield f"data: {json.dumps({'type': 'phase', 'phase': 'summarization', 'status': 'started', 'files_to_summarize': len(files_to_summarize)})}\n\n"
 
-                    # Only increment processed count for final results
-                    if is_final:
-                        processed_count += 1
+                        # Process summarizations
+                        for item in files_to_summarize:
+                            summary_result = (
+                                await self.summarization_agent.summarize_content(
+                                    item["markdown_content"],
+                                    model_fields,
+                                    item["filename"],
+                                )
+                            )
 
-                    # Find original index
-                    original_item = next(
-                        (
-                            item
-                            for item in successful_conversions
-                            if item["filename"] == ai_result["filename"]
-                        ),
-                        None,
-                    )
+                            if summary_result["success"]:
+                                # Replace markdown content with summary for analysis
+                                item["original_markdown_content"] = item[
+                                    "markdown_content"
+                                ]
+                                item["markdown_content"] = summary_result["summary"]
+                                item["was_summarized"] = True
+                                item["summarization_metrics"] = {
+                                    "original_length": summary_result["original_length"],
+                                    "summary_length": summary_result["summary_length"],
+                                    "compression_ratio": summary_result[
+                                        "compression_ratio"
+                                    ],
+                                }
+                            else:
+                                # Log error but continue with original content
+                                logger.warning(
+                                    f"Summarization failed for {item['filename']}: {summary_result.get('error')}"
+                                )
+                                item["was_summarized"] = False
+
+                        summarization_time = time.time() - summarization_start
+                        yield f"data: {json.dumps({'type': 'phase', 'phase': 'summarization', 'status': 'completed', 'duration': summarization_time})}\n\n"
+                    else:
+                        # Mark all files as not summarized
+                        for item in files_to_analyze_directly:
+                            item["was_summarized"] = False
+
+                # Create a mapping to track files and create lookup
+                file_metadata = {}
+                for item in successful_conversions:
+                    file_metadata[item["filename"]] = item
+                    # For progressive mode, check if we need summarization
+                    # (simplified: skip summarization in progressive mode for now)
+                    if progressive_streaming:
+                        item["was_summarized"] = False
+
+                # Track expected result count
+                expected_results = len(successful_conversions)
+                results_received = 0
+
+                # Process results as they arrive from batch processor
+                # In progressive mode, items are already in the queue
+                # In non-progressive mode, we need to add them now
+                if not progressive_streaming:
+                    for item in successful_conversions:
+                        context = ProcessingContext(
+                            model_key=model_key,
+                            custom_instructions=custom_instructions,
+                            ai_model=ai_model,
+                        )
+                        await self.batch_processor.add_item(
+                            item["filename"], item["markdown_content"], context
+                        )
+
+                # Now stream results as they complete
+                while results_received < expected_results:
+                    ai_result = await self.batch_processor.get_result()
+
+                    # Check if this is a final result
+                    if not ai_result.final:
+                        # Partial result - skip for now
+                        continue
+
+                    results_received += 1
+                    processed_count += 1
+
+                    # Get original file metadata
+                    original_item = file_metadata.get(ai_result.filename)
+                    if not original_item:
+                        logger.warning(
+                            f"Could not find metadata for {ai_result.filename}"
+                        )
+                        continue
+
+                    # Convert BatchResult to dict format expected by downstream code
+                    ai_result_dict = {
+                        "filename": ai_result.filename,
+                        "success": ai_result.success,
+                        "structured_data": ai_result.structured_data,
+                        "error": ai_result.error,
+                        "processing_time": ai_result.processing_time,
+                        "final": ai_result.final,
+                        "usage": ai_result.usage,
+                        "cached": ai_result.usage.get("cached", False)
+                        if ai_result.usage
+                        else False,
+                    }
 
                     if original_item:
-                        original_index = original_item["original_index"]
-
                         # Expand nested results into multiple flat results
                         expanded_results = self._expand_nested_results(
-                            ai_result, original_item
+                            ai_result_dict, original_item
                         )
 
                         # Send each expanded result as a separate event
                         for expanded_result in expanded_results:
-                            if ai_result["success"]:
-                                if is_final:
-                                    # Only count once for all expanded results from same file
-                                    if expanded_result.get("item_index", 0) == 0:
-                                        successful_ai += 1
+                            if ai_result_dict["success"]:
+                                # Only count once for all expanded results from same file
+                                if expanded_result.get("item_index", 0) == 0:
+                                    successful_ai += 1
 
-                                    # Check if this was a cache hit
-                                    is_cached = ai_result.get("cached", False)
+                                # Check if this was a cache hit
+                                is_cached = ai_result_dict.get("cached", False)
 
-                                    result_event = {
-                                        "type": "result",
-                                        "filename": expanded_result["display_name"],
-                                        "status": "success",
-                                        "markdown_content": original_item.get(
-                                            "original_markdown_content",
-                                            original_item["markdown_content"],
-                                        ),
-                                        "structured_data": expanded_result[
-                                            "structured_data"
-                                        ],
-                                        "model_fields": expanded_result["model_fields"],
-                                        "processing_time": expanded_result.get(
-                                            "processing_time", 0
-                                        ),
-                                        "was_summarized": original_item.get(
-                                            "was_summarized", False
-                                        ),
-                                        "summarization_metrics": original_item.get(
-                                            "summarization_metrics", None
-                                        ),
-                                        "is_primary_result": expanded_result.get(
-                                            "is_primary_result", True
-                                        ),
-                                        "source_file": expanded_result.get(
-                                            "source_file", expanded_result["filename"]
-                                        ),
-                                        "file_path": original_item.get(
-                                            "file_path"
-                                        ),  # Add file path for review session
-                                        "cached": is_cached,  # Indicate cache hit
-                                        "progress": {
-                                            "phase": 2,
-                                            "phase_name": "Analyzing with AI",
-                                            "current": processed_count
-                                            + len(failed_conversions),
-                                            "total": total_files,
-                                            "successful": successful_ai,
-                                            "failed": failed_ai
-                                            + len(failed_conversions),
-                                        },
-                                    }
-                                else:
-                                    # Partial result - don't update progress counters
-                                    result_event = {
-                                        "type": "partial",
-                                        "filename": expanded_result["display_name"],
-                                        "status": "success",
-                                        "structured_data": expanded_result[
-                                            "structured_data"
-                                        ],
-                                        "model_fields": expanded_result["model_fields"],
-                                        "processing_time": expanded_result.get(
-                                            "processing_time", 0
-                                        ),
-                                    }
+                                result_event = {
+                                    "type": "result",
+                                    "filename": expanded_result["display_name"],
+                                    "status": "success",
+                                    "markdown_content": original_item.get(
+                                        "original_markdown_content",
+                                        original_item["markdown_content"],
+                                    ),
+                                    "structured_data": expanded_result[
+                                        "structured_data"
+                                    ],
+                                    "model_fields": expanded_result["model_fields"],
+                                    "processing_time": expanded_result.get(
+                                        "processing_time", 0
+                                    ),
+                                    "was_summarized": original_item.get(
+                                        "was_summarized", False
+                                    ),
+                                    "summarization_metrics": original_item.get(
+                                        "summarization_metrics", None
+                                    ),
+                                    "is_primary_result": expanded_result.get(
+                                        "is_primary_result", True
+                                    ),
+                                    "source_file": expanded_result.get(
+                                        "source_file", expanded_result["filename"]
+                                    ),
+                                    "file_path": original_item.get("file_path"),
+                                    "cached": is_cached,
+                                    "progress": {
+                                        "phase": 2,
+                                        "phase_name": "Analyzing with AI",
+                                        "current": processed_count
+                                        + len(failed_conversions),
+                                        "total": total_files,
+                                        "successful": successful_ai,
+                                        "failed": failed_ai + len(failed_conversions),
+                                    },
+                                }
                             else:
-                                if is_final:
-                                    # Only count once for all expanded results from same file
-                                    if expanded_result.get("item_index", 0) == 0:
-                                        failed_ai += 1
-                                    result_event = {
-                                        "type": "result",
-                                        "filename": expanded_result["display_name"],
-                                        "status": "error",
-                                        "error": ai_result.get(
-                                            "error", "AI processing failed"
-                                        ),
-                                        "markdown_content": original_item[
-                                            "markdown_content"
-                                        ],
-                                        "progress": {
-                                            "phase": 2,
-                                            "phase_name": "Analyzing with AI",
-                                            "current": processed_count
-                                            + len(failed_conversions),
-                                            "total": total_files,
-                                            "successful": successful_ai,
-                                            "failed": failed_ai
-                                            + len(failed_conversions),
-                                        },
-                                    }
-                                else:
-                                    # Partial error (unlikely but handle it)
-                                    result_event = {
-                                        "type": "partial",
-                                        "filename": expanded_result["display_name"],
-                                        "status": "error",
-                                        "error": ai_result.get(
-                                            "error", "AI processing failed"
-                                        ),
-                                    }
+                                # Only count once for all expanded results from same file
+                                if expanded_result.get("item_index", 0) == 0:
+                                    failed_ai += 1
+                                result_event = {
+                                    "type": "result",
+                                    "filename": expanded_result["display_name"],
+                                    "status": "error",
+                                    "error": ai_result_dict.get(
+                                        "error", "AI processing failed"
+                                    ),
+                                    "markdown_content": original_item["markdown_content"],
+                                    "progress": {
+                                        "phase": 2,
+                                        "phase_name": "Analyzing with AI",
+                                        "current": processed_count
+                                        + len(failed_conversions),
+                                        "total": total_files,
+                                        "successful": successful_ai,
+                                        "failed": failed_ai + len(failed_conversions),
+                                    },
+                                }
 
                             yield f"data: {json.dumps(result_event)}\n\n"
 

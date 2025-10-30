@@ -236,6 +236,11 @@ processing:
     max_zip_size_mb: 100              # Maximum size for ZIP file uploads
     temp_extract_dir: temp_extracts    # Temporary directory for ZIP file extraction
 
+  # Pipeline Settings
+  # Controls how stages are coordinated
+  pipeline:
+    progressive_streaming: true       # Start AI processing as soon as first files complete conversion (faster first result)
+
 # ============================================================================
 # DATABASE CONFIGURATION
 # ============================================================================

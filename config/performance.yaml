@@ -9,10 +9,10 @@ markdown_conversion:
   queue_size: ${MARKDOWN_QUEUE_SIZE:-100}       # Maximum files in processing queue
   timeout_per_file: ${MARKDOWN_TIMEOUT:-120}    # Seconds before timeout per file (increased for large PDFs)
 
-# AI Processing Performance  
+# AI Processing Performance
 ai_processing:
   batch_size: ${AI_BATCH_SIZE:-10}              # Files to process in one AI call
-  max_wait_time: ${AI_BATCH_WAIT:-0.5}         # Max seconds to wait for full batch (lower = more frequent updates)
+  max_wait_time: ${AI_BATCH_WAIT:-0.1}         # Max seconds to wait for full batch (lower = more frequent updates, faster first result)
   max_concurrent_batches: ${AI_CONCURRENT:-3}   # Parallel AI batch requests
   timeout_per_batch: ${AI_BATCH_TIMEOUT:-300}   # Seconds before batch timeout (increased for large PDFs)
   retry_attempts: ${AI_RETRY_ATTEMPTS:-3}       # Retries for failed batches

@@ -34,20 +34,23 @@ component_overrides:
     "httpx": WARNING
     "uvicorn.access": WARNING
     "watchfiles": WARNING
-  
+    "pdfminer": ERROR
+
   staging:
     "infotransform.processors": WARNING
     "infotransform.utils.token_counter": ERROR
     "httpx": ERROR
     "uvicorn.access": ERROR
     "watchfiles": ERROR
-  
+    "pdfminer": ERROR
+
   production:
     "infotransform.processors": ERROR
     "infotransform.utils.token_counter": ERROR
     "httpx": ERROR
     "uvicorn.access": ERROR
     "watchfiles": ERROR
+    "pdfminer": ERROR
 
 # Log format (same for all environments)
 format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
