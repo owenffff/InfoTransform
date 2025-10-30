@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  infotransform:
+    # Extend the main docker-compose.yml service
+    # This allows VS Code to attach to the container
+
+    # Override command to keep container running for VS Code
+    # The actual services will be started manually via VS Code tasks or scripts
+    command: sleep infinity
+
+    # Add additional capabilities for debugging
+    cap_add:
+      - SYS_PTRACE
+
+    # Security options for debugging
+    security_opt:
+      - seccomp:unconfined
+
+    # Additional environment variables for devcontainer
+    environment:
+      - DEVCONTAINER=true
+      - SHELL=/bin/zsh
+
+    # Additional volumes for devcontainer
+    volumes:
+      # VS Code extensions and configuration
+      - vscode-extensions:/root/.vscode-server/extensions
+      - vscode-extensions-insiders:/root/.vscode-server-insiders/extensions
+
+      # Git configuration (handled by mounts in devcontainer.json)
+      # SSH keys (handled by mounts in devcontainer.json)
+
+      # Zsh history persistence
+      - zsh-history:/root/.zsh_history
+
+    # Labels for better container management
+    labels:
+      - "dev.container.name=infotransform-devcontainer"
+      - "dev.container.type=full-stack"
+
+volumes:
+  vscode-extensions:
+  vscode-extensions-insiders:
+  zsh-history:

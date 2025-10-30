@@ -1,3 +1,5 @@
+import { getApiBaseUrl } from '@/lib/utils/api-url';
+
 /**
  * Constructs full document URL from relative or absolute path
  * @param documentUrl - The document URL from backend (relative or absolute)
@@ -15,8 +17,8 @@ export function getDocumentUrl(documentUrl: string | undefined): string {
     return documentUrl;
   }
 
-  // If relative path, prepend API base URL
-  const apiBase = `http://localhost:${process.env.NEXT_PUBLIC_BACKEND_PORT || '8000'}`;
+  // If relative path, prepend API base URL (uses dynamic hostname)
+  const apiBase = getApiBaseUrl();
 
   // Remove leading slash if present to avoid double slashes
   const cleanPath = documentUrl.startsWith('/') ? documentUrl : `/${documentUrl}`;

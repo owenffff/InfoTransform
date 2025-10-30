@@ -69,10 +69,12 @@ def main():
         cmd.append("--with-authors")
 
     # Add sorting and other options
-    cmd.extend([
-        "--order=name",  # Sort by package name
-        "--with-description",  # Include package descriptions
-    ])
+    cmd.extend(
+        [
+            "--order=name",  # Sort by package name
+            "--with-description",  # Include package descriptions
+        ]
+    )
 
     try:
         # Run the command
@@ -88,7 +90,7 @@ def main():
         # Add header for legal team
         header = f"""# InfoTransform Backend - Open Source Software Dependencies
 # License Report for Legal Review
-# Generated: {__import__('datetime').datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+# Generated: {__import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 
 """
 

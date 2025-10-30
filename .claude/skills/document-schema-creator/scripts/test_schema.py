@@ -20,15 +20,18 @@ import sys
 import json
 import requests
 from pathlib import Path
-from typing import Dict, Any
 
 
 def validate_args() -> tuple[str, Path]:
     """Validate command-line arguments."""
     if len(sys.argv) != 3:
-        print("Usage: uv run python scripts/test_schema.py <schema_key> <test_data_file>")
+        print(
+            "Usage: uv run python scripts/test_schema.py <schema_key> <test_data_file>"
+        )
         print("\nExample:")
-        print("  uv run python scripts/test_schema.py invoice_schema backend/test_data/invoice_test.md")
+        print(
+            "  uv run python scripts/test_schema.py invoice_schema backend/test_data/invoice_test.md"
+        )
         sys.exit(1)
 
     schema_key = sys.argv[1]
@@ -63,10 +66,10 @@ def get_available_models() -> list[str]:
 
 def test_schema(schema_key: str, test_file_path: Path) -> None:
     """Test the schema by calling the transform API endpoint."""
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print(f"Testing Schema: {schema_key}")
     print(f"Test Data File: {test_file_path}")
-    print(f"{'='*70}\n")
+    print(f"{'=' * 70}\n")
 
     # Check if backend is running
     if not check_backend():
@@ -81,7 +84,7 @@ def test_schema(schema_key: str, test_file_path: Path) -> None:
     available_models = get_available_models()
     if schema_key not in available_models:
         print(f"\n❌ Error: Schema '{schema_key}' not found in available models!")
-        print(f"\nAvailable models:")
+        print("\nAvailable models:")
         for model in sorted(available_models):
             print(f"  - {model}")
         print("\nPlease verify:")
@@ -93,7 +96,7 @@ def test_schema(schema_key: str, test_file_path: Path) -> None:
     print(f"✓ Schema '{schema_key}' is registered")
 
     # Read test data
-    with open(test_file_path, 'r', encoding='utf-8') as f:
+    with open(test_file_path, "r", encoding="utf-8") as f:
         test_content = f.read()
 
     print(f"✓ Test data loaded ({len(test_content)} characters)")
@@ -102,17 +105,13 @@ def test_schema(schema_key: str, test_file_path: Path) -> None:
     url = "http://localhost:8000/api/transform"
 
     # Create a mock file upload
-    files = {
-        'files': (test_file_path.name, test_content, 'text/markdown')
-    }
+    files = {"files": (test_file_path.name, test_content, "text/markdown")}
 
-    data = {
-        'selected_model': schema_key
-    }
+    data = {"selected_model": schema_key}
 
-    print(f"\n{'─'*70}")
+    print(f"\n{'─' * 70}")
     print("Sending request to API...")
-    print(f"{'─'*70}\n")
+    print(f"{'─' * 70}\n")
 
     try:
         # Make the request
@@ -125,15 +124,15 @@ def test_schema(schema_key: str, test_file_path: Path) -> None:
 
         # Parse SSE response
         results = []
-        for line in response.text.strip().split('\n'):
-            if line.startswith('data: '):
+        for line in response.text.strip().split("\n"):
+            if line.startswith("data: "):
                 try:
                     data_str = line[6:]  # Remove 'data: ' prefix
-                    if data_str == '[DONE]':
+                    if data_str == "[DONE]":
                         continue
                     event_data = json.loads(data_str)
-                    if event_data.get('type') == 'result':
-                        results.append(event_data.get('data'))
+                    if event_data.get("type") == "result":
+                        results.append(event_data.get("data"))
                 except json.JSONDecodeError:
                     continue
 
@@ -146,47 +145,47 @@ def test_schema(schema_key: str, test_file_path: Path) -> None:
             sys.exit(1)
 
         print(f"✅ Success! Extracted {len(results)} result(s)\n")
-        print(f"{'─'*70}")
+        print(f"{'─' * 70}")
         print("Extraction Results:")
-        print(f"{'─'*70}\n")
+        print(f"{'─' * 70}\n")
 
         for idx, result in enumerate(results, 1):
             print(f"Result #{idx}:")
             print(json.dumps(result, indent=2, ensure_ascii=False))
             print()
 
-        print(f"{'─'*70}")
+        print(f"{'─' * 70}")
         print("Validation Summary:")
-        print(f"{'─'*70}\n")
+        print(f"{'─' * 70}\n")
 
         # Analyze the results
         if results:
             first_result = results[0]
 
             # Check if it's a nested schema (has 'item' field with list)
-            if isinstance(first_result, dict) and 'item' in first_result:
-                items = first_result['item']
+            if isinstance(first_result, dict) and "item" in first_result:
+                items = first_result["item"]
                 if isinstance(items, list):
-                    print(f"✓ Nested schema detected")
+                    print("✓ Nested schema detected")
                     print(f"✓ Extracted {len(items)} item(s) from document")
 
                     if items:
-                        print(f"✓ Fields in each item:")
+                        print("✓ Fields in each item:")
                         for field_name in items[0].keys():
                             print(f"    - {field_name}")
                 else:
-                    print(f"⚠️  Warning: 'item' field is not a list")
+                    print("⚠️  Warning: 'item' field is not a list")
             else:
                 # Flat schema
-                print(f"✓ Flat schema detected")
+                print("✓ Flat schema detected")
                 if isinstance(first_result, dict):
-                    print(f"✓ Extracted fields:")
+                    print("✓ Extracted fields:")
                     for field_name in first_result.keys():
                         print(f"    - {field_name}")
 
-        print(f"\n{'='*70}")
+        print(f"\n{'=' * 70}")
         print("✅ Schema test completed successfully!")
-        print(f"{'='*70}\n")
+        print(f"{'=' * 70}\n")
 
         print("Next steps:")
         print("1. Review the extracted results above")

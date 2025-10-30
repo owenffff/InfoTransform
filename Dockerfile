@@ -23,7 +23,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Optional: Add corporate root CA certificate support
-# Place your certificate at certs/corporate-ca.crt in the repository
 COPY certs/corporate-ca.crt /usr/local/share/ca-certificates/corporate-ca.crt 2>/dev/null || true
 RUN update-ca-certificates || true
 

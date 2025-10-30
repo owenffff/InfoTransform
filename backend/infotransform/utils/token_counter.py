@@ -9,11 +9,7 @@ from typing import Dict, Any
 logger = logging.getLogger(__name__)
 
 # Global token tracking for summary reporting
-_token_stats = {
-    'total_files': 0,
-    'total_tokens': 0,
-    'files_processed': []
-}
+_token_stats = {"total_files": 0, "total_tokens": 0, "files_processed": []}
 
 
 def count_tokens(text: str, encoding_name: str = "cl100k_base") -> int:
@@ -46,29 +42,29 @@ def count_tokens(text: str, encoding_name: str = "cl100k_base") -> int:
 def log_token_count(filename: str, text: str, context: str = None) -> int:
     """
     Count and log tokens for a file with reduced verbosity
-    
+
     Args:
         filename: Name of the file being processed
         text: The text content to count tokens for
         context: Optional context for the token counting (e.g., 'initial', 'analysis')
-        
+
     Returns:
         int: The number of tokens
     """
     try:
         token_count = count_tokens(text)
-        
+
         # Update global stats
-        _token_stats['total_files'] += 1
-        _token_stats['total_tokens'] += token_count
-        _token_stats['files_processed'].append({
-            'filename': filename,
-            'tokens': token_count,
-            'context': context
-        })
-        
-        logger.info(f"Token count for '{filename}'{f' ({context})' if context else ''}: {token_count:,} tokens")
-        
+        _token_stats["total_files"] += 1
+        _token_stats["total_tokens"] += token_count
+        _token_stats["files_processed"].append(
+            {"filename": filename, "tokens": token_count, "context": context}
+        )
+
+        logger.info(
+            f"Token count for '{filename}'{f' ({context})' if context else ''}: {token_count:,} tokens"
+        )
+
         return token_count
     except Exception as e:
         logger.error(f"Error counting tokens for '{filename}': {e}")
@@ -78,39 +74,35 @@ def log_token_count(filename: str, text: str, context: str = None) -> int:
 def log_token_summary() -> Dict[str, Any]:
     """
     Log a summary of all token counting activity
-    
+
     Returns:
         Dict containing token statistics
     """
-    if _token_stats['total_files'] > 0:
-        avg_tokens = _token_stats['total_tokens'] / _token_stats['total_files']
+    if _token_stats["total_files"] > 0:
+        avg_tokens = _token_stats["total_tokens"] / _token_stats["total_files"]
         logger.info(
             f"Token processing summary: {_token_stats['total_files']} files, "
             f"{_token_stats['total_tokens']:,} total tokens, "
             f"{avg_tokens:.0f} avg tokens per file"
         )
-    
+
     return _token_stats.copy()
 
 
 def reset_token_stats():
     """Reset global token statistics"""
     global _token_stats
-    _token_stats = {
-        'total_files': 0,
-        'total_tokens': 0,
-        'files_processed': []
-    }
+    _token_stats = {"total_files": 0, "total_tokens": 0, "files_processed": []}
 
 
 def count_tokens_quiet(text: str, encoding_name: str = "cl100k_base") -> int:
     """
     Count tokens without any logging - for internal use
-    
+
     Args:
         text: The input string to be tokenized
         encoding_name: Name of the token encoding
-        
+
     Returns:
         int: The number of tokens
     """

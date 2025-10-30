@@ -39,7 +39,9 @@ monitoring:
 
 # Performance Profiles
 # The active profile is set by the 'active_profile' key below.
-active_profile: balanced
+# Profiles: conservative | balanced | high_performance | ultra
+# Changed to high_performance for better development experience and faster processing
+active_profile: high_performance
 
 profiles:
   # Conservative profile for limited resources

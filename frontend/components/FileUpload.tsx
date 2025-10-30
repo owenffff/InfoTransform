@@ -39,6 +39,9 @@ const ACCEPTED_EXTENSIONS = [
   '.zip', '.md', '.txt'
 ];
 
+// Maximum total upload size per session (1 GB)
+const MAX_TOTAL_UPLOAD_SIZE = 1024 * 1024 * 1024; // 1 GB in bytes
+
 interface FileGroup {
   type: string;
   icon: React.ReactNode;
@@ -68,6 +71,21 @@ export function FileUpload() {
     }
 
     if (newFiles.length > 0) {
+      // Calculate current total size
+      const currentSize = selectedFiles.reduce((acc, f) => acc + f.size, 0);
+      const newSize = newFiles.reduce((acc, f) => acc + f.size, 0);
+      const totalSize = currentSize + newSize;
+
+      // Check if adding these files would exceed the limit
+      if (totalSize > MAX_TOTAL_UPLOAD_SIZE) {
+        const remainingSpace = MAX_TOTAL_UPLOAD_SIZE - currentSize;
+        showToast(
+          'error',
+          `Upload limit exceeded. You can add up to ${formatFileSize(remainingSpace)} more (1 GB max per session)`
+        );
+        return;
+      }
+
       setSelectedFiles([...selectedFiles, ...newFiles]);
       showToast('success', `${newFiles.length} file(s) added`);
     }
@@ -137,10 +155,23 @@ export function FileUpload() {
     return Object.values(groups);
   }, [filteredFiles]);
 
-  const totalSize = useMemo(() => 
+  const totalSize = useMemo(() =>
     selectedFiles.reduce((acc, file) => acc + file.size, 0),
     [selectedFiles]
   );
+
+  // Calculate upload limit usage
+  const uploadLimitPercentage = useMemo(() =>
+    Math.round((totalSize / MAX_TOTAL_UPLOAD_SIZE) * 100),
+    [totalSize]
+  );
+
+  // Determine badge variant based on usage
+  const getLimitBadgeVariant = (percentage: number) => {
+    if (percentage >= 90) return 'destructive';
+    if (percentage >= 75) return 'default';
+    return 'secondary';
+  };
 
   const handleClearAll = () => {
     setSelectedFiles([]);
@@ -153,13 +184,18 @@ export function FileUpload() {
         <CardTitle className="text-2xl flex items-center gap-2">
           Upload Files
           {selectedFiles.length > 0 && (
-            <Badge variant="secondary" className="ml-2">
-              {selectedFiles.length} files • {formatFileSize(totalSize)}
-            </Badge>
+            <>
+              <Badge variant="secondary" className="ml-2">
+                {selectedFiles.length} files • {formatFileSize(totalSize)}
+              </Badge>
+              <Badge variant={getLimitBadgeVariant(uploadLimitPercentage)}>
+                {uploadLimitPercentage}% of 1 GB
+              </Badge>
+            </>
           )}
         </CardTitle>
         <CardDescription>
-          Drag and drop files or click to browse. Supports bulk uploads of 100+ files.
+          Drag and drop files or click to browse. Maximum 1 GB total per upload session.
         </CardDescription>
       </CardHeader>
       

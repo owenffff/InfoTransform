@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node -e \"const port = process.env.PORT || 3000; require('child_process').spawn('npx', ['next', 'dev', '-p', port], {stdio: 'inherit', shell: true})\"",
     "build": "next build",
-    "start": "next start"
+    "start": "node -e \"const port = process.env.PORT || 3000; require('child_process').spawn('npx', ['next', 'start', '-p', port], {stdio: 'inherit', shell: true})\""
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.12",

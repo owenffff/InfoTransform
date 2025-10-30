@@ -2,7 +2,6 @@
 Review workspace API endpoints
 """
 
-import os
 import json
 import uuid
 import shutil
@@ -11,9 +10,9 @@ import logging
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Union
-from pydantic import BaseModel, Field
-from fastapi import APIRouter, HTTPException, UploadFile, File, Response
-from fastapi.responses import FileResponse, JSONResponse
+from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException, Response
+from fastapi.responses import FileResponse
 
 from infotransform.config import config
 
@@ -86,25 +85,27 @@ async def create_review_session(request: CreateSessionRequest):
     session_id = str(uuid.uuid4())
     session_dir = REVIEW_SESSIONS_DIR / session_id
     session_dir.mkdir(exist_ok=True, parents=True)
-    
+
     session_docs_dir = REVIEW_DOCUMENTS_DIR / session_id
     session_docs_dir.mkdir(exist_ok=True, parents=True)
-    
+
     files_status = []
     for file_data in request.files:
         file_id = str(uuid.uuid4())
-        filename = file_data.get('filename', '')
-        
+        filename = file_data.get("filename", "")
+
         document_type = "pdf"
-        if filename.lower().endswith(('.jpg', '.jpeg', '.png', '.gif')):
+        if filename.lower().endswith((".jpg", ".jpeg", ".png", ".gif")):
             document_type = "image"
-        elif filename.lower().endswith(('.mp3', '.wav', '.m4a')):
+        elif filename.lower().endswith((".mp3", ".wav", ".m4a")):
             document_type = "audio"
-        elif filename.lower().endswith(('.docx', '.pptx', '.xlsx')):
+        elif filename.lower().endswith((".docx", ".pptx", ".xlsx")):
             document_type = "office"
 
         # Try to get original file path from processing metadata first
-        original_file_path = file_data.get('processing_metadata', {}).get('original_file_path')
+        original_file_path = file_data.get("processing_metadata", {}).get(
+            "original_file_path"
+        )
         source_path = None
 
         if original_file_path and Path(original_file_path).exists():
@@ -125,16 +126,22 @@ async def create_review_session(request: CreateSessionRequest):
             try:
                 shutil.copy2(source_path, dest_path)
                 document_url = f"/api/review/documents/{session_id}/{filename}"
-                logger.info(f"Successfully copied file from {source_path} to {dest_path}")
+                logger.info(
+                    f"Successfully copied file from {source_path} to {dest_path}"
+                )
             except Exception as e:
-                logger.error(f"Failed to copy file from {source_path} to {dest_path}: {e}")
+                logger.error(
+                    f"Failed to copy file from {source_path} to {dest_path}: {e}"
+                )
                 # Even if copy fails, we can try to serve from original location
                 document_url = f"/api/review/documents/{session_id}/{filename}"
         else:
             # File not found - log error and use fallback URL
-            logger.error(f"Source file not found for {filename}, tried: {original_file_path}, {Path(config.UPLOAD_FOLDER) / filename}")
-            document_url = file_data.get('document_url', '')
-        
+            logger.error(
+                f"Source file not found for {filename}, tried: {original_file_path}, {Path(config.UPLOAD_FOLDER) / filename}"
+            )
+            document_url = file_data.get("document_url", "")
+
         file_status = FileReviewStatus(
             file_id=file_id,
             filename=filename,
@@ -143,13 +150,13 @@ async def create_review_session(request: CreateSessionRequest):
             document_type=document_type,
             document_url=document_url,
             markdown_url=f"/api/review/{session_id}/files/{file_id}/markdown",
-            extracted_data=file_data.get('extracted_data', {}),
-            processing_metadata=file_data.get('processing_metadata', {}),
-            source_file=file_data.get('source_file'),
-            is_zip_content=bool(file_data.get('source_file'))
+            extracted_data=file_data.get("extracted_data", {}),
+            processing_metadata=file_data.get("processing_metadata", {}),
+            source_file=file_data.get("source_file"),
+            is_zip_content=bool(file_data.get("source_file")),
         )
         files_status.append(file_status)
-    
+
     session = ReviewSession(
         session_id=session_id,
         files=files_status,
@@ -158,14 +165,14 @@ async def create_review_session(request: CreateSessionRequest):
         batch_metadata={
             "total_files": len(files_status),
             "approved_count": 0,
-            "rejected_count": 0
-        }
+            "rejected_count": 0,
+        },
     )
-    
+
     session_file = session_dir / "session.json"
-    with open(session_file, 'w') as f:
+    with open(session_file, "w") as f:
         json.dump(session.model_dump(), f, indent=2)
-    
+
     return {"session_id": session_id}
 
 
@@ -173,13 +180,13 @@ async def create_review_session(request: CreateSessionRequest):
 async def get_review_session(session_id: str):
     """Get a review session with all files"""
     session_file = REVIEW_SESSIONS_DIR / session_id / "session.json"
-    
+
     if not session_file.exists():
         raise HTTPException(status_code=404, detail="Review session not found")
-    
-    with open(session_file, 'r') as f:
+
+    with open(session_file, "r") as f:
         session_data = json.load(f)
-    
+
     return session_data
 
 
@@ -187,83 +194,85 @@ async def get_review_session(session_id: str):
 async def get_file_review(session_id: str, file_id: str):
     """Get detailed review data for a single file"""
     session_file = REVIEW_SESSIONS_DIR / session_id / "session.json"
-    
+
     if not session_file.exists():
         raise HTTPException(status_code=404, detail="Review session not found")
-    
-    with open(session_file, 'r') as f:
+
+    with open(session_file, "r") as f:
         session_data = json.load(f)
-    
-    for file in session_data['files']:
-        if file['file_id'] == file_id:
+
+    for file in session_data["files"]:
+        if file["file_id"] == file_id:
             return file
-    
+
     raise HTTPException(status_code=404, detail="File not found in session")
 
 
 @router.post("/api/review/{session_id}/files/{file_id}/update")
-async def update_field_data(session_id: str, file_id: str, request: UpdateFieldsRequest):
+async def update_field_data(
+    session_id: str, file_id: str, request: UpdateFieldsRequest
+):
     """Update field data for a file"""
     session_file = REVIEW_SESSIONS_DIR / session_id / "session.json"
-    
+
     if not session_file.exists():
         raise HTTPException(status_code=404, detail="Review session not found")
-    
-    with open(session_file, 'r') as f:
+
+    with open(session_file, "r") as f:
         session_data = json.load(f)
-    
+
     file_found = False
-    for file in session_data['files']:
-        if file['file_id'] == file_id:
+    for file in session_data["files"]:
+        if file["file_id"] == file_id:
             file_found = True
-            
-            if file.get('edits') is None:
-                file['edits'] = []
-            
+
+            if file.get("edits") is None:
+                file["edits"] = []
+
             for edit in request.edits:
                 edit_dict = edit.model_dump()
-                
-                if edit.record_index is not None:
-                    edit_key = f"{edit.record_index}.{edit.field_name}"
-                else:
-                    edit_key = edit.field_name
-                
+
                 existing_edit_idx = next(
-                    (i for i, e in enumerate(file['edits']) 
-                     if e['field_name'] == edit.field_name and 
-                     e.get('record_index') == edit.record_index),
-                    None
+                    (
+                        i
+                        for i, e in enumerate(file["edits"])
+                        if e["field_name"] == edit.field_name
+                        and e.get("record_index") == edit.record_index
+                    ),
+                    None,
                 )
-                
+
                 if existing_edit_idx is not None:
-                    file['edits'][existing_edit_idx] = edit_dict
+                    file["edits"][existing_edit_idx] = edit_dict
                 else:
-                    file['edits'].append(edit_dict)
-                
-                extracted_data = file['extracted_data']
+                    file["edits"].append(edit_dict)
+
+                extracted_data = file["extracted_data"]
                 if isinstance(extracted_data, list) and edit.record_index is not None:
                     if 0 <= edit.record_index < len(extracted_data):
-                        extracted_data[edit.record_index][edit.field_name] = edit.edited_value
+                        extracted_data[edit.record_index][edit.field_name] = (
+                            edit.edited_value
+                        )
                 elif isinstance(extracted_data, dict):
                     extracted_data[edit.field_name] = edit.edited_value
-            
-            if file['status'] == 'not_reviewed':
-                file['status'] = 'in_review'
-            
+
+            if file["status"] == "not_reviewed":
+                file["status"] = "in_review"
+
             break
-    
+
     if not file_found:
         raise HTTPException(status_code=404, detail="File not found in session")
-    
-    session_data['updated_at'] = datetime.now().isoformat()
-    
-    with open(session_file, 'w') as f:
+
+    session_data["updated_at"] = datetime.now().isoformat()
+
+    with open(session_file, "w") as f:
         json.dump(session_data, f, indent=2)
-    
-    for file in session_data['files']:
-        if file['file_id'] == file_id:
+
+    for file in session_data["files"]:
+        if file["file_id"] == file_id:
             return file
-    
+
     raise HTTPException(status_code=500, detail="Failed to update file")
 
 
@@ -271,38 +280,42 @@ async def update_field_data(session_id: str, file_id: str, request: UpdateFields
 async def approve_file(session_id: str, file_id: str, approval: ApprovalMetadata):
     """Approve or reject a file"""
     session_file = REVIEW_SESSIONS_DIR / session_id / "session.json"
-    
+
     if not session_file.exists():
         raise HTTPException(status_code=404, detail="Review session not found")
-    
-    with open(session_file, 'r') as f:
+
+    with open(session_file, "r") as f:
         session_data = json.load(f)
-    
+
     file_found = False
-    for file in session_data['files']:
-        if file['file_id'] == file_id:
+    for file in session_data["files"]:
+        if file["file_id"] == file_id:
             file_found = True
-            file['approval_metadata'] = approval.model_dump()
-            file['status'] = approval.approval_status
+            file["approval_metadata"] = approval.model_dump()
+            file["status"] = approval.approval_status
             break
-    
+
     if not file_found:
         raise HTTPException(status_code=404, detail="File not found in session")
-    
-    approved_count = sum(1 for f in session_data['files'] if f.get('status') == 'approved')
-    rejected_count = sum(1 for f in session_data['files'] if f.get('status') == 'rejected')
-    
-    session_data['batch_metadata']['approved_count'] = approved_count
-    session_data['batch_metadata']['rejected_count'] = rejected_count
-    session_data['updated_at'] = datetime.now().isoformat()
-    
-    with open(session_file, 'w') as f:
+
+    approved_count = sum(
+        1 for f in session_data["files"] if f.get("status") == "approved"
+    )
+    rejected_count = sum(
+        1 for f in session_data["files"] if f.get("status") == "rejected"
+    )
+
+    session_data["batch_metadata"]["approved_count"] = approved_count
+    session_data["batch_metadata"]["rejected_count"] = rejected_count
+    session_data["updated_at"] = datetime.now().isoformat()
+
+    with open(session_file, "w") as f:
         json.dump(session_data, f, indent=2)
-    
-    for file in session_data['files']:
-        if file['file_id'] == file_id:
+
+    for file in session_data["files"]:
+        if file["file_id"] == file_id:
             return file
-    
+
     raise HTTPException(status_code=500, detail="Failed to approve file")
 
 
@@ -310,24 +323,29 @@ async def approve_file(session_id: str, file_id: str, approval: ApprovalMetadata
 async def get_markdown_content(session_id: str, file_id: str):
     """Get markdown transformation of a file"""
     session_file = REVIEW_SESSIONS_DIR / session_id / "session.json"
-    
+
     if not session_file.exists():
         raise HTTPException(status_code=404, detail="Review session not found")
-    
-    with open(session_file, 'r') as f:
+
+    with open(session_file, "r") as f:
         session_data = json.load(f)
-    
-    for file in session_data['files']:
-        if file['file_id'] == file_id:
-            markdown_content = file.get('processing_metadata', {}).get('markdown_content', '')
-            
+
+    for file in session_data["files"]:
+        if file["file_id"] == file_id:
+            markdown_content = file.get("processing_metadata", {}).get(
+                "markdown_content", ""
+            )
+
             return {
-                "markdown_content": markdown_content or "# No markdown content available",
+                "markdown_content": markdown_content
+                or "# No markdown content available",
                 "conversion_method": "markitdown",
                 "original_length": len(markdown_content) if markdown_content else 0,
-                "was_summarized": file.get('processing_metadata', {}).get('was_summarized', False)
+                "was_summarized": file.get("processing_metadata", {}).get(
+                    "was_summarized", False
+                ),
             }
-    
+
     raise HTTPException(status_code=404, detail="File not found in session")
 
 
@@ -339,8 +357,8 @@ async def serve_document_options(session_id: str, filename: str):
         headers={
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "GET, OPTIONS",
-            "Access-Control-Allow-Headers": "*"
-        }
+            "Access-Control-Allow-Headers": "*",
+        },
     )
 
 
@@ -348,14 +366,14 @@ async def serve_document_options(session_id: str, filename: str):
 async def serve_document(session_id: str, filename: str):
     """Serve a document file from the review session"""
     file_path = REVIEW_DOCUMENTS_DIR / session_id / filename
-    
+
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="Document not found")
-    
+
     mime_type, _ = mimetypes.guess_type(str(file_path))
     if mime_type is None:
         mime_type = "application/octet-stream"
-    
+
     return FileResponse(
         file_path,
         media_type=mime_type,
@@ -364,6 +382,6 @@ async def serve_document(session_id: str, filename: str):
             "Cache-Control": "public, max-age=3600",
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "GET, OPTIONS",
-            "Access-Control-Allow-Headers": "*"
-        }
+            "Access-Control-Allow-Headers": "*",
+        },
     )

@@ -15,6 +15,7 @@ InfoTransform is a powerful document processing tool that converts various file 
 
 - **Multi-format Support**: Process images (JPG, PNG, etc.), PDFs, Office documents (DOCX, PPTX, XLSX), audio files, and more
 - **AI-Powered Analysis**: Extract structured data using customizable AI models
+- **Intelligent Caching**: Automatic result caching for instant re-processing of duplicate files ⚡
 - **Batch Processing**: Handle multiple files simultaneously with progress tracking
 - **Streaming Results**: Real-time processing updates for large batches
 - **Custom Schemas**: Define your own data extraction schemas
@@ -134,6 +135,49 @@ Each environment command:
 - Automatically loads the correct configuration file
 - Starts both the Next.js frontend and FastAPI backend
 - Uses optimized production builds for better performance
+
+### Development with VS Code Dev Containers (Recommended)
+
+For the best development experience with zero-configuration setup, use VS Code Dev Containers:
+
+**Prerequisites:**
+- Docker Desktop installed and running
+- VS Code with "Dev Containers" extension installed
+- `.env` file configured (copy from `.env.example` and set `OPENAI_API_KEY`)
+
+**Quick Start:**
+1. Open the project folder in VS Code
+2. Press `F1` or `Ctrl+Shift+P` (Windows/Linux) / `Cmd+Shift+P` (Mac)
+3. Type "Dev Containers: Reopen in Container" and press Enter
+4. Wait for the container to build (5-10 minutes first time)
+5. Services start automatically - access at http://localhost:3000
+
+**What's Included:**
+- Pre-configured Python 3.11.3 with UV package manager
+- Pre-configured Node.js 20.x environment
+- All VS Code extensions auto-installed (Python, TypeScript, Docker, Tailwind, etc.)
+- Hot-reloading for both backend and frontend
+- Full debugging support with breakpoints
+- Auto-formatting on save (Ruff for Python, Prettier for TypeScript)
+- Git integration with SSH keys automatically mounted
+- Data persistence across container rebuilds
+
+**Benefits:**
+- Zero manual setup - everything configured automatically
+- Consistent environment across all developers
+- No "works on my machine" issues
+- Integrated debugging and testing
+- Faster onboarding for new team members
+
+See [.devcontainer/README.md](.devcontainer/README.md) for detailed documentation, troubleshooting, and advanced usage.
+
+**Comparison:**
+
+| Use Case | Command |
+|----------|---------|
+| Daily development with VS Code | Dev Containers (recommended) |
+| Quick testing without VS Code | `docker-compose up` |
+| Production deployment | `docker-compose -f docker-compose.prod.yml up -d` |
 
 ## 📁 Project Structure
 
@@ -287,6 +331,155 @@ monitoring:
   enable_metrics: true
   slow_operation_threshold: 5.0
 ```
+
+**Performance Profiles:**
+
+Choose a profile in `config/performance.yaml` based on your system resources:
+- `conservative` - Limited resources (5 workers, 2 concurrent batches)
+- `balanced` - Default for production (10 workers, 3 concurrent batches)
+- `high_performance` - Development/high-spec systems (25 workers, 8 concurrent batches) ⭐ **Current Default**
+- `ultra` - Maximum throughput (50 workers, 10 concurrent batches)
+
+Set the active profile:
+```yaml
+active_profile: high_performance  # Change to: conservative | balanced | ultra
+```
+
+### ⚡ Result Caching
+
+InfoTransform includes intelligent result caching to avoid re-processing identical files, dramatically improving performance for repeat uploads and batch operations.
+
+**How It Works:**
+- Files are identified by content hash (SHA-256) plus model configuration
+- Successful AI analysis results are cached in SQLite
+- Cache hits return results in <100ms (vs. 5-300s for normal processing)
+- Automatic expiration based on configurable TTL
+- Safe for sensitive data with session-only caching option
+
+**Configuration** (`config/caching.yaml`):
+
+```yaml
+result_cache:
+  enabled: true              # Enable/disable caching
+  ttl_hours: 24             # Cache lifetime (0 = session-only)
+  max_entries: 10000        # Maximum cache size
+  cleanup_interval_hours: 6  # Cleanup frequency
+```
+
+**Environment Variables** (`.env` file):
+
+```env
+# Enable/disable caching
+CACHE_ENABLED=true
+
+# Cache lifetime in hours (0 = session-only, clears on restart)
+CACHE_TTL_HOURS=24
+
+# Maximum number of cache entries
+CACHE_MAX_ENTRIES=10000
+
+# Hours between cleanup runs
+CACHE_CLEANUP_INTERVAL=6
+```
+
+**Configuration Examples:**
+
+Development (No Caching):
+```env
+CACHE_ENABLED=false
+```
+
+Production (6-Hour Cache):
+```env
+CACHE_ENABLED=true
+CACHE_TTL_HOURS=6
+CACHE_MAX_ENTRIES=5000
+```
+
+High-Security (Session Only):
+```env
+CACHE_ENABLED=true
+CACHE_TTL_HOURS=0
+CACHE_INVALIDATION=aggressive
+```
+
+**Cache Behavior:**
+- ✅ Survives application restarts (based on TTL)
+- ✅ Automatic cleanup of expired entries
+- ✅ Content-based hashing prevents false positives
+- ✅ Model-aware (changing models invalidates cache)
+- ✅ Performance metrics included in completion events
+
+**UI Indicators:**
+- Results retrieved from cache show a "Retrieved from cache ⚡" indicator
+- Cache hit rate displayed in processing completion summary
+- Significant speed improvements for duplicate files
+
+**Database Storage:**
+- Location: `backend/infotransform/data/processing_logs.db`
+- Table: `result_cache`
+- Only extracted structured data is cached (not original files)
+- Typical size: 10-50MB per 1,000 cached entries
+
+### 🖼️ Image-Based PDF Support (Optional)
+
+InfoTransform can process **scanned/image-based PDFs** using Azure Document Intelligence OCR. This is optional but highly recommended for documents that don't have selectable text.
+
+**When do you need this?**
+- Scanned documents (physical documents photographed or scanned to PDF)
+- Image-only PDFs (screenshots saved as PDF)
+- Low-quality text extraction from standard PDFs
+
+**Setup Steps:**
+
+1. **Create an Azure Document Intelligence resource:**
+   - Go to [Azure Portal](https://portal.azure.com/)
+   - Create a new "Document Intelligence" resource (formerly "Form Recognizer")
+   - Choose your subscription and resource group
+   - Select a pricing tier (Free tier available: 500 pages/month)
+   - Note the endpoint URL (looks like: `https://your-resource.cognitiveservices.azure.com/`)
+
+2. **Configure InfoTransform:**
+
+   Add to your `.env` file:
+   ```env
+   AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT=https://your-resource.cognitiveservices.azure.com/
+   ```
+
+3. **Authenticate:**
+
+   Azure Document Intelligence uses Azure Identity for authentication. Choose one method:
+
+   **Option A: Azure CLI (Recommended for local development)**
+   ```bash
+   az login
+   ```
+
+   **Option B: Environment variables**
+   ```env
+   AZURE_CLIENT_ID=your-client-id
+   AZURE_CLIENT_SECRET=your-client-secret
+   AZURE_TENANT_ID=your-tenant-id
+   ```
+
+   **Option C: Managed Identity (For Azure-hosted deployments)**
+   - No additional configuration needed when running on Azure VMs/App Service
+
+4. **Verify it's working:**
+
+   When you start the application, you should see:
+   ```
+   [OK] Azure Document Intelligence enabled: https://your-resource.cognitiveservices.azure.com/
+   ```
+
+**Pricing:**
+- **Free Tier**: 500 pages/month
+- **Standard Tier**: ~$1.50 per 1,000 pages
+- See [Azure Pricing](https://azure.microsoft.com/en-us/pricing/details/ai-document-intelligence/) for current rates
+
+**Without Azure:**
+- Standard text-based PDFs will work normally
+- Image-based PDFs will fail with a helpful error message pointing to this setup guide
 
 ## 📚 API Documentation
 

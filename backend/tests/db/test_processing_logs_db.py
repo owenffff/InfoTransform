@@ -21,10 +21,10 @@ class TestProcessingLogsDB:
             run_id=run_id,
             start_timestamp=start_timestamp,
             total_files=5,
-            model_key='invoice',
-            model_name='InvoiceModel',
-            ai_model_used='gpt-4o',
-            custom_instructions='Extract invoice data'
+            model_key="invoice",
+            model_name="InvoiceModel",
+            ai_model_used="gpt-4o",
+            custom_instructions="Extract invoice data",
         )
 
         assert result is True
@@ -43,11 +43,11 @@ class TestProcessingLogsDB:
             successful_files=4,
             failed_files=1,
             token_usage={
-                'input_tokens': 1000,
-                'output_tokens': 500,
-                'total_tokens': 1500
+                "input_tokens": 1000,
+                "output_tokens": 500,
+                "total_tokens": 1500,
             },
-            status='completed'
+            status="completed",
         )
 
         assert result is True
@@ -60,7 +60,7 @@ class TestProcessingLogsDBIntegration:
     """Integration tests for processing logs database"""
 
     @pytest.mark.asyncio
-    @patch('infotransform.db.processing_logs_db.aiosqlite')
+    @patch("infotransform.db.processing_logs_db.aiosqlite")
     async def test_full_run_logging_flow(self, mock_aiosqlite):
         """Test complete run logging flow"""
         # Mock database connection
@@ -82,9 +82,9 @@ class TestProcessingLogsDBIntegration:
             run_id=run_id,
             start_timestamp=start_timestamp,
             total_files=5,
-            model_key='invoice',
-            model_name='InvoiceModel',
-            ai_model_used='gpt-4o'
+            model_key="invoice",
+            model_name="InvoiceModel",
+            ai_model_used="gpt-4o",
         )
 
         # Update run complete
@@ -96,8 +96,8 @@ class TestProcessingLogsDBIntegration:
             duration_seconds=10.5,
             successful_files=4,
             failed_files=1,
-            token_usage={'total_tokens': 1500},
-            status='completed'
+            token_usage={"total_tokens": 1500},
+            status="completed",
         )
 
         # Verify database operations were called
@@ -105,19 +105,26 @@ class TestProcessingLogsDBIntegration:
         assert mock_conn.commit.called
 
     @pytest.mark.asyncio
-    @patch('infotransform.db.processing_logs_db.aiosqlite')
+    @patch("infotransform.db.processing_logs_db.aiosqlite")
     async def test_query_run_history(self, mock_aiosqlite):
         """Test querying run history"""
         # Mock database connection and cursor
         mock_cursor = MagicMock()
-        mock_cursor.fetchall = AsyncMock(return_value=[
-            ('run-1', '2024-01-01T00:00:00', 'completed', 5, 4, 1, 10.5, 'gpt-4o'),
-            ('run-2', '2024-01-02T00:00:00', 'completed', 3, 3, 0, 5.2, 'gpt-4o')
-        ])
+        mock_cursor.fetchall = AsyncMock(
+            return_value=[
+                ("run-1", "2024-01-01T00:00:00", "completed", 5, 4, 1, 10.5, "gpt-4o"),
+                ("run-2", "2024-01-02T00:00:00", "completed", 3, 3, 0, 5.2, "gpt-4o"),
+            ]
+        )
         mock_cursor.description = [
-            ('run_id',), ('start_timestamp',), ('status',),
-            ('total_files',), ('successful_files',), ('failed_files',),
-            ('duration_seconds',), ('ai_model_used',)
+            ("run_id",),
+            ("start_timestamp",),
+            ("status",),
+            ("total_files",),
+            ("successful_files",),
+            ("failed_files",),
+            ("duration_seconds",),
+            ("ai_model_used",),
         ]
 
         mock_conn = MagicMock()
@@ -134,9 +141,10 @@ class TestProcessingLogsDBIntegration:
 
         # Should return runs (if method exists)
         assert mock_conn.execute.called
+        assert runs is not None  # Verify runs variable is used
 
     @pytest.mark.asyncio
-    @patch('infotransform.db.processing_logs_db.aiosqlite')
+    @patch("infotransform.db.processing_logs_db.aiosqlite")
     async def test_database_initialization(self, mock_aiosqlite):
         """Test database table initialization"""
         mock_conn = MagicMock()
@@ -156,7 +164,7 @@ class TestProcessingLogsDBIntegration:
         assert mock_conn.execute.called
 
     @pytest.mark.asyncio
-    @patch('infotransform.db.processing_logs_db.aiosqlite')
+    @patch("infotransform.db.processing_logs_db.aiosqlite")
     async def test_get_logs_db_singleton(self, mock_aiosqlite):
         """Test that get_logs_db returns singleton"""
         from infotransform.db.processing_logs_db import get_logs_db
@@ -173,7 +181,7 @@ class TestDatabaseErrorHandling:
     """Test database error handling"""
 
     @pytest.mark.asyncio
-    @patch('infotransform.db.processing_logs_db.aiosqlite')
+    @patch("infotransform.db.processing_logs_db.aiosqlite")
     async def test_insert_run_start_with_error(self, mock_aiosqlite):
         """Test insert_run_start handles errors"""
         # Mock connection that raises an error
@@ -192,16 +200,16 @@ class TestDatabaseErrorHandling:
                 run_id="test-run",
                 start_timestamp=datetime.now(timezone.utc).isoformat(),
                 total_files=1,
-                model_key='invoice',
-                model_name='Invoice',
-                ai_model_used='gpt-4o'
+                model_key="invoice",
+                model_name="Invoice",
+                ai_model_used="gpt-4o",
             )
         except Exception as e:
             # Error should be caught or re-raised appropriately
             assert "Database error" in str(e) or True
 
     @pytest.mark.asyncio
-    @patch('infotransform.db.processing_logs_db.aiosqlite')
+    @patch("infotransform.db.processing_logs_db.aiosqlite")
     async def test_update_run_complete_with_error(self, mock_aiosqlite):
         """Test update_run_complete handles errors"""
         mock_conn = MagicMock()
@@ -221,7 +229,7 @@ class TestDatabaseErrorHandling:
                 successful_files=1,
                 failed_files=0,
                 token_usage={},
-                status='completed'
+                status="completed",
             )
         except Exception as e:
             assert "Update error" in str(e) or True

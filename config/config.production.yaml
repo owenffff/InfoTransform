@@ -195,6 +195,7 @@ processing:
   upload:
     folder: uploads
     max_file_size_mb: 16
+    max_total_upload_size_mb: 1024  # Maximum total size for all files in a single upload session (1 GB)
     allowed_extensions:
       images:
         - png

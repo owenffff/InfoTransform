@@ -1,0 +1,251 @@
+{
+  "name": "InfoTransform Dev Container",
+  "dockerComposeFile": [
+    "../docker-compose.yml",
+    "docker-compose.yml"
+  ],
+  "service": "infotransform",
+  "workspaceFolder": "/app",
+
+  // Run commands after container is created (first time only)
+  "onCreateCommand": {
+    "welcome": "echo '================================================' && echo 'InfoTransform Dev Container initialized!' && echo 'Backend: http://localhost:8000' && echo 'Frontend: http://localhost:3000' && echo 'API Docs: http://localhost:8000/docs' && echo '================================================'"
+  },
+
+  // Post-start command runs every time the container starts
+  "postStartCommand": "mkdir -p data/uploads data/temp_extracts logs data/uploads/review_sessions data/uploads/review_documents backend/infotransform/data",
+
+  // Forward ports automatically
+  "forwardPorts": [3000, 8000],
+  "portsAttributes": {
+    "3000": {
+      "label": "Next.js Frontend",
+      "onAutoForward": "notify",
+      "protocol": "https"
+    },
+    "8000": {
+      "label": "FastAPI Backend",
+      "onAutoForward": "notify",
+      "protocol": "https"
+    }
+  },
+
+  // Features to add to the dev container
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": true,
+      "installOhMyZsh": true,
+      "upgradePackages": true,
+      "username": "root"
+    }
+  },
+
+  // VS Code customizations
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        // Python extensions
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.black-formatter",
+        "charliermarsh.ruff",
+        "ms-python.debugpy",
+
+        // TypeScript/JavaScript extensions
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss",
+
+        // Next.js and React
+        "dsznajder.es7-react-js-snippets",
+
+        // Docker and DevOps
+        "ms-azuretools.vscode-docker",
+        "ms-vscode-remote.remote-containers",
+
+        // General development
+        "eamodio.gitlens",
+        "github.copilot",
+        "github.copilot-chat",
+        "usernamehw.errorlens",
+        "christian-kohler.path-intellisense",
+        "streetsidesoftware.code-spell-checker",
+
+        // API Development
+        "humao.rest-client",
+        "42crunch.vscode-openapi",
+
+        // Data formats
+        "redhat.vscode-yaml",
+        "tamasfe.even-better-toml",
+
+        // Markdown
+        "yzhang.markdown-all-in-one",
+        "bierner.markdown-mermaid"
+      ],
+
+      "settings": {
+        // Python settings
+        "python.defaultInterpreterPath": "/app/.venv/bin/python",
+        "python.terminal.activateEnvironment": true,
+        "python.testing.pytestEnabled": true,
+        "python.testing.unittestEnabled": false,
+        "python.testing.pytestArgs": ["tests"],
+        "python.languageServer": "Pylance",
+        "python.analysis.typeCheckingMode": "basic",
+        "python.analysis.autoImportCompletions": true,
+        "python.analysis.diagnosticMode": "workspace",
+
+        // Ruff formatter (replaces Black)
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff",
+          "editor.formatOnSave": true,
+          "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit",
+            "source.fixAll": "explicit"
+          }
+        },
+
+        // TypeScript/JavaScript settings
+        "[typescript]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode",
+          "editor.formatOnSave": true,
+          "editor.codeActionsOnSave": {
+            "source.fixAll.eslint": "explicit"
+          }
+        },
+        "[typescriptreact]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode",
+          "editor.formatOnSave": true,
+          "editor.codeActionsOnSave": {
+            "source.fixAll.eslint": "explicit"
+          }
+        },
+        "[javascript]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode",
+          "editor.formatOnSave": true
+        },
+        "[javascriptreact]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode",
+          "editor.formatOnSave": true
+        },
+
+        // JSON, YAML, TOML
+        "[json]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode",
+          "editor.formatOnSave": true
+        },
+        "[jsonc]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode",
+          "editor.formatOnSave": true
+        },
+        "[yaml]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode",
+          "editor.formatOnSave": true
+        },
+
+        // Tailwind CSS
+        "tailwindCSS.experimental.classRegex": [
+          ["cva\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"],
+          ["cx\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"]
+        ],
+
+        // File associations
+        "files.associations": {
+          "*.css": "tailwindcss",
+          ".env.example": "dotenv",
+          ".env.local": "dotenv"
+        },
+
+        // Editor settings
+        "editor.rulers": [88, 120],
+        "editor.bracketPairColorization.enabled": true,
+        "editor.guides.bracketPairs": "active",
+        "editor.inlineSuggest.enabled": true,
+        "editor.linkedEditing": true,
+        "editor.minimap.enabled": true,
+        "editor.suggestSelection": "first",
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true,
+        "editor.detectIndentation": true,
+
+        // Terminal settings
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "terminal.integrated.profiles.linux": {
+          "zsh": {
+            "path": "/bin/zsh"
+          },
+          "bash": {
+            "path": "/bin/bash"
+          }
+        },
+        "terminal.integrated.cwd": "/app",
+        "terminal.integrated.env.linux": {
+          "PATH": "/app/.venv/bin:${env:PATH}"
+        },
+
+        // Git settings
+        "git.autofetch": true,
+        "git.confirmSync": false,
+        "git.enableSmartCommit": true,
+
+        // Files to exclude from search
+        "search.exclude": {
+          "**/.next": true,
+          "**/.venv": true,
+          "**/node_modules": true,
+          "**/data/uploads": true,
+          "**/data/temp_extracts": true,
+          "**/__pycache__": true,
+          "**/*.pyc": true
+        },
+
+        // Files to exclude from file watcher
+        "files.watcherExclude": {
+          "**/.next/**": true,
+          "**/.venv/**": true,
+          "**/node_modules/**": true,
+          "**/data/uploads/**": true,
+          "**/data/temp_extracts/**": true
+        },
+
+        // Preserve existing settings
+        "kiroAgent.configureMCP": "Disabled"
+      }
+    }
+  },
+
+  // Ensure container runs as root to match existing Dockerfile development target
+  "remoteUser": "root",
+
+  // Container environment variables
+  "remoteEnv": {
+    "PATH": "/app/.venv/bin:${containerEnv:PATH}",
+    "PYTHONUNBUFFERED": "1",
+    "NODE_ENV": "development",
+    "ENV": "development"
+  },
+
+  // Lifecycle scripts
+  "initializeCommand": "echo 'Preparing to start InfoTransform dev container...'",
+
+  // Keep container running
+  "overrideCommand": false,
+
+  // Mount configuration
+  "mounts": [
+    // SSH keys for git operations
+    "source=${localEnv:HOME}${localEnv:USERPROFILE}/.ssh,target=/root/.ssh,readonly,type=bind,consistency=cached",
+    // Git config
+    "source=${localEnv:HOME}${localEnv:USERPROFILE}/.gitconfig,target=/root/.gitconfig,readonly,type=bind,consistency=cached"
+  ],
+
+  // Shutdown action
+  "shutdownAction": "stopCompose"
+}

@@ -1,26 +1,5 @@
 import { ModelsData, StreamingEvent } from '@/types';
-
-/**
- * Get the API base URL dynamically based on the current environment
- * - Client-side: Uses the current browser hostname with backend port
- * - Server-side: Uses localhost (for SSR/build time)
- *
- * This ensures API calls work when accessing the app via:
- * - localhost (http://localhost:3000)
- * - Network IP (http://192.168.1.100:3000)
- * - Domain name (http://example.com)
- */
-const getApiBaseUrl = (): string => {
-  // Client-side: use current browser hostname
-  if (typeof window !== 'undefined') {
-    const backendPort = process.env.NEXT_PUBLIC_BACKEND_PORT || '8000';
-    const hostname = window.location.hostname;
-    return `http://${hostname}:${backendPort}`;
-  }
-
-  // Server-side: use localhost (for SSR/build time)
-  return `http://localhost:${process.env.NEXT_PUBLIC_BACKEND_PORT || 8000}`;
-};
+import { getApiBaseUrl } from '@/lib/utils/api-url';
 
 export async function loadAnalysisModels(): Promise<ModelsData> {
   const response = await fetch(`${getApiBaseUrl()}/api/models`);

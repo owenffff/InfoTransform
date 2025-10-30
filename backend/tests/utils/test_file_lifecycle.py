@@ -2,12 +2,10 @@
 Unit tests for file lifecycle management
 """
 
-import asyncio
 import os
 from pathlib import Path
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 
 @pytest.mark.unit
@@ -61,12 +59,12 @@ class TestFileLifecycleManager:
 
         # Create test files
         test_files = [
-            {'file_path': str(temp_dir / f"test{i}.txt"), 'filename': f"test{i}.txt"}
+            {"file_path": str(temp_dir / f"test{i}.txt"), "filename": f"test{i}.txt"}
             for i in range(3)
         ]
 
         for file_info in test_files:
-            Path(file_info['file_path']).write_text("test")
+            Path(file_info["file_path"]).write_text("test")
 
         async with manager.batch_context(test_files) as managed_files:
             # Files should be accessible in context
@@ -89,12 +87,10 @@ class TestManagedStreamingResponse:
         async def dummy_generator():
             yield "data"
 
-        files_to_cleanup = ['/tmp/test.txt']
+        files_to_cleanup = ["/tmp/test.txt"]
 
         managed_response = ManagedStreamingResponse(
-            dummy_generator(),
-            files_to_cleanup,
-            media_type="text/event-stream"
+            dummy_generator(), files_to_cleanup, media_type="text/event-stream"
         )
 
         assert managed_response is not None
@@ -113,9 +109,7 @@ class TestManagedStreamingResponse:
             yield "data"
 
         managed_response = ManagedStreamingResponse(
-            dummy_generator(),
-            [str(test_file)],
-            media_type="text/event-stream"
+            dummy_generator(), [str(test_file)], media_type="text/event-stream"
         )
 
         response = managed_response.create_response()
@@ -180,15 +174,14 @@ class TestFileLifecycleIntegration:
             test_file = temp_dir / f"batch_test_{i}.txt"
             test_file.write_text(f"content {i}")
             test_files.append(str(test_file))
-            file_infos.append({
-                'file_path': str(test_file),
-                'filename': f"batch_test_{i}.txt"
-            })
+            file_infos.append(
+                {"file_path": str(test_file), "filename": f"batch_test_{i}.txt"}
+            )
 
         async with manager.batch_context(file_infos) as managed_files:
             # Process files
             for file_info in managed_files:
-                assert os.path.exists(file_info['file_path'])
+                assert os.path.exists(file_info["file_path"])
 
         # After exiting context, cleanup should be scheduled
 

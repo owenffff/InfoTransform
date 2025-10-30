@@ -8,4 +8,10 @@ from .file_batch_handler import BatchProcessor
 from .structured_analyzer_agent import StructuredAnalyzerAgent
 from .summarization_agent import SummarizationAgent
 
-__all__ = ['VisionProcessor', 'AudioProcessor', 'BatchProcessor', 'StructuredAnalyzerAgent', 'SummarizationAgent']
+__all__ = [
+    "VisionProcessor",
+    "AudioProcessor",
+    "BatchProcessor",
+    "StructuredAnalyzerAgent",
+    "SummarizationAgent",
+]

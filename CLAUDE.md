@@ -258,11 +258,42 @@ class YourModel(BaseModel):
 1. **Upload**: Files uploaded via Next.js frontend
 2. **API Call**: Frontend sends files to FastAPI backend
 3. **Conversion**: Parallel markdown conversion using AsyncMarkdownConverter
+   - Uses `markitdown` library for document-to-markdown conversion
+   - **Image-based PDFs**: Requires Azure Document Intelligence for OCR (see configuration below)
+   - Regular text-based PDFs work without additional setup
 4. **AI Analysis**: Batch processing through Pydantic AI agents
 5. **Streaming**: Results streamed back via Server-Sent Events
 6. **Display**: Real-time updates in React components
 7. **Export**: Download results as Excel/CSV
 8. **Cleanup**: Automatic file lifecycle management
+
+### Image-Based PDF Processing
+
+**What are image-based PDFs?**
+- Scanned documents (physical documents scanned to PDF)
+- Photos/screenshots saved as PDF
+- PDFs without selectable text layers
+
+**Configuration:**
+InfoTransform uses Azure Document Intelligence for processing image-based PDFs. To enable:
+
+1. Create an Azure Document Intelligence resource in the [Azure Portal](https://portal.azure.com/)
+2. Add the endpoint to your `.env` file:
+   ```env
+   AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT=https://your-resource.cognitiveservices.azure.com/
+   ```
+3. Authenticate using Azure CLI (`az login`) or environment variables
+
+**How it works:**
+- `vision.py:38-40` checks for `AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT` environment variable
+- If configured, passes `docintel_endpoint` parameter to MarkItDown
+- MarkItDown automatically routes image-based PDFs through Azure's OCR service
+- Standard text-based PDFs continue to use normal extraction
+
+**Error handling:**
+- Without Azure configured: Image-based PDFs fail with error message pointing to README.md setup guide
+- With Azure configured: All PDFs (text-based and image-based) process successfully
+- See `vision.py:74-84` and `vision.py:127-131` for error handling logic
 
 ## Important Patterns
 
@@ -304,7 +335,12 @@ Note: Excel/CSV export is handled server-side by the Python backend using pandas
 
 - API keys stored in `.env` file (never commit)
 - CORS configured for all origins (restrict in production)
-- File size limits: 50MB single file, 100MB for ZIP archives
+- **Upload Limits** (configurable in `config/config.yaml`):
+  - Per-file limit: 16 MB (default) via `processing.upload.max_file_size_mb`
+  - Per-session total: 1 GB (default) via `processing.upload.max_total_upload_size_mb`
+  - ZIP archives: 100 MB max via `processing.conversion.max_zip_size_mb`
+  - Frontend enforces session limit with real-time feedback
+  - Backend validates via FastAPI configuration
 - Automatic cleanup of uploaded files after processing
 
 ## Cross-Platform Compatibility

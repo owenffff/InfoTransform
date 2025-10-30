@@ -7,7 +7,6 @@ import asyncio
 import logging
 from pathlib import Path
 from typing import Dict, Any, Optional
-from contextlib import asynccontextmanager
 
 from infotransform.config import config
 
@@ -33,12 +32,14 @@ class ProcessingLogsDB:
             db_path: Path to the SQLite database file
         """
         if db_path is None:
-            db_path = config.get('database.processing_logs.path',
-                                'backend/infotransform/data/processing_logs.db')
+            db_path = config.get(
+                "database.processing_logs.path",
+                "backend/infotransform/data/processing_logs.db",
+            )
 
         self.db_path = Path(db_path)
-        self.enabled = config.get('database.processing_logs.enabled', True)
-        self.wal_mode = config.get('database.processing_logs.wal_mode', True)
+        self.enabled = config.get("database.processing_logs.enabled", True)
+        self.wal_mode = config.get("database.processing_logs.wal_mode", True)
 
         # Ensure parent directory exists
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -46,7 +47,9 @@ class ProcessingLogsDB:
         # Initialize database
         if self.enabled:
             self._init_database()
-            logger.info(f"ProcessingLogsDB initialized at {self.db_path} (WAL mode: {self.wal_mode})")
+            logger.info(
+                f"ProcessingLogsDB initialized at {self.db_path} (WAL mode: {self.wal_mode})"
+            )
 
     def _get_connection(self) -> sqlite3.Connection:
         """Get a database connection with proper settings"""
@@ -59,8 +62,8 @@ class ProcessingLogsDB:
 
         # Performance settings for single-server deployment
         conn.execute("PRAGMA synchronous=NORMAL")  # Good balance for WAL mode
-        conn.execute("PRAGMA cache_size=-64000")    # 64MB cache
-        conn.execute("PRAGMA temp_store=MEMORY")    # Use memory for temp tables
+        conn.execute("PRAGMA cache_size=-64000")  # 64MB cache
+        conn.execute("PRAGMA temp_store=MEMORY")  # Use memory for temp tables
 
         return conn
 
@@ -146,7 +149,7 @@ class ProcessingLogsDB:
         model_key: str,
         model_name: str = None,
         ai_model_used: str = None,
-        custom_instructions: str = None
+        custom_instructions: str = None,
     ) -> bool:
         """
         Insert a new processing run record at start
@@ -168,30 +171,54 @@ class ProcessingLogsDB:
 
         try:
             # Run in thread pool to avoid blocking
-            await asyncio.to_thread(self._insert_run_start_sync,
-                                  run_id, start_timestamp, total_files,
-                                  model_key, model_name, ai_model_used,
-                                  custom_instructions)
+            await asyncio.to_thread(
+                self._insert_run_start_sync,
+                run_id,
+                start_timestamp,
+                total_files,
+                model_key,
+                model_name,
+                ai_model_used,
+                custom_instructions,
+            )
             return True
 
         except Exception as e:
             logger.error(f"Error inserting run start for {run_id}: {e}")
             return False
 
-    def _insert_run_start_sync(self, run_id, start_timestamp, total_files,
-                               model_key, model_name, ai_model_used, custom_instructions):
+    def _insert_run_start_sync(
+        self,
+        run_id,
+        start_timestamp,
+        total_files,
+        model_key,
+        model_name,
+        ai_model_used,
+        custom_instructions,
+    ):
         """Synchronous implementation of insert_run_start"""
         conn = self._get_connection()
         cursor = conn.cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO processing_runs (
                 run_id, start_timestamp, total_files,
                 model_key, model_name, ai_model_used, custom_instructions,
                 status
             ) VALUES (?, ?, ?, ?, ?, ?, ?, 'running')
-        """, (run_id, start_timestamp, total_files, model_key,
-              model_name, ai_model_used, custom_instructions))
+        """,
+            (
+                run_id,
+                start_timestamp,
+                total_files,
+                model_key,
+                model_name,
+                ai_model_used,
+                custom_instructions,
+            ),
+        )
 
         conn.commit()
         conn.close()
@@ -206,7 +233,7 @@ class ProcessingLogsDB:
         successful_files: int,
         failed_files: int,
         token_usage: Dict[str, int],
-        status: str = 'completed'
+        status: str = "completed",
     ) -> bool:
         """
         Update processing run record at completion
@@ -227,22 +254,38 @@ class ProcessingLogsDB:
             return False
 
         try:
-            await asyncio.to_thread(self._update_run_complete_sync,
-                                  run_id, end_timestamp, duration_seconds,
-                                  successful_files, failed_files, token_usage, status)
+            await asyncio.to_thread(
+                self._update_run_complete_sync,
+                run_id,
+                end_timestamp,
+                duration_seconds,
+                successful_files,
+                failed_files,
+                token_usage,
+                status,
+            )
             return True
 
         except Exception as e:
             logger.error(f"Error updating run completion for {run_id}: {e}")
             return False
 
-    def _update_run_complete_sync(self, run_id, end_timestamp, duration_seconds,
-                                 successful_files, failed_files, token_usage, status):
+    def _update_run_complete_sync(
+        self,
+        run_id,
+        end_timestamp,
+        duration_seconds,
+        successful_files,
+        failed_files,
+        token_usage,
+        status,
+    ):
         """Synchronous implementation of update_run_complete"""
         conn = self._get_connection()
         cursor = conn.cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             UPDATE processing_runs
             SET end_timestamp = ?,
                 duration_seconds = ?,
@@ -256,14 +299,22 @@ class ProcessingLogsDB:
                 api_requests = ?,
                 status = ?
             WHERE run_id = ?
-        """, (end_timestamp, duration_seconds, successful_files, failed_files,
-              token_usage.get('input_tokens', 0),
-              token_usage.get('output_tokens', 0),
-              token_usage.get('total_tokens', 0),
-              token_usage.get('cache_read_tokens', 0),
-              token_usage.get('cache_write_tokens', 0),
-              token_usage.get('requests', 0),
-              status, run_id))
+        """,
+            (
+                end_timestamp,
+                duration_seconds,
+                successful_files,
+                failed_files,
+                token_usage.get("input_tokens", 0),
+                token_usage.get("output_tokens", 0),
+                token_usage.get("total_tokens", 0),
+                token_usage.get("cache_read_tokens", 0),
+                token_usage.get("cache_write_tokens", 0),
+                token_usage.get("requests", 0),
+                status,
+                run_id,
+            ),
+        )
 
         conn.commit()
         conn.close()
@@ -296,18 +347,24 @@ class ProcessingLogsDB:
         cursor = conn.cursor()
 
         if model_key:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT * FROM processing_runs
                 WHERE model_key = ?
                 ORDER BY start_timestamp DESC
                 LIMIT ?
-            """, (model_key, limit))
+            """,
+                (model_key, limit),
+            )
         else:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT * FROM processing_runs
                 ORDER BY start_timestamp DESC
                 LIMIT ?
-            """, (limit,))
+            """,
+                (limit,),
+            )
 
         rows = cursor.fetchall()
         conn.close()
@@ -338,7 +395,8 @@ class ProcessingLogsDB:
         conn = self._get_connection()
         cursor = conn.cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT
                 COUNT(*) as total_runs,
                 SUM(total_files) as total_files_processed,
@@ -350,7 +408,9 @@ class ProcessingLogsDB:
             FROM processing_runs
             WHERE start_timestamp >= datetime('now', '-' || ? || ' days')
                 AND status = 'completed'
-        """, (days,))
+        """,
+            (days,),
+        )
 
         row = cursor.fetchone()
         conn.close()

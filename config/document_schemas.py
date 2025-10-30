@@ -19,7 +19,7 @@ class DocumentMetadata(BaseModel):
     title: str = Field(description="Main title of the document")
     author: Optional[str] = Field(description="Author if mentioned")
     summary: str = Field(description="Brief summary of content")
-    
+
 # Register directly in AVAILABLE_MODELS:
 "document_metadata": DocumentMetadata
 ```
@@ -39,7 +39,7 @@ class Report_response(BaseModel):
     '''Response wrapper for multiple report items'''
     item: List[ReportItem]  # MUST be named 'item' and be a List
     model_config = ConfigDict(critical_fields=[])
-    
+
 # Register the response wrapper in AVAILABLE_MODELS:
 "report_summary": Report_response  # Use the _response class, not the item class
 ```
@@ -52,13 +52,70 @@ NAMING CONVENTIONS
 3. Model Keys: use lowercase with underscores (e.g., "report_summary", "it_audit")
 
 ================================================================================
-BEST PRACTICES
+BEST PRACTICES FOR ROBUST SCHEMAS
 ================================================================================
-1. Always add descriptive docstrings to your classes
-2. Use Field(..., description="...") for ALL fields - helps AI understand
-3. For Optional fields, use Optional[type] and provide None as default
-4. For nested schemas, always use: model_config = ConfigDict(critical_fields=[])
-5. Consider using OpenAICompatibleBaseModel for better OpenAI compatibility
+
+1. **Inherit from OpenAICompatibleBaseModel (Recommended)**
+   - Provides automatic None-to-default coercion for required fields
+   - Strips whitespace automatically
+   - Ignores extra fields from AI responses
+   - Better OpenAI JSON schema compatibility
+
+2. **Always Add Descriptive Docstrings**
+   - Add docstring to class with triple quotes describing what this schema extracts
+   - This helps both AI and developers understand the schema's purpose
+
+3. **Use Field(..., description="...") for ALL Fields**
+   - Descriptions guide the AI on what to extract and how
+   - Be specific about format requirements (e.g., "YYYY-MM-DD format")
+   - Include examples when helpful
+   - Mention when None is acceptable: "If not available, return None"
+
+4. **Prefer Optional Fields Over Required Fields**
+   - Use `Optional[type] = Field(None, ...)` for fields that might be missing
+   - Only mark fields as required (...) if they're truly essential
+   - This prevents validation errors when documents lack certain data
+   - Examples:
+     ```python
+     # Good - tolerates missing data
+     income_method: Optional[float] = Field(None, description="...")
+
+     # Risky - will fail if data missing
+     income_method: float = Field(..., description="...")
+     ```
+
+5. **Use Appropriate Default Values**
+   - For Optional numeric fields: `Optional[float] = Field(None, ...)`
+   - For Optional string fields: `Optional[str] = Field(None, ...)`
+   - For lists: `List[Type] = Field(default_factory=list, ...)`
+   - For strings with fallback: `str = Field("Not Specified", ...)`
+
+6. **Use Literal Types for Enums**
+   - Provides clear options to the AI
+   - Example: `Literal["Monthly", "Quarterly", "Annually"]`
+   - Make Literal optional if value might be missing:
+     `Optional[Literal["A", "B"]] = Field(None, ...)`
+
+7. **Add Field Validators When Needed**
+   - Use `@field_validator` for custom validation logic
+   - Transform data formats (e.g., ensure percentages have % symbol)
+   - Validate business logic constraints
+
+8. **For Nested Schemas (Multi-Instance Extraction)**
+   - Always use: `model_config = ConfigDict(critical_fields=[])`
+   - Or: `model_config = ConfigDict(extra="forbid")` to reject extra fields
+   - This tells Pydantic how to handle unexpected fields
+
+9. **Test Your Schemas**
+   - Test with documents that have missing data
+   - Test with documents that have extra/unexpected fields
+   - Test with malformed data (wrong types, formats)
+
+10. **Documentation Format Requirements**
+    - Dates: Specify format like "YYYY-MM-DD format"
+    - Numbers: Clarify if abbreviations allowed ("Express as full numbers without abbreviations")
+    - Lists: Explain what should be in each list item
+    - Enums: List all allowed values clearly
 
 ================================================================================
 HOW TO ADD A NEW SCHEMA
@@ -78,16 +135,32 @@ HOW TO ADD A NEW SCHEMA
 ================================================================================
 """
 
-
 from enum import Enum
-from typing import Optional, List, Literal, Union
+from typing import Optional, List, Literal, Union, Any
 from datetime import datetime, date
-from pydantic import BaseModel, Field, ConfigDict, field_validator, constr
+from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
 
 
 class OpenAICompatibleBaseModel(BaseModel):
+    """
+    Enhanced base model with OpenAI compatibility and robust field handling.
+
+    Features:
+    - Strips forbidden JSON schema keys for OpenAI compatibility
+    - Auto-coerces None values to appropriate defaults for non-Optional fields
+    - Strips whitespace from string fields
+    - Tolerates extra fields from AI (uses extra="ignore")
+    """
+
+    model_config = ConfigDict(
+        extra="ignore",  # Ignore extra fields from AI responses
+        str_strip_whitespace=True,  # Auto-strip whitespace from strings
+    )
+
     @classmethod
     def model_json_schema(cls, *args, **kwargs):
+        """Remove OpenAI-incompatible JSON schema keys"""
+
         def strip_forbidden_keys(schema):
             if isinstance(schema, dict):
                 schema.pop("default", None)
@@ -101,6 +174,51 @@ class OpenAICompatibleBaseModel(BaseModel):
         schema = super().model_json_schema(*args, **kwargs)
         strip_forbidden_keys(schema)
         return schema
+
+    @model_validator(mode="before")
+    @classmethod
+    def coerce_none_values(cls, data: Any) -> Any:
+        """
+        Coerce None values to appropriate defaults for non-Optional fields.
+        This prevents validation errors when AI returns None for required fields.
+        """
+        if not isinstance(data, dict):
+            return data
+
+        # Get field information
+        fields_info = cls.model_fields
+
+        for field_name, field_info in fields_info.items():
+            if field_name not in data or data[field_name] is None:
+                # Check if field is Optional (has None in its type union)
+                annotation = field_info.annotation
+                is_optional = False
+
+                # Check for Optional types (Union with None)
+                if hasattr(annotation, "__origin__"):
+                    if annotation.__origin__ is Union:
+                        args = annotation.__args__
+                        is_optional = type(None) in args
+
+                # If field is not optional and value is None, provide defaults
+                if not is_optional and data.get(field_name) is None:
+                    # Determine default based on type
+                    if annotation is str or (
+                        hasattr(annotation, "__origin__")
+                        and annotation.__origin__ is Literal
+                    ):
+                        data[field_name] = ""
+                    elif annotation in (int, float):
+                        data[field_name] = 0
+                    elif annotation is bool:
+                        data[field_name] = False
+                    elif hasattr(annotation, "__origin__"):
+                        if annotation.__origin__ is list:
+                            data[field_name] = []
+                        elif annotation.__origin__ is dict:
+                            data[field_name] = {}
+
+        return data
 
 
 class report_item(BaseModel):
@@ -377,7 +495,7 @@ class NTT_item(OpenAICompatibleBaseModel):
     total_price_otc_mrc: Optional[float] = Field(
         None, description="Total price (One-Time Charge + Monthly Recurring Charge)"
     )
-    payment_terms: Literal["Monthly", "Quarterly", "Annually"] = Field(
+    payment_terms: Optional[Literal["Monthly", "Quarterly", "Annually"]] = Field(
         None,
         description="Whether the payment needs to be made Monthly, Quarterly or Annually",
     )
@@ -385,7 +503,7 @@ class NTT_item(OpenAICompatibleBaseModel):
         None,
         description="Terms of Payment - The number of days by which the payment needs to be made",
     )
-    deposit_status: Literal["Applicable", "Not Applicable"] = Field(
+    deposit_status: Optional[Literal["Applicable", "Not Applicable"]] = Field(
         None, description="Whether there is a deposit required for the service"
     )
     deposit_amount: Optional[float] = Field(
@@ -499,26 +617,28 @@ class Comparables(OpenAICompatibleBaseModel):
 class ValuationReportItem(OpenAICompatibleBaseModel):
     """Data model for Valuation Report extraction"""
 
-    company_name: str = Field(
+    company_name: Optional[str] = Field(
         None, description="Full Name of the company being valuated"
     )
-    valuation_company: str = Field(None, description="Name of the valuation company")
-    valuer_appraiser: List[str] = Field(
+    valuation_company: Optional[str] = Field(
+        None, description="Name of the valuation company"
+    )
+    valuer_appraiser: Optional[List[str]] = Field(
         None,
         description="List of Name and title of the valuer/appraiser. Please include full detail of each valuer/appraiser including title and certification & certification numbers, and as detailed as possible",
     )
     currency: str = Field(
         ..., description="currency used for this report, output in ISO4217 format"
     )
-    valuation_date: str = Field(
+    valuation_date: Optional[str] = Field(
         None,
         description="Date of valuation or report date, output in YYYY-MM-DD format",
     )
-    property_name: str = Field(
+    property_name: Optional[str] = Field(
         None,
         description="Name of the property and the description of the property, including postal code if any",
     )
-    property_location: str = Field(
+    property_location: Optional[str] = Field(
         None, description="Location of the property, including postal code if any"
     )
     asset_type: Literal[
@@ -541,29 +661,29 @@ class ValuationReportItem(OpenAICompatibleBaseModel):
         ...,
         description="Fair value/concluded value/value conclusion of the property. Express value as full numbers without abbreviations or units. If such value was presented in units, transform it into full number.",
     )
-    discounted_cash_flow_method: float = Field(
+    discounted_cash_flow_method: Optional[float] = Field(
         None,
-        description="the value details of the Discounted Cash Flow (DCF) method used in the valuation. Extract rounded value if it's provided in the text, if not just extract the original value",
+        description="the value details of the Discounted Cash Flow (DCF) method used in the valuation. Extract rounded value if it's provided in the text, if not just extract the original value. If not available, return None.",
     )
-    income_capitalisation_method: float = Field(
+    income_capitalisation_method: Optional[float] = Field(
         None,
-        description="the value details of Income Capitalisation Method. Extract rounded value if it's provided in the text, if not just extract the original value",
+        description="the value details of Income Capitalisation Method. Extract rounded value if it's provided in the text, if not just extract the original value. If not available, return None.",
     )
-    comparable_sales_method: float = Field(
+    comparable_sales_method: Optional[float] = Field(
         None,
-        description="the value details of Comparable Sales Method. Extract rounded value if it's provided in the text, if not just extract the original value",
+        description="the value details of Comparable Sales Method. Extract rounded value if it's provided in the text, if not just extract the original value. If not available, return None.",
     )
-    residual_value_method: float = Field(
+    residual_value_method: Optional[float] = Field(
         None,
-        description="the value details of Residual Value Method. Extract rounded value if it's provided in the text, if not just extract the original value",
+        description="the value details of Residual Value Method. Extract rounded value if it's provided in the text, if not just extract the original value. If not available, return None.",
     )
-    cost_method: float = Field(
+    cost_method: Optional[float] = Field(
         None,
-        description="the value details of cost Method. Extract rounded value if it's provided in the text, if not just extract the original value",
+        description="the value details of cost Method. Extract rounded value if it's provided in the text, if not just extract the original value. If not available, return None.",
     )
-    gross_development_value: float = Field(
+    gross_development_value: Optional[float] = Field(
         None,
-        description="Gross Development Value (GDV) or Gross Realization Value (GRV) of the property",
+        description="Gross Development Value (GDV) or Gross Realization Value (GRV) of the property. If not available, return None.",
     )
     discount_rate_percentage: str = Field(
         "Not Specified", description="Discount Rate in percentage(%)"
@@ -841,34 +961,44 @@ class loan_agree_response(BaseModel):
     model_config = ConfigDict(critical_fields=[])
 
 
-
 class Category(str, Enum):
     violence = "violence"
-    sexual = "sexual" 
+    sexual = "sexual"
     self_harm = "self_harm"
 
 
 class ContentCompliance_response(BaseModel):
     """Content compliance analysis for policy violations"""
+
     is_violating: bool = Field(description="Whether content violates policies")
     category: Optional[Category] = Field(description="Violation category if applicable")
-    explanation_if_violating: Optional[str] = Field(description="Explanation of violation")
+    explanation_if_violating: Optional[str] = Field(
+        description="Explanation of violation"
+    )
 
 
 class DocumentMetadata(BaseModel):
     """Document metadata extraction"""
+
     title: str = Field(description="Main title of the document")
     author: Optional[str] = Field(description="Author if mentioned")
     summary: str = Field(description="Brief summary of content")
     word_count: int = Field(description="Approximate word count", ge=0)
-    key_topics: List[str] = Field(description="3-5 main topics", min_length=1, max_length=5)
+    key_topics: List[str] = Field(
+        description="3-5 main topics", min_length=1, max_length=5
+    )
 
 
 class TechnicalDocAnalysis(BaseModel):
     """Technical documentation analysis"""
-    programming_languages: List[str] = Field(description="Programming languages mentioned")
+
+    programming_languages: List[str] = Field(
+        description="Programming languages mentioned"
+    )
     code_snippets_count: int = Field(description="Number of code blocks", ge=0)
-    has_installation_guide: bool = Field(description="Whether it has installation instructions")
+    has_installation_guide: bool = Field(
+        description="Whether it has installation instructions"
+    )
     has_api_reference: bool = Field(description="Whether it contains API documentation")
     complexity_level: str = Field(description="Beginner, Intermediate, or Advanced")
     external_links_count: int = Field(description="Number of external links", ge=0)
@@ -876,30 +1006,25 @@ class TechnicalDocAnalysis(BaseModel):
 
 # Model registry - just the models
 AVAILABLE_MODELS = {
-    #"UI displayed name": actual pydantic model name,
-    "content_compliance": ContentCompliance_response,   
+    # "UI displayed name": actual pydantic model name,
+    "content_compliance": ContentCompliance_response,
     "document_metadata": DocumentMetadata,
     "technical_analysis": TechnicalDocAnalysis,
-    
     # Report and Meeting Models
     "report_summary": report_response,
     "meeting_summary": MeetingSummary_response,
-    
     # Audit Models
     "it_audit": ITAudit_response,
     "it_audit_chris": ITAudit_Chris_response,
-    
     # Contract and Agreement Models
     "contract_ntt": Contract_response,
     "agreement_extraction": AgreementExtractionItem_response,
     "lease_agreement": lease_agree_response,
     "loan_agreement": loan_agree_response,
-    
     # Financial Models
     "financial_statement": FinancialStatement_response,
     "board_resolution": BoardResolution_response,
     "valuation_report": ValuationReport_response,
-    
     # Other Models
     "excel_impact_feasibility": excel_response,
     "ces_comparison": CesComp_response,

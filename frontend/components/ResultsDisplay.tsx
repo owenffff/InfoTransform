@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { Download, Table, Grid3X3, Search, RotateCcw, ChevronUp, ChevronDown, Loader2, ArrowDown, UserCheck } from 'lucide-react';
+import { Download, Table, Grid3X3, Search, RotateCcw, ChevronUp, ChevronDown, Loader2, ArrowDown, UserCheck, AlertCircle } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { downloadResults, createReviewSession } from '@/lib/api';
 import { showToast } from './Toast';
@@ -121,6 +121,10 @@ export function ResultsDisplay() {
 
   const successfulResults = filteredResults.filter(r => r.status === 'success');
   const failedResults = filteredResults.filter(r => r.status === 'error');
+
+  // Count only primary results (actual files) for display headers
+  const primarySuccessCount = successfulResults.filter(r => r.is_primary_result !== false).length;
+  const primaryFailedCount = failedResults.filter(r => r.is_primary_result !== false).length;
 
   // Heuristic classification for clearer badges/tips
   const classifyError = (err?: string) => {
@@ -392,7 +396,7 @@ export function ResultsDisplay() {
           >
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-green-700">
-                Successful files ({successfulResults.length})
+                Successful files ({primarySuccessCount})
               </span>
             </div>
             {successOpen ? (
@@ -472,7 +476,7 @@ export function ResultsDisplay() {
             className="w-full flex items-center justify-between text-left"
           >
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-red-700">Failed files ({failedResults.length})</span>
+              <span className="text-sm font-medium text-red-700">Failed files ({primaryFailedCount})</span>
             </div>
             {failedOpen ? <ChevronUp className="w-4 h-4 text-red-700" /> : <ChevronDown className="w-4 h-4 text-red-700" />}
           </button>
@@ -480,12 +484,26 @@ export function ResultsDisplay() {
             <ul className="mt-3 space-y-2">
               {failedResults.map((r: any) => {
                 const info = classifyError(r.error);
+                const isValidationError = r.error_type === 'validation_error';
+                const [validationDetailsOpen, setValidationDetailsOpen] = useState(false);
+
                 return (
                   <li key={r.filename} className="p-3 rounded-md border border-red-200 bg-white">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                      <div>
+                      <div className="flex-1">
                         <div className="text-sm font-medium text-black">{r.filename}</div>
-                        <div className="text-sm text-red-600">{r.error || 'Processing failed'}</div>
+                        <div className="text-sm text-red-600 mt-1">
+                          {isValidationError ? (
+                            <>
+                              <div className="flex items-center gap-2">
+                                <AlertCircle className="w-4 h-4" />
+                                <span>{r.error_summary || r.error || 'Schema validation failed'}</span>
+                              </div>
+                            </>
+                          ) : (
+                            r.error || 'Processing failed'
+                          )}
+                        </div>
                       </div>
                       {info.label && (
                         <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-700 border border-red-200">
@@ -493,8 +511,41 @@ export function ResultsDisplay() {
                         </span>
                       )}
                     </div>
-                    {info.tip && (
+
+                    {/* Validation Error Details */}
+                    {isValidationError && r.validation_errors && r.validation_errors.length > 0 && (
+                      <div className="mt-3">
+                        <button
+                          onClick={() => setValidationDetailsOpen(!validationDetailsOpen)}
+                          className="flex items-center gap-2 text-xs font-medium text-brand-gray-600 hover:text-brand-gray-800"
+                        >
+                          {validationDetailsOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                          {validationDetailsOpen ? 'Hide' : 'Show'} validation details ({r.validation_errors.length} issue{r.validation_errors.length > 1 ? 's' : ''})
+                        </button>
+
+                        {validationDetailsOpen && (
+                          <div className="mt-2 pl-4 border-l-2 border-red-300 space-y-2">
+                            {r.validation_errors.map((valErr: any, idx: number) => (
+                              <div key={idx} className="text-xs">
+                                <div className="font-medium text-brand-gray-700">
+                                  {valErr.row ? `Row ${valErr.row}: ` : ''}{valErr.field}
+                                </div>
+                                <div className="text-red-600 ml-2">{valErr.message}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {info.tip && !isValidationError && (
                       <div className="mt-2 text-xs text-brand-gray-500">{info.tip}</div>
+                    )}
+
+                    {isValidationError && (
+                      <div className="mt-2 text-xs text-brand-gray-500">
+                        💡 Tip: The document structure didn't match the expected format. Try using a different schema or ensure the document contains the required fields.
+                      </div>
                     )}
                   </li>
                 );
