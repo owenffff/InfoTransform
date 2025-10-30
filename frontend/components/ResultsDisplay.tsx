@@ -27,13 +27,15 @@ export function ResultsDisplay() {
   const [downloadFormat, setDownloadFormat] = useState<'excel' | 'csv'>('excel');
   const [newResultIds, setNewResultIds] = useState<Set<string>>(new Set());
   const prevResultsCount = useRef(0);
-  const tableRef = useRef<HTMLDivElement>(null);
+  const lastResultRef = useRef<HTMLElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
   // Success/Failed panel state
   const [successOpen, setSuccessOpen] = useState(true);
   const [failedOpen, setFailedOpen] = useState(true);
   const prevSuccessCount = useRef(0);
   const prevFailedCount = useRef(0);
+  // Track validation details open state for each failed file
+  const [validationDetailsOpen, setValidationDetailsOpen] = useState<Record<string, boolean>>({});
   
   // Track new results for animation and auto-scroll
   useEffect(() => {
@@ -43,14 +45,14 @@ export function ResultsDisplay() {
         newIds.add(streamingResults[i].filename);
       }
       setNewResultIds(newIds);
-      
+
       // Auto-scroll to show new results
-      if (autoScroll && tableRef.current) {
+      if (autoScroll && lastResultRef.current) {
         setTimeout(() => {
-          tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-        }, 100);
+          lastResultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 150);
       }
-      
+
       // Remove animation class after animation completes
       setTimeout(() => {
         setNewResultIds(new Set());
@@ -435,7 +437,7 @@ export function ResultsDisplay() {
         
         {/* Table View */}
         {viewMode === 'table' && successfulResults.length > 0 && (
-          <div ref={tableRef}>
+          <div>
             <TableView
               results={successfulResults}
               fields={modelFields}
@@ -444,6 +446,7 @@ export function ResultsDisplay() {
               onEdit={updateEditedData}
               editedData={editedData}
               newResultIds={newResultIds}
+              lastResultRef={lastResultRef}
             />
           </div>
         )}
@@ -456,6 +459,7 @@ export function ResultsDisplay() {
             onEdit={updateEditedData}
             editedData={editedData}
             newResultIds={newResultIds}
+            lastResultRef={lastResultRef}
           />
         )}
         
@@ -485,7 +489,7 @@ export function ResultsDisplay() {
               {failedResults.map((r: any) => {
                 const info = classifyError(r.error);
                 const isValidationError = r.error_type === 'validation_error';
-                const [validationDetailsOpen, setValidationDetailsOpen] = useState(false);
+                const isDetailsOpen = validationDetailsOpen[r.filename] || false;
 
                 return (
                   <li key={r.filename} className="p-3 rounded-md border border-red-200 bg-white">
@@ -516,14 +520,17 @@ export function ResultsDisplay() {
                     {isValidationError && r.validation_errors && r.validation_errors.length > 0 && (
                       <div className="mt-3">
                         <button
-                          onClick={() => setValidationDetailsOpen(!validationDetailsOpen)}
+                          onClick={() => setValidationDetailsOpen(prev => ({
+                            ...prev,
+                            [r.filename]: !isDetailsOpen
+                          }))}
                           className="flex items-center gap-2 text-xs font-medium text-brand-gray-600 hover:text-brand-gray-800"
                         >
-                          {validationDetailsOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                          {validationDetailsOpen ? 'Hide' : 'Show'} validation details ({r.validation_errors.length} issue{r.validation_errors.length > 1 ? 's' : ''})
+                          {isDetailsOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                          {isDetailsOpen ? 'Hide' : 'Show'} validation details ({r.validation_errors.length} issue{r.validation_errors.length > 1 ? 's' : ''})
                         </button>
 
-                        {validationDetailsOpen && (
+                        {isDetailsOpen && (
                           <div className="mt-2 pl-4 border-l-2 border-red-300 space-y-2">
                             {r.validation_errors.map((valErr: any, idx: number) => (
                               <div key={idx} className="text-xs">
@@ -559,7 +566,7 @@ export function ResultsDisplay() {
   );
 }
 
-function TableView({ results, fields, onSort, sortState, onEdit, editedData, newResultIds }: any) {
+function TableView({ results, fields, onSort, sortState, onEdit, editedData, newResultIds, lastResultRef }: any) {
   const handleCellEdit = (filename: string, field: string, value: string) => {
     onEdit(filename, field, value);
   };
@@ -600,9 +607,11 @@ function TableView({ results, fields, onSort, sortState, onEdit, editedData, new
           {results.map((result: any, idx: number) => {
             const hasEdits = editedData[result.filename];
             const isNew = newResultIds?.has(result.filename);
+            const isLastRow = idx === results.length - 1;
             return (
-              <tr 
-                key={result.filename} 
+              <tr
+                key={result.filename}
+                ref={isLastRow ? lastResultRef as any : null}
                 className={cn(
                   'transition-all duration-500',
                   hasEdits ? 'bg-brand-orange-50/30' : '',
@@ -640,18 +649,20 @@ function TableView({ results, fields, onSort, sortState, onEdit, editedData, new
   );
 }
 
-function CardView({ results, fields, onEdit, editedData, newResultIds }: any) {
+function CardView({ results, fields, onEdit, editedData, newResultIds, lastResultRef }: any) {
   // Ensure fields is always an array
   const fieldArray = Array.isArray(fields) ? fields : [];
-  
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {results.map((result: any) => {
+      {results.map((result: any, idx: number) => {
         const hasEdits = editedData[result.filename];
         const isNew = newResultIds?.has(result.filename);
+        const isLastCard = idx === results.length - 1;
         return (
           <div
             key={result.filename}
+            ref={isLastCard ? lastResultRef as any : null}
             className={cn(
               'p-4 rounded-lg border transition-all duration-500',
               result.status === 'error'
