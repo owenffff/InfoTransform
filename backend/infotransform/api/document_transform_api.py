@@ -162,10 +162,16 @@ class StreamingProcessor:
             if skipped_files:
                 logger.info(
                     f"Skipped {len(skipped_files)} unsupported file(s) from {archive_name}: {', '.join(skipped_files[:5])}"
-                    + (f" and {len(skipped_files) - 5} more" if len(skipped_files) > 5 else "")
+                    + (
+                        f" and {len(skipped_files) - 5} more"
+                        if len(skipped_files) > 5
+                        else ""
+                    )
                 )
 
-            logger.info(f"Extracted {len(extracted_files)} valid files from {archive_name}")
+            logger.info(
+                f"Extracted {len(extracted_files)} valid files from {archive_name}"
+            )
 
         except Exception as e:
             logger.error(f"Failed to extract ZIP file {archive_name}: {str(e)}")
@@ -346,9 +352,9 @@ class StreamingProcessor:
             "ai_model": ai_model or config.get("models.ai_models.default_model"),
             "optimization": {
                 "parallel_conversion": True,
-                "batch_processing": True,
+                "direct_processing": True,
                 "max_workers": self.markdown_converter.max_workers,
-                "batch_size": self.batch_processor.batch_size,
+                "max_concurrent_items": self.batch_processor.max_concurrent_items,
             },
         }
         yield f"data: {json.dumps(initial_event)}\n\n"
@@ -366,6 +372,9 @@ class StreamingProcessor:
         async with self.file_manager.batch_context(files) as managed_files:
             # Create conversion tasks with index tracking
             import asyncio
+
+            # Create result queue early so it's available to both streaming modes
+            result_queue = asyncio.Queue()
 
             async def convert_with_index(file_info, index):
                 """Convert file and return result with index"""
@@ -411,7 +420,7 @@ class StreamingProcessor:
                 }
                 yield f"data: {json.dumps(event)}\n\n"
 
-                # Progressive streaming: immediately add successful conversions to AI pipeline
+                # Progressive streaming: immediately process successful conversions
                 # Note: Images have markdown_content=None but is_image=True, they are still successful
                 if progressive_streaming and result["success"]:
                     item = {
@@ -421,24 +430,107 @@ class StreamingProcessor:
                         ),
                         "markdown_content": result.get("markdown_content"),
                         "original_index": index,
-                        "file_path": result.get("file_path") or original_file.get("file_path"),
+                        "file_path": result.get("file_path")
+                        or original_file.get("file_path"),
                         "is_image": result.get("is_image", False),  # Flag for images
                     }
                     successful_conversions.append(item)
 
-                    # Add to batch processor immediately
+                    # Debug logging to identify summarization issue
+                    logger.info(f"[DEBUG-SUMMARIZATION] Checking {item['filename']}")
+                    logger.info(
+                        f"[DEBUG-SUMMARIZATION] Has markdown_content: {bool(item.get('markdown_content'))}"
+                    )
+                    logger.info(
+                        f"[DEBUG-SUMMARIZATION] Content length: {len(item.get('markdown_content', '')) if item.get('markdown_content') else 0}"
+                    )
+                    logger.info(
+                        f"[DEBUG-SUMMARIZATION] model_fields available: {bool(model_fields)}, fields: {model_fields}"
+                    )
+
+                    # Check if content needs summarization (skip for images which have no markdown)
+                    if item["markdown_content"]:
+                        should_summarize_result = (
+                            self.summarization_agent.should_summarize(
+                                item["markdown_content"]
+                            )
+                        )
+                        logger.info(
+                            f"[DEBUG-SUMMARIZATION] should_summarize returned: {should_summarize_result}"
+                        )
+                    else:
+                        should_summarize_result = False
+                        logger.info(
+                            "[DEBUG-SUMMARIZATION] Skipping - no markdown_content"
+                        )
+
+                    if item["markdown_content"] and should_summarize_result:
+                        # Emit summarization start event
+                        yield f"data: {json.dumps({'type': 'summarization', 'status': 'started', 'filename': item['filename']})}\n\n"
+
+                        # Perform summarization
+                        summary_result = (
+                            await self.summarization_agent.summarize_content(
+                                item["markdown_content"],
+                                model_fields,
+                                item["filename"],
+                            )
+                        )
+
+                        if summary_result["success"]:
+                            # Replace markdown content with summary, preserve original
+                            item["original_markdown_content"] = item["markdown_content"]
+                            item["markdown_content"] = summary_result["summary"]
+                            item["was_summarized"] = True
+                            item["summarization_metrics"] = {
+                                "original_length": summary_result["original_length"],
+                                "summary_length": summary_result["summary_length"],
+                                "compression_ratio": summary_result[
+                                    "compression_ratio"
+                                ],
+                                "model_used": summary_result["model_used"],
+                            }
+
+                            # Emit summarization complete event
+                            yield f"data: {json.dumps({'type': 'summarization', 'status': 'completed', 'filename': item['filename'], 'compression_ratio': summary_result['compression_ratio']})}\n\n"
+                        else:
+                            # Log error but continue with original content
+                            logger.warning(
+                                f"Summarization failed for {item['filename']}: {summary_result.get('error')}. "
+                                "Continuing with original content."
+                            )
+                            item["was_summarized"] = False
+
+                            # Emit summarization failed event
+                            yield f"data: {json.dumps({'type': 'summarization', 'status': 'failed', 'filename': item['filename'], 'error': summary_result.get('error', 'Unknown error')})}\n\n"
+                    else:
+                        # No summarization needed
+                        item["was_summarized"] = False
+
+                    # Process directly without batching - start AI processing immediately
                     context = ProcessingContext(
                         model_key=model_key,
                         custom_instructions=custom_instructions,
                         ai_model=ai_model,
                     )
-                    await self.batch_processor.add_item(
-                        item["filename"],
-                        item["markdown_content"],
-                        context,
-                        file_path=item["file_path"],
-                        is_image=item["is_image"],
-                    )
+
+                    # Create background task for direct processing
+                    async def process_and_stream(item_data, ctx):
+                        """Process item and send results directly to SSE stream"""
+                        async for (
+                            ai_result
+                        ) in self.batch_processor.process_item_directly(
+                            item_data["filename"],
+                            item_data["markdown_content"],
+                            ctx,
+                            file_path=item_data["file_path"],
+                            is_image=item_data["is_image"],
+                        ):
+                            # Put result in queue for main loop to collect
+                            await result_queue.put(ai_result)
+
+                    # Start processing in background
+                    asyncio.create_task(process_and_stream(item, context))
                 elif not result["success"]:
                     # Track failures immediately
                     failed_conversions.append(
@@ -487,7 +579,8 @@ class StreamingProcessor:
                                 ),
                                 "markdown_content": result.get("markdown_content"),
                                 "original_index": i,
-                                "file_path": result.get("file_path") or original_file.get("file_path"),
+                                "file_path": result.get("file_path")
+                                or original_file.get("file_path"),
                                 "is_image": result.get("is_image", False),
                             }
                         )
@@ -572,7 +665,9 @@ class StreamingProcessor:
                                 item["markdown_content"] = summary_result["summary"]
                                 item["was_summarized"] = True
                                 item["summarization_metrics"] = {
-                                    "original_length": summary_result["original_length"],
+                                    "original_length": summary_result[
+                                        "original_length"
+                                    ],
                                     "summary_length": summary_result["summary_length"],
                                     "compression_ratio": summary_result[
                                         "compression_ratio"
@@ -596,39 +691,54 @@ class StreamingProcessor:
                 file_metadata = {}
                 for item in successful_conversions:
                     file_metadata[item["filename"]] = item
-                    # For progressive mode, check if we need summarization
-                    # (simplified: skip summarization in progressive mode for now)
-                    if progressive_streaming:
+                    # In progressive mode, was_summarized is already set above during processing
+                    # In non-progressive mode, it will be set during the summarization phase below
+                    if (
+                        not hasattr(item, "was_summarized")
+                        or "was_summarized" not in item
+                    ):
                         item["was_summarized"] = False
 
                 # Track expected result count
                 expected_results = len(successful_conversions)
                 results_received = 0
 
+                # result_queue already created at the start of conversion phase
+
                 # Process results as they arrive from batch processor
-                # In progressive mode, items are already in the queue
-                # In non-progressive mode, we need to add them now
+                # In progressive mode, items are already processing
+                # In non-progressive mode, start processing all items now
                 if not progressive_streaming:
+                    # Create background task for direct processing
+                    async def process_and_stream(item_data, ctx):
+                        """Process item and send results directly to SSE stream"""
+                        async for (
+                            ai_result
+                        ) in self.batch_processor.process_item_directly(
+                            item_data["filename"],
+                            item_data["markdown_content"],
+                            ctx,
+                            file_path=item_data.get("file_path"),
+                            is_image=item_data.get("is_image", False),
+                        ):
+                            # Put result in queue for main loop to collect
+                            await result_queue.put(ai_result)
+
+                    # Start all items processing concurrently
                     for item in successful_conversions:
                         context = ProcessingContext(
                             model_key=model_key,
                             custom_instructions=custom_instructions,
                             ai_model=ai_model,
                         )
-                        await self.batch_processor.add_item(
-                            item["filename"],
-                            item["markdown_content"],
-                            context,
-                            file_path=item.get("file_path"),
-                            is_image=item.get("is_image", False),
-                        )
+                        asyncio.create_task(process_and_stream(item, context))
 
                 # Now stream results as they complete
                 while results_received < expected_results:
-                    ai_result = await self.batch_processor.get_result()
+                    ai_result_dict = await result_queue.get()
 
                     # Check if this is a final result
-                    if not ai_result.final:
+                    if not ai_result_dict.get("final", True):
                         # Partial result - skip for now
                         continue
 
@@ -636,26 +746,18 @@ class StreamingProcessor:
                     processed_count += 1
 
                     # Get original file metadata
-                    original_item = file_metadata.get(ai_result.filename)
+                    original_item = file_metadata.get(ai_result_dict["filename"])
                     if not original_item:
                         logger.warning(
-                            f"Could not find metadata for {ai_result.filename}"
+                            f"Could not find metadata for {ai_result_dict['filename']}"
                         )
                         continue
 
-                    # Convert BatchResult to dict format expected by downstream code
-                    ai_result_dict = {
-                        "filename": ai_result.filename,
-                        "success": ai_result.success,
-                        "structured_data": ai_result.structured_data,
-                        "error": ai_result.error,
-                        "processing_time": ai_result.processing_time,
-                        "final": ai_result.final,
-                        "usage": ai_result.usage,
-                        "cached": ai_result.usage.get("cached", False)
-                        if ai_result.usage
-                        else False,
-                    }
+                    # ai_result_dict already in correct format from process_item_directly()
+                    # Just add cached flag if needed
+                    ai_result_dict["cached"] = (ai_result_dict.get("usage") or {}).get(
+                        "cached", False
+                    )
 
                     if original_item:
                         # Expand nested results into multiple flat results
@@ -723,7 +825,9 @@ class StreamingProcessor:
                                     "error": ai_result_dict.get(
                                         "error", "AI processing failed"
                                     ),
-                                    "markdown_content": original_item["markdown_content"],
+                                    "markdown_content": original_item[
+                                        "markdown_content"
+                                    ],
                                     "progress": {
                                         "phase": 2,
                                         "phase_name": "Analyzing with AI",

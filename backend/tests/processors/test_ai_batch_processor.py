@@ -388,3 +388,243 @@ class TestBatchProcessorIntegration:
         assert any(r["final"] for r in results)
 
         await processor.stop()
+
+
+@pytest.mark.unit
+class TestParallelProcessing:
+    """Test parallel processing functionality with semaphore"""
+
+    @pytest.fixture
+    def mock_structured_analyzer_with_delay(self):
+        """Create mock analyzer with simulated processing delay"""
+        mock_analyzer = MagicMock()
+
+        async def mock_analyze_with_delay(
+            content, model_key, custom_instructions=None, ai_model=None, **kwargs
+        ):
+            # Simulate AI processing time
+            await asyncio.sleep(0.1)
+            return {
+                "success": True,
+                "result": {"field1": "value1", "field2": "value2"},
+                "usage": {
+                    "input_tokens": 100,
+                    "output_tokens": 50,
+                    "total_tokens": 150,
+                    "cache_read_tokens": 0,
+                    "cache_write_tokens": 0,
+                    "requests": 1,
+                },
+            }
+
+        mock_analyzer.analyze_content = AsyncMock(side_effect=mock_analyze_with_delay)
+        return mock_analyzer
+
+    @pytest.mark.asyncio
+    async def test_semaphore_initialization(self, mock_structured_analyzer):
+        """Test that item semaphore is properly initialized"""
+        processor = BatchProcessor(mock_structured_analyzer)
+
+        # Before start, semaphore should be None
+        assert processor.item_semaphore is None
+
+        # After start, semaphore should be initialized
+        await processor.start()
+        assert processor.item_semaphore is not None
+        assert processor.item_semaphore._value == processor.max_concurrent_items
+
+        await processor.stop()
+
+    @pytest.mark.asyncio
+    async def test_max_concurrent_items_configuration(self, mock_structured_analyzer):
+        """Test that max_concurrent_items is read from configuration"""
+        with patch("infotransform.config.config.get_performance") as mock_get_perf:
+            mock_get_perf.return_value = 5
+
+            processor = BatchProcessor(mock_structured_analyzer)
+
+            # Should use the configured value
+            assert processor.max_concurrent_items == 5
+
+    @pytest.mark.asyncio
+    async def test_concurrent_processing_timing(
+        self, mock_structured_analyzer_with_delay, sample_markdown_content
+    ):
+        """Test that items are processed concurrently, not sequentially"""
+        processor = BatchProcessor(mock_structured_analyzer_with_delay)
+        processor.max_concurrent_items = 5
+
+        await processor.start()
+
+        # Process 5 items (each takes 0.1s)
+        items = [
+            {"filename": f"file{i}.txt", "markdown_content": sample_markdown_content}
+            for i in range(5)
+        ]
+
+        import time
+
+        start_time = time.time()
+
+        results = []
+        async for result in processor.process_items_stream(
+            items, "invoice", "", "gpt-4o"
+        ):
+            results.append(result)
+
+        elapsed_time = time.time() - start_time
+
+        # If concurrent: ~0.1s (all at once)
+        # If sequential: ~0.5s (5 × 0.1s)
+        # Allow some overhead, but should be much less than sequential
+        assert len(results) == 5
+        assert all(r["success"] for r in results)
+
+        # With 5 concurrent workers and 5 items, should complete in ~0.1-0.3s
+        # (much less than 0.5s sequential time)
+        assert elapsed_time < 0.4, (
+            f"Processing took {elapsed_time:.2f}s, expected < 0.4s for concurrent execution. "
+            f"Sequential would take ~0.5s"
+        )
+
+        await processor.stop()
+
+    @pytest.mark.asyncio
+    async def test_concurrent_processing_with_many_items(
+        self, mock_structured_analyzer_with_delay, sample_markdown_content
+    ):
+        """Test concurrent processing with more items than workers"""
+        processor = BatchProcessor(mock_structured_analyzer_with_delay)
+        processor.max_concurrent_items = 3  # Limit to 3 concurrent
+
+        await processor.start()
+
+        # Process 9 items (3 rounds of 3)
+        items = [
+            {"filename": f"file{i}.txt", "markdown_content": sample_markdown_content}
+            for i in range(9)
+        ]
+
+        import time
+
+        start_time = time.time()
+
+        results = []
+        async for result in processor.process_items_stream(
+            items, "invoice", "", "gpt-4o"
+        ):
+            results.append(result)
+
+        elapsed_time = time.time() - start_time
+
+        # If concurrent with 3 workers: ~0.3s (3 rounds × 0.1s)
+        # If sequential: ~0.9s (9 × 0.1s)
+        assert len(results) == 9
+        assert all(r["success"] for r in results)
+
+        # Should complete in ~0.3-0.5s (3 rounds), much less than 0.9s sequential
+        assert elapsed_time < 0.6, (
+            f"Processing took {elapsed_time:.2f}s, expected < 0.6s for concurrent execution. "
+            f"Sequential would take ~0.9s"
+        )
+
+        await processor.stop()
+
+    @pytest.mark.asyncio
+    async def test_semaphore_limits_concurrency(
+        self, mock_structured_analyzer, sample_markdown_content
+    ):
+        """Test that semaphore actually limits concurrent processing"""
+        processor = BatchProcessor(mock_structured_analyzer)
+        processor.max_concurrent_items = 2  # Limit to 2 concurrent
+
+        await processor.start()
+
+        # Track concurrent execution
+        concurrent_count = 0
+        max_concurrent = 0
+        lock = asyncio.Lock()
+
+        async def mock_analyze_with_tracking(*args, **kwargs):
+            nonlocal concurrent_count, max_concurrent
+
+            async with lock:
+                concurrent_count += 1
+                max_concurrent = max(max_concurrent, concurrent_count)
+
+            await asyncio.sleep(0.05)  # Simulate work
+
+            async with lock:
+                concurrent_count -= 1
+
+            return {
+                "success": True,
+                "result": {"field": "value"},
+                "usage": {"total_tokens": 100},
+            }
+
+        processor.analyzer.analyze_content = AsyncMock(
+            side_effect=mock_analyze_with_tracking
+        )
+
+        # Process 10 items
+        items = [
+            {"filename": f"file{i}.txt", "markdown_content": sample_markdown_content}
+            for i in range(10)
+        ]
+
+        results = []
+        async for result in processor.process_items_stream(
+            items, "invoice", "", "gpt-4o"
+        ):
+            results.append(result)
+
+        # Verify all processed
+        assert len(results) == 10
+
+        # Verify concurrency was limited to 2
+        assert max_concurrent <= 2, (
+            f"Max concurrent was {max_concurrent}, expected <= 2"
+        )
+
+        await processor.stop()
+
+    @pytest.mark.asyncio
+    async def test_diagnostic_logging(
+        self, mock_structured_analyzer, sample_markdown_content, caplog
+    ):
+        """Test that diagnostic logging is present"""
+        import logging
+
+        caplog.set_level(logging.INFO)
+
+        processor = BatchProcessor(mock_structured_analyzer)
+        await processor.start()
+
+        items = [{"filename": "test.txt", "markdown_content": sample_markdown_content}]
+
+        results = []
+        async for result in processor.process_items_stream(
+            items, "invoice", "", "gpt-4o"
+        ):
+            results.append(result)
+
+        # Check for concurrent logging
+        log_messages = [record.message for record in caplog.records]
+
+        # Should have logs about concurrent processing
+        assert any("[CONCURRENT]" in msg for msg in log_messages), (
+            "Expected [CONCURRENT] logs but didn't find any"
+        )
+
+        # Should have logs about starting AI processing
+        assert any(
+            "[CONCURRENT] Starting AI processing" in msg for msg in log_messages
+        ), "Expected 'Starting AI processing' log"
+
+        # Should have logs about completed AI processing
+        assert any(
+            "[CONCURRENT] Completed AI processing" in msg for msg in log_messages
+        ), "Expected 'Completed AI processing' log"
+
+        await processor.stop()

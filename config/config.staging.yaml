@@ -132,29 +132,26 @@ ai_pipeline:
       debounce_by: 0.01                # Delay between streaming updates (seconds)
       enable_partial: false           # Enable streaming of partial field updates (experimental)
     
-    # Analysis prompts for different types of content
+    # Unified prompt for all schema types
+    # The AI leverages schema docstrings and field descriptions for domain-specific guidance
     prompts:
-      # Default prompt used for all analysis types
       default: |
-        You are an expert document analyzer. 
-        Your task is to analyze markdown content and extract structured information according to the provided schema.
-        Be accurate, thorough, and follow the schema exactly.
-      
-      # Specialized prompts for specific document schemas
-      content_compliance: |
-        You are a content compliance specialist. 
-        Analyze documents for policy violations with high accuracy.
-        Be thorough in identifying potential issues while avoiding false positives.
-      
-      document_metadata: |
-        You are a document metadata extraction expert.
-        Extract key information about documents including titles, authors, and summaries.
-        Be concise but comprehensive in your analysis.
-      
-      technical_analysis: |
-        You are a technical documentation analyst.
-        Focus on identifying technical content, code snippets, and documentation quality.
-        Assess complexity levels accurately based on content depth and prerequisites.
+        You are an expert document analyzer specialized in extracting structured information from documents.
+
+        Your role:
+        - Analyze the provided content carefully and thoroughly
+        - Extract information according to the exact schema structure provided
+        - Follow all field descriptions and constraints precisely
+        - Use appropriate default values (None, empty lists) when information is missing
+        - Maintain high accuracy and attention to detail
+        - Preserve original data formats (dates, numbers, text) as specified
+
+        Guidelines:
+        - Extract only information explicitly present in the document
+        - Do not infer or assume information that isn't stated
+        - If a field cannot be determined, use None or the specified default value
+        - Follow the schema's field descriptions as your primary guidance
+        - Respect any custom instructions provided for this specific analysis
     
     # Template for analysis prompts (how custom instructions are integrated)
     prompt_template: |
@@ -225,16 +222,43 @@ processing:
   
   # AI Analysis Stage (Step 3: markdown → structured data)
   # Controls how files are analyzed by AI to extract structured information
-  # Note: Timeout configuration is in performance.yaml (ai_processing.timeout_per_batch)
   analysis:
-    max_concurrent: 10                  # How many files can be analyzed by AI simultaneously
-  
+    max_concurrent: 25                  # How many files can be analyzed by AI simultaneously
+
   # File Conversion Stage (Step 1: raw files → markdown)
   # Controls how uploaded files are converted to markdown text
   conversion:
-    max_concurrent: 10                 # How many files can be converted to markdown simultaneously
+    max_concurrent: 25                 # How many files can be converted to markdown simultaneously
     max_zip_size_mb: 100              # Maximum size for ZIP file uploads
     temp_extract_dir: temp_extracts    # Temporary directory for ZIP file extraction
+
+# ============================================================================
+# PERFORMANCE CONFIGURATION
+# ============================================================================
+# Performance tuning settings for staging environment
+# Staging mirrors production settings (high_performance profile)
+
+performance:
+  # Markdown Conversion Performance
+  markdown_conversion:
+    max_workers: 20                    # High performance profile
+    worker_type: thread                # "thread" or "process"
+    timeout_per_file: 120              # Seconds before timeout per file
+
+  # AI Processing Performance
+  ai_processing:
+    max_concurrent_items: 10           # High performance profile
+
+  # File Management Performance
+  file_management:
+    cleanup_strategy: stream_complete   # "stream_complete" or "reference_counting"
+    max_file_retention: 1800           # Maximum seconds to keep files (30 minutes)
+    cleanup_check_interval: 10         # Seconds between cleanup checks
+
+  # Performance Monitoring
+  monitoring:
+    enable_metrics: true
+    slow_operation_threshold: 5.0      # Seconds to flag as slow
 
 # ============================================================================
 # DATABASE CONFIGURATION

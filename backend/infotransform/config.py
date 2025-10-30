@@ -38,16 +38,11 @@ class Config:
         with open(config_path, "r", encoding="utf-8") as f:
             self.yaml_config = yaml.safe_load(f)
 
-        # Load performance configuration
-        perf_config_path = (
-            Path(__file__).parent.parent.parent / "config" / "performance.yaml"
+        # Performance config is now embedded in main config files
+        # Extract it or use defaults if not present
+        self.performance_config = self.yaml_config.get(
+            "performance", self._get_default_performance_config()
         )
-        if perf_config_path.exists():
-            with open(perf_config_path, "r", encoding="utf-8") as f:
-                self.performance_config = yaml.safe_load(f)
-        else:
-            logger.info("Performance config not found, using defaults")
-            self.performance_config = self._get_default_performance_config()
 
         # Load caching configuration
         cache_config_path = (
@@ -68,9 +63,6 @@ class Config:
         self.yaml_config = self._process_env_vars(self.yaml_config)
         self.performance_config = self._process_env_vars(self.performance_config)
         self.cache_config = self._process_env_vars(self.cache_config)
-
-        # Apply performance profile if specified
-        self._apply_performance_profile()
 
         # Validate on initialization
         self.validate()
@@ -302,31 +294,19 @@ class Config:
             "markdown_conversion": {
                 "max_workers": 10,
                 "worker_type": "thread",
-                "queue_size": 100,
                 "timeout_per_file": 120,
             },
             "ai_processing": {
-                "batch_size": 10,
-                "max_wait_time": 2.0,
-                "max_concurrent_batches": 3,
-                "timeout_per_batch": 300,
-                "retry_attempts": 3,
+                "max_concurrent_items": 10,
             },
             "file_management": {
                 "cleanup_strategy": "stream_complete",
                 "max_file_retention": 300,
                 "cleanup_check_interval": 10,
             },
-            "resource_limits": {
-                "max_memory_per_file_mb": 100,
-                "max_total_memory_mb": 1000,
-                "cpu_limit_percentage": 80,
-            },
             "monitoring": {
                 "enable_metrics": True,
-                "metrics_interval": 60,
                 "slow_operation_threshold": 5.0,
-                "enable_profiling": False,
             },
         }
 
@@ -352,34 +332,6 @@ class Config:
                 "max_entry_size_bytes": 1048576,
             },
         }
-
-    def _apply_performance_profile(self):
-        """Apply performance profile if specified"""
-        profile_name = self.get_performance("active_profile")
-        if not profile_name:
-            return
-
-        profiles = self.performance_config.get("profiles", {})
-        if profile_name not in profiles:
-            logger.warning(f"Performance profile '{profile_name}' not found")
-            return
-
-        logger.info(f"Applying performance profile: {profile_name}")
-        profile = profiles[profile_name]
-
-        # Apply profile settings
-        for key_path, value in profile.items():
-            keys = key_path.split(".")
-            target = self.performance_config
-
-            # Navigate to the parent of the target key
-            for key in keys[:-1]:
-                if key not in target:
-                    target[key] = {}
-                target = target[key]
-
-            # Set the value
-            target[keys[-1]] = value
 
     def get_performance(self, key_path: str, default: Any = None) -> Any:
         """

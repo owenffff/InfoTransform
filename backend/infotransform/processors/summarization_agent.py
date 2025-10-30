@@ -110,7 +110,7 @@ Document content:
 
             # Run summarization
             result = await agent.run(prompt, model_settings=model_settings)
-            summary_text = result.data.summary
+            summary_text = result.output.summary
 
             # Log token count for the output
             log_token_count(f"summarization_output_{filename}", summary_text)

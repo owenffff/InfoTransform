@@ -98,9 +98,9 @@ class TestProgressiveStreaming:
             first_add_time = add_item_calls[0]["time"]
             last_conversion_time = conversion_times[-1]
             # In progressive mode, items start being added as soon as first conversion completes
-            assert (
-                first_add_time <= last_conversion_time + 0.1
-            ), "Items should be added as conversions complete"
+            assert first_add_time <= last_conversion_time + 0.1, (
+                "Items should be added as conversions complete"
+            )
 
     @pytest.mark.asyncio
     @patch("infotransform.api.document_transform_api.config")
@@ -182,9 +182,7 @@ class TestProgressiveStreaming:
         # Verify we got results before all conversions completed
         # (In progressive mode, results stream as soon as any file completes processing)
         assert first_result_time is not None, "Should have received at least one result"
-        assert (
-            len(event_times) > 0
-        ), "Should have received events throughout processing"
+        assert len(event_times) > 0, "Should have received events throughout processing"
 
     @pytest.mark.asyncio
     @patch("infotransform.api.document_transform_api.config")
@@ -303,9 +301,9 @@ class TestNonProgressiveStreaming:
         if len(add_item_calls) > 0 and all_conversions_done_time:
             first_add_time = add_item_calls[0]["time"]
             # Items should be added after conversions complete
-            assert (
-                first_add_time >= all_conversions_done_time - 0.01
-            ), "Items should be added after all conversions complete in non-progressive mode"
+            assert first_add_time >= all_conversions_done_time - 0.01, (
+                "Items should be added after all conversions complete in non-progressive mode"
+            )
 
     @pytest.mark.asyncio
     @patch("infotransform.api.document_transform_api.config")

@@ -54,8 +54,9 @@ class AsyncMarkdownConverter:
 
     def _is_pure_image(self, filename: str) -> bool:
         """Check if file is a pure image (not a document that might contain text)"""
-        image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'}
+        image_extensions = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"}
         import os
+
         ext = os.path.splitext(filename.lower())[1]
         return ext in image_extensions
 
@@ -76,7 +77,9 @@ class AsyncMarkdownConverter:
             # Optimization: Skip markdown conversion for pure images
             # They will be sent directly to multi-modal LLMs in structured analysis
             if self._is_pure_image(filename):
-                logger.debug(f"Skipping markdown conversion for image {filename} (will be sent directly to AI)")
+                logger.debug(
+                    f"Skipping markdown conversion for image {filename} (will be sent directly to AI)"
+                )
                 self.metrics["total_processed"] += 1
                 self.metrics["successful"] += 1
 

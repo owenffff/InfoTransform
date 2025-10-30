@@ -2,8 +2,7 @@
 Structured Analyzer for extracting structured data from markdown content using Pydantic AI
 """
 
-import asyncio
-from typing import Any, Type, Dict, Optional, List
+from typing import Any, Type, Dict, Optional
 from enum import Enum
 import logging
 
@@ -129,10 +128,11 @@ class StructuredAnalyzerAgent:
                 # For images: prepare prompt with image content
                 from pydantic_ai.messages import BinaryImage
                 import os
+                import aiofiles
 
-                # Read image file
-                with open(file_path, "rb") as f:
-                    image_data = f.read()
+                # Read image file asynchronously (non-blocking)
+                async with aiofiles.open(file_path, "rb") as f:
+                    image_data = await f.read()
 
                 # Determine media type from extension
                 ext = os.path.splitext(file_path)[1].lower()
@@ -335,10 +335,11 @@ Content to analyze:
                 # For images: prepare prompt with image content
                 from pydantic_ai.messages import BinaryImage
                 import os
+                import aiofiles
 
-                # Read image file
-                with open(file_path, "rb") as f:
-                    image_data = f.read()
+                # Read image file asynchronously (non-blocking)
+                async with aiofiles.open(file_path, "rb") as f:
+                    image_data = await f.read()
 
                 # Determine media type from extension
                 ext = os.path.splitext(file_path)[1].lower()
@@ -504,57 +505,6 @@ Content to analyze:
             return data.value
         else:
             return data
-
-    async def analyze_batch(
-        self,
-        contents: Dict[str, str],
-        model_key: str,
-        custom_instructions: Optional[str] = None,
-        ai_model: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
-        """
-        Analyze multiple markdown contents in batch
-
-        Args:
-            contents: Dictionary mapping filenames to markdown content
-            model_key: Key of the document schema to use
-            custom_instructions: Optional custom instructions
-            ai_model: Optional AI model override
-
-        Returns:
-            List of analysis results
-        """
-        # Get max concurrent analyses from config
-        max_concurrent = self.config.get("processing.analysis.max_concurrent", 5)
-        semaphore = asyncio.Semaphore(max_concurrent)
-
-        async def analyze_with_limit(filename: str, content: str) -> Dict[str, Any]:
-            async with semaphore:
-                result = await self.analyze_content(
-                    content, model_key, custom_instructions, ai_model
-                )
-                result["filename"] = filename
-                return result
-
-        # Create tasks
-        tasks = [
-            analyze_with_limit(filename, content)
-            for filename, content in contents.items()
-        ]
-
-        # Set timeout for batch analysis from performance config
-        batch_timeout = float(
-            self.config.get_performance("ai_processing.timeout_per_batch", 300)
-        )
-
-        try:
-            results = await asyncio.wait_for(
-                asyncio.gather(*tasks), timeout=batch_timeout
-            )
-            return results
-        except asyncio.TimeoutError:
-            logger.error("Batch analysis timeout")
-            raise TimeoutError("Batch analysis timeout")
 
     def get_available_models(self) -> Dict[str, Dict[str, Any]]:
         """Get information about available document schemas with detailed field info"""
