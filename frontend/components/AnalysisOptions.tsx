@@ -120,106 +120,126 @@ export function AnalysisOptions({ onTransformStart }: { onTransformStart: () => 
   };
 
   const handleTransform = async () => {
+    console.log('[AnalysisOptions] handleTransform called');
+    console.log('[AnalysisOptions] Selected files:', selectedFiles.length, selectedFiles.map(f => f.name));
+    console.log('[AnalysisOptions] Selected model:', selectedModel);
+    console.log('[AnalysisOptions] AI model:', selectedAIModel);
+
     if (!selectedModel) {
+      console.error('[AnalysisOptions] No model selected');
       showToast('error', 'Please select an document schema');
       return;
     }
 
-    // Reset ProcessingStatus state before starting new processing
-    dispatchStreamingEvent({ type: 'reset' });
-    
-    clearResults();
-    setIsProcessing(true);
-    onTransformStart();
+    try {
+      console.log('[AnalysisOptions] Resetting state...');
+      // Reset ProcessingStatus state before starting new processing
+      dispatchStreamingEvent({ type: 'reset' });
 
-    const handleEvent = (event: ApiStreamingEvent) => {
-      // Convert API event to Processing event
-      const processingEvent: ProcessingStreamingEvent = {
-        type: event.type === 'init' ? 'start' :
-              event.type === 'phase' && event.phase === 'markdown_conversion' && event.status === 'started' ? 'markdown_conversion' :
-              event.type === 'phase' && event.phase === 'ai_processing' && event.status === 'started' ? 'ai_analysis' :
-              event.type === 'conversion_progress' ? 'markdown_conversion' :
-              event.type === 'result' ? 'result' :
-              event.type === 'complete' ? 'complete' :
-              event.type === 'error' ? 'error' : 'result',
-        filename: event.filename || event.file,
-        status: event.status === 'success' ? 'success' :
-                event.status === 'error' ? 'error' : 'processing',
-        error: event.error,
-        progress: event.progress !== undefined ? event.progress : event.current,
-        total: event.total || event.total_files,
-        markdown_content: event.markdown_content,
-        structured_data: event.structured_data,
-        model_fields: event.model_fields,
-        processing_time: event.processing_time,
-        was_summarized: event.was_summarized,
-        summarization_metrics: event.summarization_metrics,
-        summary: event.summary ? {
-          total_files: event.summary.total_files,
-          successful_files: event.summary.successful_files,
-          failed_files: event.summary.failed_files,
-          total_time: 0
-        } : undefined
+      clearResults();
+      setIsProcessing(true);
+      onTransformStart();
+      console.log('[AnalysisOptions] State reset complete, starting transform...');
+
+      const handleEvent = (event: ApiStreamingEvent) => {
+        console.log('[AnalysisOptions] Received event:', event.type, event);
+        // Convert API event to Processing event
+        const processingEvent: ProcessingStreamingEvent = {
+          type: event.type === 'init' ? 'start' :
+                event.type === 'phase' && event.phase === 'markdown_conversion' && event.status === 'started' ? 'markdown_conversion' :
+                event.type === 'phase' && event.phase === 'ai_processing' && event.status === 'started' ? 'ai_analysis' :
+                event.type === 'conversion_progress' ? 'markdown_conversion' :
+                event.type === 'result' ? 'result' :
+                event.type === 'complete' ? 'complete' :
+                event.type === 'error' ? 'error' : 'result',
+          filename: event.filename || event.file,
+          status: event.status === 'success' ? 'success' :
+                  event.status === 'error' ? 'error' : 'processing',
+          error: event.error,
+          progress: event.progress !== undefined ? event.progress : event.current,
+          total: event.total || event.total_files,
+          markdown_content: event.markdown_content,
+          structured_data: event.structured_data,
+          model_fields: event.model_fields,
+          processing_time: event.processing_time,
+          was_summarized: event.was_summarized,
+          summarization_metrics: event.summarization_metrics,
+          summary: event.summary ? {
+            total_files: event.summary.total_files,
+            successful_files: event.summary.successful_files,
+            failed_files: event.summary.failed_files,
+            total_time: 0
+          } : undefined
+        };
+
+        dispatchStreamingEvent(processingEvent);
+
+        // Persist both successful and failed results so totals/failed counts are accurate
+        const fname = event.filename || event.file;
+        if (event.type === 'result' && fname) {
+          if (event.status === 'success' && event.structured_data) {
+            addStreamingResult({
+              filename: fname,
+              status: 'success',
+              markdown_content: event.markdown_content,
+              structured_data: event.structured_data,
+              model_fields: event.model_fields,
+              processing_time: event.processing_time,
+              was_summarized: event.was_summarized,
+              summarization_metrics: event.summarization_metrics,
+              is_primary_result: event.is_primary_result,
+              source_file: event.source_file
+            });
+          } else if (event.status === 'error') {
+            addStreamingResult({
+              filename: fname,
+              status: 'error',
+              error: event.error || 'Processing failed',
+              markdown_content: event.markdown_content,
+              is_primary_result: event.is_primary_result,
+              source_file: event.source_file
+            });
+          }
+        }
+        if (event.type === 'complete') {
+          console.log('[AnalysisOptions] Processing complete');
+          setIsProcessing(false);
+          if (event.summary) {
+            if (event.summary.successful_files > 0) {
+              showToast('success', `Successfully processed ${event.summary.successful_files} file(s)`);
+            }
+            if (event.summary.failed_files > 0) {
+              showToast('error', `Failed to process ${event.summary.failed_files} file(s)`);
+            }
+          }
+        }
+        if (event.type === 'error') {
+          console.error('[AnalysisOptions] Error event:', event.error);
+          showToast('error', event.error || 'An error occurred');
+        }
       };
-      
-      dispatchStreamingEvent(processingEvent);
-      
-      // Persist both successful and failed results so totals/failed counts are accurate
-      const fname = event.filename || event.file;
-      if (event.type === 'result' && fname) {
-        if (event.status === 'success' && event.structured_data) {
-          addStreamingResult({
-            filename: fname,
-            status: 'success',
-            markdown_content: event.markdown_content,
-            structured_data: event.structured_data,
-            model_fields: event.model_fields,
-            processing_time: event.processing_time,
-            was_summarized: event.was_summarized,
-            summarization_metrics: event.summarization_metrics,
-            is_primary_result: event.is_primary_result,
-            source_file: event.source_file
-          });
-        } else if (event.status === 'error') {
-          addStreamingResult({
-            filename: fname,
-            status: 'error',
-            error: event.error || 'Processing failed',
-            markdown_content: event.markdown_content,
-            is_primary_result: event.is_primary_result,
-            source_file: event.source_file
-          });
-        }
-      }
-      if (event.type === 'complete') {
+
+      const handleError = (error: string) => {
+        console.error('[AnalysisOptions] Error in transformFiles:', error);
         setIsProcessing(false);
-        if (event.summary) {
-          if (event.summary.successful_files > 0) {
-            showToast('success', `Successfully processed ${event.summary.successful_files} file(s)`);
-          }
-          if (event.summary.failed_files > 0) {
-            showToast('error', `Failed to process ${event.summary.failed_files} file(s)`);
-          }
-        }
-      }
-      if (event.type === 'error') {
-        showToast('error', event.error || 'An error occurred');
-      }
-    };
+        showToast('error', error);
+      };
 
-    const handleError = (error: string) => {
+      console.log('[AnalysisOptions] Calling transformFiles...');
+      await transformFiles(
+        selectedFiles,
+        selectedModel,
+        customInstructions,
+        selectedAIModel,
+        handleEvent,
+        handleError
+      );
+      console.log('[AnalysisOptions] transformFiles completed');
+    } catch (error) {
+      console.error('[AnalysisOptions] Exception in handleTransform:', error);
       setIsProcessing(false);
-      showToast('error', error);
-    };
-
-    await transformFiles(
-      selectedFiles,
-      selectedModel,
-      customInstructions,
-      selectedAIModel,
-      handleEvent,
-      handleError
-    );
+      showToast('error', `Failed to start transformation: ${error instanceof Error ? error.message : String(error)}`);
+    }
   };
 
   const formatPythonType = (pythonType: string): string => {

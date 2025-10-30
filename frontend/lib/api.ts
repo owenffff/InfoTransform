@@ -17,61 +17,110 @@ export async function transformFiles(
   onEvent: (event: StreamingEvent) => void,
   onError: (error: string) => void
 ): Promise<void> {
-  const formData = new FormData();
-  for (const file of files) {
-    formData.append('files', file);
-  }
-  formData.append('model_key', modelKey);
-  formData.append('custom_instructions', customInstructions || '');
-  if (aiModel) {
-    formData.append('ai_model', aiModel);
-  }
-  
+  console.log('[API] transformFiles called');
+  console.log('[API] Files:', files.length, files.map(f => ({ name: f.name, size: f.size, type: f.type })));
+  console.log('[API] Model key:', modelKey);
+  console.log('[API] AI model:', aiModel);
+
   try {
-    const response = await fetch(`${getApiBaseUrl()}/api/transform`, {
+    // Build FormData
+    console.log('[API] Building FormData...');
+    const formData = new FormData();
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      console.log(`[API] Adding file ${i + 1}/${files.length}:`, file.name, file.size, 'bytes');
+      formData.append('files', file);
+    }
+
+    formData.append('model_key', modelKey);
+    formData.append('custom_instructions', customInstructions || '');
+    if (aiModel) {
+      formData.append('ai_model', aiModel);
+    }
+    console.log('[API] FormData built successfully');
+
+    // Get API URL
+    const apiUrl = getApiBaseUrl();
+    const fullUrl = `${apiUrl}/api/transform`;
+    console.log('[API] API base URL:', apiUrl);
+    console.log('[API] Full request URL:', fullUrl);
+
+    // Make fetch request
+    console.log('[API] Sending POST request to', fullUrl);
+    const fetchStartTime = Date.now();
+
+    const response = await fetch(fullUrl, {
       method: 'POST',
       body: formData
     });
-    
+
+    const fetchDuration = Date.now() - fetchStartTime;
+    console.log(`[API] Fetch request completed in ${fetchDuration}ms`);
+    console.log('[API] Response status:', response.status, response.statusText);
+    console.log('[API] Response headers:', Object.fromEntries(response.headers.entries()));
+
     if (!response.ok) {
-      throw new Error(`Transform failed: ${response.statusText}`);
+      const errorText = await response.text().catch(() => 'Unable to read error response');
+      console.error('[API] Request failed:', response.status, response.statusText, errorText);
+      throw new Error(`Transform failed (${response.status}): ${response.statusText}${errorText ? ` - ${errorText}` : ''}`);
     }
-    
+
     const reader = response.body?.getReader();
     const decoder = new TextDecoder();
-    
+
     if (!reader) {
+      console.error('[API] No response body reader available');
       throw new Error('No response body');
     }
-    
+
+    console.log('[API] Starting to read streaming response...');
     let buffer = '';
-    
+    let eventCount = 0;
+
     while (true) {
       const { done, value } = await reader.read();
-      if (done) break;
-      
+      if (done) {
+        console.log(`[API] Stream ended after ${eventCount} events`);
+        break;
+      }
+
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split('\n');
       buffer = lines.pop() || '';
-      
+
       for (const line of lines) {
         if (line.trim() === '') continue;
         if (line.startsWith('data: ')) {
           const eventData = line.slice(6);
           if (eventData === '[DONE]') {
+            console.log('[API] Received [DONE] signal');
             return;
           }
           try {
             const event = JSON.parse(eventData) as StreamingEvent;
+            eventCount++;
+            console.log(`[API] Event ${eventCount}:`, event.type, event);
             onEvent(event);
           } catch (e) {
-            console.error('Failed to parse SSE event:', e, eventData);
+            console.error('[API] Failed to parse SSE event:', e, 'Raw data:', eventData);
           }
         }
       }
     }
+
+    console.log('[API] transformFiles completed successfully');
   } catch (error) {
-    onError(error instanceof Error ? error.message : 'Transform failed');
+    console.error('[API] Exception in transformFiles:', error);
+    console.error('[API] Error details:', {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
+
+    const errorMessage = error instanceof Error ? error.message : 'Transform failed';
+    onError(errorMessage);
+    throw error; // Re-throw so calling code can also handle it
   }
 }
 
