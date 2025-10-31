@@ -163,18 +163,36 @@ export async function downloadResults(
 }
 
 export async function createReviewSession(files: any[]): Promise<string> {
-  const response = await fetch(`${getApiBaseUrl()}/api/review/session`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ files })
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
-  if (!response.ok) {
-    throw new Error('Failed to create review session');
+  try {
+    const response = await fetch(`${getApiBaseUrl()}/api/review/session`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files }),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const errorMsg = errorData.detail || errorData.message || 'Failed to create review session';
+      throw new Error(errorMsg);
+    }
+
+    const { session_id } = await response.json();
+    return session_id;
+  } catch (error) {
+    clearTimeout(timeoutId);
+
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Review session creation timed out. The files may be too large. Please try with fewer files.');
+    }
+
+    throw error;
   }
-
-  const { session_id } = await response.json();
-  return session_id;
 }
 
 export async function getReviewSession(sessionId: string): Promise<any> {

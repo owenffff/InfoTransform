@@ -56,6 +56,8 @@ export function FileUpload() {
   const [groupByType, setGroupByType] = useState<boolean>(true);
   // Track if component is mounted on client side
   const [isMounted, setIsMounted] = useState(false);
+  // Track if upload is being processed (for large files)
+  const [isUploadProcessing, setIsUploadProcessing] = useState(false);
 
   // Ensure dropzone is only fully interactive after client-side hydration
   useEffect(() => {
@@ -68,34 +70,44 @@ export function FileUpload() {
       return;
     }
 
-    // Check for duplicates
-    const existingNames = new Set(selectedFiles.map(f => f.name));
-    const newFiles = acceptedFiles.filter(f => !existingNames.has(f.name));
-    const duplicates = acceptedFiles.length - newFiles.length;
+    // Show loading state immediately
+    setIsUploadProcessing(true);
 
-    if (duplicates > 0) {
-      showToast('info', `${duplicates} duplicate file(s) ignored`);
-    }
+    // Defer heavy processing to next tick to allow UI update
+    setTimeout(() => {
+      // Check for duplicates
+      const existingNames = new Set(selectedFiles.map(f => f.name));
+      const newFiles = acceptedFiles.filter(f => !existingNames.has(f.name));
+      const duplicates = acceptedFiles.length - newFiles.length;
 
-    if (newFiles.length > 0) {
-      // Calculate current total size
-      const currentSize = selectedFiles.reduce((acc, f) => acc + f.size, 0);
-      const newSize = newFiles.reduce((acc, f) => acc + f.size, 0);
-      const totalSize = currentSize + newSize;
-
-      // Check if adding these files would exceed the limit
-      if (totalSize > MAX_TOTAL_UPLOAD_SIZE) {
-        const remainingSpace = MAX_TOTAL_UPLOAD_SIZE - currentSize;
-        showToast(
-          'error',
-          `Upload limit exceeded. You can add up to ${formatFileSize(remainingSpace)} more (1 GB max per session)`
-        );
-        return;
+      if (duplicates > 0) {
+        showToast('info', `${duplicates} duplicate file(s) ignored`);
       }
 
-      setSelectedFiles([...selectedFiles, ...newFiles]);
-      showToast('success', `${newFiles.length} file(s) added`);
-    }
+      if (newFiles.length > 0) {
+        // Calculate current total size
+        const currentSize = selectedFiles.reduce((acc, f) => acc + f.size, 0);
+        const newSize = newFiles.reduce((acc, f) => acc + f.size, 0);
+        const totalSize = currentSize + newSize;
+
+        // Check if adding these files would exceed the limit
+        if (totalSize > MAX_TOTAL_UPLOAD_SIZE) {
+          const remainingSpace = MAX_TOTAL_UPLOAD_SIZE - currentSize;
+          showToast(
+            'error',
+            `Upload limit exceeded. You can add up to ${formatFileSize(remainingSpace)} more (1 GB max per session)`
+          );
+          setIsUploadProcessing(false);
+          return;
+        }
+
+        setSelectedFiles([...selectedFiles, ...newFiles]);
+        showToast('success', `${newFiles.length} file(s) added`);
+      }
+
+      // Hide loading state after processing
+      setIsUploadProcessing(false);
+    }, 10);
   }, [selectedFiles, setSelectedFiles]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -112,7 +124,7 @@ export function FileUpload() {
       'text/plain': ['.txt']
     },
     multiple: true,
-    disabled: isProcessing || !isMounted,
+    disabled: isProcessing || isUploadProcessing || !isMounted,
     noClick: !isMounted,
     noDrag: !isMounted
   });
@@ -216,22 +228,31 @@ export function FileUpload() {
             'relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer',
             'transition-all duration-300 hover:border-primary hover:bg-secondary/50',
             isDragActive && 'border-primary bg-secondary',
-            isProcessing && 'opacity-60 cursor-not-allowed pointer-events-none'
+            (isProcessing || isUploadProcessing) && 'opacity-60 cursor-not-allowed pointer-events-none'
           )}
         >
           <input {...getInputProps()} />
 
           <Upload className={cn(
             "w-12 h-12 text-muted-foreground mb-4 mx-auto transition-all duration-300",
-            isDragActive && "text-primary scale-110"
+            isDragActive && "text-primary scale-110",
+            isUploadProcessing && "animate-pulse"
           )} />
 
           <p className="text-lg font-semibold text-foreground mb-2">
-            {isProcessing ? 'Processing files...' : isDragActive ? 'Drop files here...' : 'Drop files here or click to browse'}
+            {isProcessing
+              ? 'Processing files...'
+              : isUploadProcessing
+              ? 'Adding files...'
+              : isDragActive
+              ? 'Drop files here...'
+              : 'Drop files here or click to browse'}
           </p>
 
           <p className="text-sm text-muted-foreground">
-            {isProcessing ? 'Upload disabled during processing' : 'Supported: Images, PDFs, Documents, Audio, ZIP archives'}
+            {(isProcessing || isUploadProcessing)
+              ? 'Upload disabled during processing'
+              : 'Supported: Images, PDFs, Documents, Audio, ZIP archives'}
           </p>
         </div>
 

@@ -71,7 +71,9 @@ function SourceViewer({ file, onSwitchToMarkdown }: { file: FileReviewStatus; on
   const [imageErrorDetails, setImageErrorDetails] = useState<{ status?: number; message: string }>({ message: 'Unknown error' });
   const [imageRetryKey, setImageRetryKey] = useState(0);
   const [pdfError, setPdfError] = useState(false);
+  const [pdfErrorReason, setPdfErrorReason] = useState<string>('');
   const [pdfLoading, setPdfLoading] = useState(true);
+  const [pdfVerifying, setPdfVerifying] = useState(false);
   const [audioError, setAudioError] = useState(false);
   const [audioLoading, setAudioLoading] = useState(true);
 
@@ -82,6 +84,8 @@ function SourceViewer({ file, onSwitchToMarkdown }: { file: FileReviewStatus; on
     setImageErrorDetails({ message: 'Unknown error' });
     setPdfLoading(true);
     setPdfError(false);
+    setPdfErrorReason('');
+    setPdfVerifying(false);
     setAudioLoading(true);
     setAudioError(false);
   }, [file.file_id]);
@@ -109,13 +113,135 @@ function SourceViewer({ file, onSwitchToMarkdown }: { file: FileReviewStatus; on
 
     const timeout = setTimeout(() => {
       if (pdfLoading && !pdfError) {
+        console.log('[DocumentViewer] PDF loading timed out after 15 seconds');
         setPdfLoading(false);
+        setPdfVerifying(false);
         setPdfError(true);
+        setPdfErrorReason('timeout');
       }
     }, 15000); // 15 second timeout
 
     return () => clearTimeout(timeout);
   }, [file.file_id, file.document_type, pdfLoading, pdfError]);
+
+  // Check backend validation headers
+  const checkPdfValidationHeaders = async (url: string): Promise<{ issues?: string; encrypted?: boolean }> => {
+    try {
+      const response = await fetch(url, { method: 'HEAD' });
+      const issues = response.headers.get('X-PDF-Issues');
+      const encrypted = response.headers.get('X-PDF-Encrypted');
+
+      return {
+        issues: issues || undefined,
+        encrypted: encrypted === 'true',
+      };
+    } catch (error) {
+      console.warn('[DocumentViewer] Could not check PDF validation headers:', error);
+      return {};
+    }
+  };
+
+  // Verify PDF content after iframe loads
+  const verifyPdfContent = async (iframeElement: HTMLIFrameElement) => {
+    console.log('[DocumentViewer] Verifying PDF content...');
+    setPdfVerifying(true);
+
+    // First, check backend validation headers
+    const url = getDocumentUrl(file.document_url);
+    const backendValidation = await checkPdfValidationHeaders(url);
+
+    if (backendValidation.issues) {
+      console.warn('[DocumentViewer] Backend detected PDF issues:', backendValidation.issues);
+
+      // Check if backend flagged it as encrypted
+      if (backendValidation.encrypted) {
+        setPdfLoading(false);
+        setPdfVerifying(false);
+        setPdfError(true);
+        setPdfErrorReason('encrypted');
+        return;
+      }
+
+      // For other issues, log but continue verification
+      console.log('[DocumentViewer] Continuing with frontend verification despite backend warnings');
+    }
+
+    // Wait a moment for PDF to fully render
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    try {
+      // Check if we can access the iframe's document
+      const iframeDoc = iframeElement.contentDocument || iframeElement.contentWindow?.document;
+
+      if (!iframeDoc) {
+        console.warn('[DocumentViewer] Cannot access iframe document (possible CORS)');
+        // If backend detected issues but we can't verify, show error
+        if (backendValidation.issues) {
+          setPdfLoading(false);
+          setPdfVerifying(false);
+          setPdfError(true);
+          setPdfErrorReason('corrupted');
+          return;
+        }
+        // Otherwise can't verify - assume it's okay
+        setPdfVerifying(false);
+        return;
+      }
+
+      // Check for common PDF viewer error indicators
+      const bodyText = iframeDoc.body?.innerText || '';
+      const bodyHTML = iframeDoc.body?.innerHTML || '';
+
+      // Check for blank or minimal content
+      if (bodyText.trim().length < 10 && !bodyHTML.includes('embed')) {
+        console.error('[DocumentViewer] PDF appears to be blank or failed to render');
+        setPdfLoading(false);
+        setPdfVerifying(false);
+        setPdfError(true);
+        setPdfErrorReason('blank');
+        return;
+      }
+
+      // Check for common error messages
+      const errorIndicators = [
+        'failed to load',
+        'cannot be displayed',
+        'error occurred',
+        'corrupted',
+        'encrypted',
+        'password',
+      ];
+
+      const lowerBodyText = bodyText.toLowerCase();
+      for (const indicator of errorIndicators) {
+        if (lowerBodyText.includes(indicator)) {
+          console.error('[DocumentViewer] PDF error detected:', indicator);
+          setPdfLoading(false);
+          setPdfVerifying(false);
+          setPdfError(true);
+          setPdfErrorReason(indicator.includes('password') || indicator.includes('encrypted') ? 'encrypted' : 'corrupted');
+          return;
+        }
+      }
+
+      console.log('[DocumentViewer] PDF verification passed');
+      setPdfVerifying(false);
+    } catch (error) {
+      // CORS or other access error - can't verify
+      console.warn('[DocumentViewer] PDF verification failed (likely CORS):', error);
+
+      // If backend detected issues and we couldn't verify, show error
+      if (backendValidation.issues) {
+        setPdfLoading(false);
+        setPdfVerifying(false);
+        setPdfError(true);
+        setPdfErrorReason('corrupted');
+      } else {
+        // Otherwise assume OK
+        setPdfVerifying(false);
+      }
+    }
+  };
 
   // Timeout mechanism for audio loading
   useEffect(() => {
@@ -355,14 +481,75 @@ function SourceViewer({ file, onSwitchToMarkdown }: { file: FileReviewStatus; on
   }
 
   if (file.document_type === 'pdf') {
+    const getPdfErrorMessage = () => {
+      switch (pdfErrorReason) {
+        case 'blank':
+          return {
+            title: 'PDF Shows Blank Page',
+            description: 'The PDF file loaded but appears to show a blank page. This could be due to:',
+            reasons: [
+              'PDF is corrupted or malformed',
+              'PDF uses an unsupported encoding',
+              'Browser PDF viewer encountered an error',
+              'PDF requires special plugins to display',
+            ],
+          };
+        case 'encrypted':
+          return {
+            title: 'PDF is Password Protected',
+            description: 'This PDF file is encrypted and requires a password to view:',
+            reasons: [
+              'PDF is password-protected or encrypted',
+              'You need the password to view this file',
+              'Try opening in external PDF viewer with password',
+            ],
+          };
+        case 'corrupted':
+          return {
+            title: 'PDF May Be Corrupted',
+            description: 'The PDF file appears to be damaged or corrupted:',
+            reasons: [
+              'File may have been corrupted during upload',
+              'PDF structure is malformed',
+              'File may not be a valid PDF document',
+            ],
+          };
+        case 'timeout':
+          return {
+            title: 'PDF Loading Timed Out',
+            description: 'The PDF took too long to load (15 second timeout):',
+            reasons: [
+              'PDF file may be very large',
+              'Network connection is slow',
+              'Server is taking too long to respond',
+            ],
+          };
+        default:
+          return {
+            title: 'PDF Preview Failed',
+            description: 'The PDF could not be displayed. This may be due to:',
+            reasons: [
+              'Browser doesn\'t support inline PDF viewing',
+              'Network connection issue',
+              'File may be corrupted or password-protected',
+              'PDF uses unsupported features',
+            ],
+          };
+      }
+    };
+
+    const errorInfo = getPdfErrorMessage();
+
     return (
       <div className="p-4">
-        {pdfLoading && !pdfError && (
+        {(pdfLoading || pdfVerifying) && !pdfError && (
           <div className="space-y-3">
             <Skeleton className="h-[calc(100vh-250px)] w-full rounded-lg" />
             <div className="flex items-center justify-center gap-2">
               <Loader2 className="w-4 h-4 animate-spin" />
-              <Skeleton className="h-4 w-[150px]" />
+              <span className="text-sm text-gray-600">
+                {pdfVerifying ? 'Verifying PDF content...' : 'Loading PDF...'}
+              </span>
             </div>
           </div>
         )}
@@ -373,14 +560,13 @@ function SourceViewer({ file, onSwitchToMarkdown }: { file: FileReviewStatus; on
                 <div className="flex items-start gap-3">
                   <AlertCircle className="w-5 h-5 text-destructive mt-0.5" />
                   <div className="flex-1">
-                    <CardTitle className="text-destructive">PDF Preview Failed</CardTitle>
+                    <CardTitle className="text-destructive">{errorInfo.title}</CardTitle>
                     <CardDescription className="mt-2">
-                      The PDF could not be displayed. This may be due to:
+                      {errorInfo.description}
                       <ul className="list-disc list-inside mt-2 space-y-1">
-                        <li>Browser doesn't support inline PDF viewing</li>
-                        <li>PDF took too long to load (timeout after 15 seconds)</li>
-                        <li>Network connection issue</li>
-                        <li>File may be corrupted or password-protected</li>
+                        {errorInfo.reasons.map((reason, idx) => (
+                          <li key={idx}>{reason}</li>
+                        ))}
                       </ul>
                     </CardDescription>
                   </div>
@@ -400,11 +586,20 @@ function SourceViewer({ file, onSwitchToMarkdown }: { file: FileReviewStatus; on
                     variant="outline"
                     onClick={() => {
                       setPdfError(false);
+                      setPdfErrorReason('');
                       setPdfLoading(true);
+                      setPdfVerifying(false);
                     }}
                   >
                     <RefreshCw className="w-4 h-4 mr-2" />
                     Retry Preview
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={onSwitchToMarkdown}
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    View Markdown
                   </Button>
                   <Button asChild className="bg-brand-orange-500 hover:bg-brand-orange-600">
                     <a href={getDocumentUrl(file.document_url)} download={file.filename} target="_blank" rel="noopener noreferrer">
@@ -414,8 +609,18 @@ function SourceViewer({ file, onSwitchToMarkdown }: { file: FileReviewStatus; on
                   </Button>
                 </div>
 
+                {pdfErrorReason === 'blank' && (
+                  <Alert className="bg-blue-50 border-blue-200">
+                    <AlertCircle className="h-4 w-4 text-blue-600" />
+                    <AlertTitle className="text-blue-900">Recommended Action</AlertTitle>
+                    <AlertDescription className="text-blue-800">
+                      Since the PDF shows a blank page, we recommend switching to the Markdown tab to view the extracted text content, or opening the PDF in an external viewer.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
                 <p className="text-xs text-muted-foreground">
-                  💡 Tip: Switch to the Markdown tab to view extracted text content, or open the PDF in a new tab for better compatibility
+                  💡 Tip: Switch to the Markdown tab to view extracted text content, or download the PDF to open in an external viewer
                 </p>
               </CardContent>
             </Card>
@@ -426,16 +631,21 @@ function SourceViewer({ file, onSwitchToMarkdown }: { file: FileReviewStatus; on
             key={`pdf-${file.file_id}`}
             src={getDocumentUrl(file.document_url)}
             className="w-full h-[calc(100vh-200px)] border border-gray-200 rounded-lg"
-            style={{ display: pdfLoading ? 'none' : 'block' }}
+            style={{ display: pdfLoading || pdfVerifying ? 'none' : 'block' }}
             title={`PDF: ${file.filename}`}
-            onLoad={() => {
-              console.log('[DocumentViewer] PDF iframe loaded successfully');
+            onLoad={(e) => {
+              console.log('[DocumentViewer] PDF iframe loaded, starting verification...');
               setPdfLoading(false);
+              // Verify PDF content to detect blank pages
+              const iframe = e.currentTarget;
+              verifyPdfContent(iframe);
             }}
             onError={() => {
               console.error('[DocumentViewer] PDF iframe failed to load');
               setPdfLoading(false);
+              setPdfVerifying(false);
               setPdfError(true);
+              setPdfErrorReason('network');
             }}
           />
         )}

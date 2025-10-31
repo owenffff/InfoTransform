@@ -89,6 +89,10 @@ async def create_review_session(request: CreateSessionRequest):
     session_docs_dir = REVIEW_DOCUMENTS_DIR / session_id
     session_docs_dir.mkdir(exist_ok=True, parents=True)
 
+    # Create markdown storage directory
+    markdown_dir = session_dir / "markdown"
+    markdown_dir.mkdir(exist_ok=True, parents=True)
+
     files_status = []
     for file_data in request.files:
         file_id = str(uuid.uuid4())
@@ -142,6 +146,25 @@ async def create_review_session(request: CreateSessionRequest):
             )
             document_url = file_data.get("document_url", "")
 
+        # Store markdown content separately if provided (for backwards compatibility)
+        # If markdown_content is in processing_metadata, save it to a file
+        processing_metadata = file_data.get("processing_metadata", {})
+        markdown_content = processing_metadata.get("markdown_content")
+
+        if markdown_content:
+            # Save markdown to separate file to keep session.json small
+            markdown_file = markdown_dir / f"{file_id}.md"
+            try:
+                with open(markdown_file, "w", encoding="utf-8") as f:
+                    f.write(markdown_content)
+                logger.info(f"Saved markdown content to {markdown_file}")
+            except Exception as e:
+                logger.error(f"Failed to save markdown content: {e}")
+
+        # Remove markdown_content from processing_metadata to keep JSON small
+        processing_metadata_copy = processing_metadata.copy()
+        processing_metadata_copy.pop("markdown_content", None)
+
         file_status = FileReviewStatus(
             file_id=file_id,
             filename=filename,
@@ -151,7 +174,7 @@ async def create_review_session(request: CreateSessionRequest):
             document_url=document_url,
             markdown_url=f"/api/review/{session_id}/files/{file_id}/markdown",
             extracted_data=file_data.get("extracted_data", {}),
-            processing_metadata=file_data.get("processing_metadata", {}),
+            processing_metadata=processing_metadata_copy,
             source_file=file_data.get("source_file"),
             is_zip_content=bool(file_data.get("source_file")),
         )
@@ -332,9 +355,23 @@ async def get_markdown_content(session_id: str, file_id: str):
 
     for file in session_data["files"]:
         if file["file_id"] == file_id:
-            markdown_content = file.get("processing_metadata", {}).get(
-                "markdown_content", ""
-            )
+            # Try to load markdown from separate file first
+            markdown_file = REVIEW_SESSIONS_DIR / session_id / "markdown" / f"{file_id}.md"
+            markdown_content = ""
+
+            if markdown_file.exists():
+                try:
+                    with open(markdown_file, "r", encoding="utf-8") as f:
+                        markdown_content = f.read()
+                    logger.info(f"Loaded markdown from {markdown_file}")
+                except Exception as e:
+                    logger.error(f"Failed to load markdown file: {e}")
+
+            # Fallback: check if markdown_content is in processing_metadata (backwards compatibility)
+            if not markdown_content:
+                markdown_content = file.get("processing_metadata", {}).get(
+                    "markdown_content", ""
+                )
 
             return {
                 "markdown_content": markdown_content
@@ -362,6 +399,62 @@ async def serve_document_options(session_id: str, filename: str):
     )
 
 
+def validate_pdf_file(file_path: Path) -> Dict[str, Any]:
+    """
+    Validate PDF file integrity and detect common issues
+    Returns a dict with validation status and any detected issues
+    """
+    validation_result = {
+        "is_valid": True,
+        "issues": [],
+        "file_size": 0,
+        "is_encrypted": False,
+    }
+
+    try:
+        # Check file size
+        validation_result["file_size"] = file_path.stat().st_size
+
+        # Read first few bytes to check PDF header
+        with open(file_path, "rb") as f:
+            header = f.read(1024)
+
+            # Check for PDF magic number
+            if not header.startswith(b"%PDF-"):
+                validation_result["is_valid"] = False
+                validation_result["issues"].append("Invalid PDF header - file may be corrupted")
+                return validation_result
+
+            # Check for encryption indicators
+            if b"/Encrypt" in header or b"/encrypted" in header.lower():
+                validation_result["is_encrypted"] = True
+                validation_result["issues"].append("PDF appears to be encrypted or password-protected")
+
+            # Read more of the file to check structure
+            f.seek(0)
+            content = f.read(min(8192, validation_result["file_size"]))
+
+            # Check for common corruption indicators
+            if b"%%EOF" not in content and validation_result["file_size"] > 1024:
+                # Small files might not have EOF in first 8KB
+                f.seek(-256, 2)  # Seek to last 256 bytes
+                tail = f.read()
+                if b"%%EOF" not in tail:
+                    validation_result["issues"].append("PDF may be incomplete or corrupted (missing EOF marker)")
+
+            # Check for empty or minimal content
+            if validation_result["file_size"] < 100:
+                validation_result["is_valid"] = False
+                validation_result["issues"].append("PDF file is too small to contain valid content")
+
+    except Exception as e:
+        logger.error(f"Error validating PDF {file_path}: {e}")
+        validation_result["is_valid"] = False
+        validation_result["issues"].append(f"Validation error: {str(e)}")
+
+    return validation_result
+
+
 @router.get("/api/review/documents/{session_id}/{filename}")
 async def serve_document(session_id: str, filename: str):
     """Serve a document file from the review session"""
@@ -376,6 +469,24 @@ async def serve_document(session_id: str, filename: str):
     if mime_type is None:
         mime_type = "application/octet-stream"
 
+    # Validate PDF files before serving
+    if filename.lower().endswith(".pdf"):
+        validation = validate_pdf_file(file_path)
+        logger.info(f"PDF validation for {filename}: {validation}")
+
+        # Add validation info to response headers for frontend debugging
+        extra_headers = {}
+        if validation["issues"]:
+            extra_headers["X-PDF-Issues"] = "; ".join(validation["issues"])
+        if validation["is_encrypted"]:
+            extra_headers["X-PDF-Encrypted"] = "true"
+
+        # Still serve the file even if there are issues, but log them
+        if not validation["is_valid"]:
+            logger.warning(f"Serving potentially problematic PDF: {filename} - Issues: {validation['issues']}")
+    else:
+        extra_headers = {}
+
     # RFC 5987 encoding for non-ASCII filenames in Content-Disposition header
     # Use both filename (ASCII fallback) and filename* (UTF-8 encoded) for maximum compatibility
     try:
@@ -388,14 +499,17 @@ async def serve_document(session_id: str, filename: str):
         encoded_filename = quote(filename, safe='')
         content_disposition = f"inline; filename*=UTF-8''{encoded_filename}"
 
+    headers = {
+        "Content-Disposition": content_disposition,
+        "Cache-Control": "public, max-age=3600",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
+        "Access-Control-Allow-Headers": "*",
+        **extra_headers,
+    }
+
     return FileResponse(
         file_path,
         media_type=mime_type,
-        headers={
-            "Content-Disposition": content_disposition,
-            "Cache-Control": "public, max-age=3600",
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET, OPTIONS",
-            "Access-Control-Allow-Headers": "*",
-        },
+        headers=headers,
     )

@@ -204,6 +204,10 @@ export function ResultsDisplay() {
     if (isCreatingSession) return; // Prevent duplicate clicks
 
     setIsCreatingSession(true);
+
+    // Show immediate feedback
+    showToast('info', 'Preparing files for review...');
+
     try {
       const successfulResults = streamingResults.filter(
         r => r.status === 'success' && r.structured_data
@@ -234,9 +238,9 @@ export function ResultsDisplay() {
           processing_metadata: {
             model_used: firstResult.model_fields?.join(', ') || '',
             processing_time: firstResult.processing_time,
-            markdown_content: firstResult.markdown_content,
+            markdown_content: firstResult.markdown_content, // Backend will store this separately
             was_summarized: firstResult.was_summarized,
-            original_file_path: firstResult.file_path  // Add original file path
+            original_file_path: firstResult.file_path
           },
           source_file: firstResult.source_file,
           record_count: results.length
