@@ -365,6 +365,8 @@ async def serve_document_options(session_id: str, filename: str):
 @router.get("/api/review/documents/{session_id}/{filename}")
 async def serve_document(session_id: str, filename: str):
     """Serve a document file from the review session"""
+    from urllib.parse import quote
+
     file_path = REVIEW_DOCUMENTS_DIR / session_id / filename
 
     if not file_path.exists():
@@ -374,11 +376,23 @@ async def serve_document(session_id: str, filename: str):
     if mime_type is None:
         mime_type = "application/octet-stream"
 
+    # RFC 5987 encoding for non-ASCII filenames in Content-Disposition header
+    # Use both filename (ASCII fallback) and filename* (UTF-8 encoded) for maximum compatibility
+    try:
+        # Try to encode as ASCII - if it works, use simple format
+        filename.encode('ascii')
+        content_disposition = f"inline; filename={filename}"
+    except UnicodeEncodeError:
+        # Contains non-ASCII characters - use RFC 5987 encoding
+        # filename* = UTF-8''encoded_filename (UTF-8 with percent encoding)
+        encoded_filename = quote(filename, safe='')
+        content_disposition = f"inline; filename*=UTF-8''{encoded_filename}"
+
     return FileResponse(
         file_path,
         media_type=mime_type,
         headers={
-            "Content-Disposition": f"inline; filename={filename}",
+            "Content-Disposition": content_disposition,
             "Cache-Control": "public, max-age=3600",
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "GET, OPTIONS",

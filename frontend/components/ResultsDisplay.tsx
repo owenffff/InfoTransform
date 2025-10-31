@@ -36,6 +36,8 @@ export function ResultsDisplay() {
   const prevFailedCount = useRef(0);
   // Track validation details open state for each failed file
   const [validationDetailsOpen, setValidationDetailsOpen] = useState<Record<string, boolean>>({});
+  // Track review workspace creation
+  const [isCreatingSession, setIsCreatingSession] = useState(false);
   
   // Track new results for animation and auto-scroll
   useEffect(() => {
@@ -199,18 +201,21 @@ export function ResultsDisplay() {
   const router = useRouter();
   
   const handleOpenReviewWorkspace = async () => {
+    if (isCreatingSession) return; // Prevent duplicate clicks
+
+    setIsCreatingSession(true);
     try {
       const successfulResults = streamingResults.filter(
         r => r.status === 'success' && r.structured_data
       );
-      
+
       if (successfulResults.length === 0) {
         showToast('error', 'No successful results to review');
         return;
       }
 
       const fileGroups = new Map<string, typeof successfulResults>();
-      
+
       for (const result of successfulResults) {
         const key = result.source_file || result.filename;
         if (!fileGroups.has(key)) {
@@ -243,6 +248,8 @@ export function ResultsDisplay() {
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Failed to open review workspace';
       showToast('error', msg);
+    } finally {
+      setIsCreatingSession(false);
     }
   };
 
@@ -323,10 +330,23 @@ export function ResultsDisplay() {
               {successfulResults.length > 0 && !isProcessing && (
                 <button
                   onClick={handleOpenReviewWorkspace}
-                  className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-brand-orange-500 border border-transparent rounded-md shadow-sm hover:bg-brand-orange-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-orange-500"
+                  disabled={isCreatingSession}
+                  className={cn(
+                    "inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-brand-orange-500 border border-transparent rounded-md shadow-sm hover:bg-brand-orange-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-orange-500",
+                    isCreatingSession && "opacity-60 cursor-not-allowed pointer-events-none"
+                  )}
                 >
-                  <UserCheck className="w-4 h-4 mr-2" />
-                  Review Workspace
+                  {isCreatingSession ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <UserCheck className="w-4 h-4 mr-2" />
+                      Review Workspace
+                    </>
+                  )}
                 </button>
               )}
               <Select value={downloadFormat} onValueChange={(v) => setDownloadFormat(v as 'excel' | 'csv')}>

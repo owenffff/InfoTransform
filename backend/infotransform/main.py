@@ -57,6 +57,18 @@ def init_processors():
 async def lifespan(app: FastAPI):
     """Manage application lifespan"""
     # Startup
+
+    # Configure uvicorn's access logger to use UTF-8 encoding
+    # This prevents UnicodeEncodeError when logging requests with non-ASCII characters
+    import logging
+    for handler in logging.getLogger("uvicorn.access").handlers:
+        if hasattr(handler, 'stream') and hasattr(handler.stream, 'reconfigure'):
+            try:
+                handler.stream.reconfigure(encoding='utf-8', errors='replace')
+                logger.info("Configured uvicorn access logger to use UTF-8 encoding")
+            except Exception as e:
+                logger.warning(f"Could not configure UTF-8 encoding for uvicorn logger: {e}")
+
     if init_processors():
         print("[OK] Processors initialized successfully")
 
@@ -311,6 +323,23 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 # Custom exception handler for better error responses
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
+    # Don't interfere with file serving endpoints - they handle their own errors
+    # This prevents encoding issues with non-ASCII filenames from breaking FileResponse
+    if request.url.path.startswith("/api/review/documents/"):
+        # Let the FileResponse handle its own errors
+        logger.debug(f"Skipping exception handler for file serving endpoint: {request.url.path}")
+        raise exc
+
+    # Don't catch UnicodeEncodeError from logging
+    # This happens when uvicorn tries to log requests with non-ASCII characters
+    if isinstance(exc, UnicodeEncodeError):
+        logger.warning(f"Unicode encoding error in logging: {exc}")
+        # Return a proper error response instead of re-raising
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "error": "Internal encoding error - request logged with non-ASCII characters"}
+        )
+
     return JSONResponse(status_code=500, content={"success": False, "error": str(exc)})
 
 

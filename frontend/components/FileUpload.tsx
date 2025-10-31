@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { 
-  Upload, 
-  FileText, 
-  Image, 
-  Music, 
-  FileArchive, 
+import {
+  Upload,
+  FileText,
+  Image,
+  Music,
+  FileArchive,
   File,
   X,
   Search,
@@ -50,10 +50,17 @@ interface FileGroup {
 }
 
 export function FileUpload() {
-  const { selectedFiles, setSelectedFiles } = useStore();
+  const { selectedFiles, setSelectedFiles, isProcessing } = useStore();
   const [searchQuery, setSearchQuery] = useState('');
   // Toggle for grouping files by type (replaces "Summary/List" dropdown)
   const [groupByType, setGroupByType] = useState<boolean>(true);
+  // Track if component is mounted on client side
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Ensure dropzone is only fully interactive after client-side hydration
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length === 0) {
@@ -104,7 +111,10 @@ export function FileUpload() {
       'text/markdown': ['.md'],
       'text/plain': ['.txt']
     },
-    multiple: true
+    multiple: true,
+    disabled: isProcessing || !isMounted,
+    noClick: !isMounted,
+    noDrag: !isMounted
   });
 
   // Filter files by search; preserve insertion order (recently added last)
@@ -205,38 +215,40 @@ export function FileUpload() {
           className={cn(
             'relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer',
             'transition-all duration-300 hover:border-primary hover:bg-secondary/50',
-            isDragActive && 'border-primary bg-secondary'
+            isDragActive && 'border-primary bg-secondary',
+            isProcessing && 'opacity-60 cursor-not-allowed pointer-events-none'
           )}
         >
           <input {...getInputProps()} />
-          
+
           <Upload className={cn(
             "w-12 h-12 text-muted-foreground mb-4 mx-auto transition-all duration-300",
             isDragActive && "text-primary scale-110"
           )} />
-          
+
           <p className="text-lg font-semibold text-foreground mb-2">
-            {isDragActive ? 'Drop files here...' : 'Drop files here or click to browse'}
+            {isProcessing ? 'Processing files...' : isDragActive ? 'Drop files here...' : 'Drop files here or click to browse'}
           </p>
-          
+
           <p className="text-sm text-muted-foreground">
-            Supported: Images, PDFs, Documents, Audio, ZIP archives
+            {isProcessing ? 'Upload disabled during processing' : 'Supported: Images, PDFs, Documents, Audio, ZIP archives'}
           </p>
         </div>
 
         {selectedFiles.length > 0 && (
           <>
-            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center" onClick={(e) => e.stopPropagation()}>
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input
                   placeholder="Search files..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
                   className="pl-9"
                 />
               </div>
-              
+
               <div className="flex gap-3 items-center ml-auto">
                 <div className="flex items-center gap-2">
                   <Label htmlFor="groupByType" className="whitespace-nowrap text-sm">
@@ -252,7 +264,10 @@ export function FileUpload() {
 
                 <Button
                   variant="destructive"
-                  onClick={handleClearAll}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleClearAll();
+                  }}
                   className="shadow-md hover:shadow-lg"
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
@@ -295,7 +310,8 @@ export function FileUpload() {
                               variant="ghost"
                               size="icon"
                               className="h-6 w-6"
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 const newFiles = selectedFiles.filter(f => f !== file);
                                 setSelectedFiles(newFiles);
                               }}
@@ -331,7 +347,8 @@ export function FileUpload() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               const newFiles = selectedFiles.filter((_, i) => i !== originalIndex);
                               setSelectedFiles(newFiles);
                             }}

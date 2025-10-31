@@ -69,9 +69,67 @@ function SourceViewer({ file, onSwitchToMarkdown }: { file: FileReviewStatus; on
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
   const [imageErrorDetails, setImageErrorDetails] = useState<{ status?: number; message: string }>({ message: 'Unknown error' });
-  const [imageRetryKey, setImageRetryKey] = useState(0); // Force re-render on retry
+  const [imageRetryKey, setImageRetryKey] = useState(0);
   const [pdfError, setPdfError] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(true);
+  const [audioError, setAudioError] = useState(false);
+  const [audioLoading, setAudioLoading] = useState(true);
+
+  // Reset all states when file changes
+  useEffect(() => {
+    setImageLoading(true);
+    setImageError(false);
+    setImageErrorDetails({ message: 'Unknown error' });
+    setPdfLoading(true);
+    setPdfError(false);
+    setAudioLoading(true);
+    setAudioError(false);
+  }, [file.file_id]);
+
+  // Timeout mechanism for image loading
+  useEffect(() => {
+    if (file.document_type !== 'image') return;
+
+    const timeout = setTimeout(() => {
+      if (imageLoading && !imageError) {
+        setImageLoading(false);
+        setImageError(true);
+        setImageErrorDetails({
+          message: 'Image loading timed out after 10 seconds'
+        });
+      }
+    }, 10000); // 10 second timeout
+
+    return () => clearTimeout(timeout);
+  }, [file.file_id, file.document_type, imageLoading, imageError]);
+
+  // Timeout mechanism for PDF loading
+  useEffect(() => {
+    if (file.document_type !== 'pdf') return;
+
+    const timeout = setTimeout(() => {
+      if (pdfLoading && !pdfError) {
+        setPdfLoading(false);
+        setPdfError(true);
+      }
+    }, 15000); // 15 second timeout
+
+    return () => clearTimeout(timeout);
+  }, [file.file_id, file.document_type, pdfLoading, pdfError]);
+
+  // Timeout mechanism for audio loading
+  useEffect(() => {
+    if (file.document_type !== 'audio') return;
+
+    const timeout = setTimeout(() => {
+      if (audioLoading && !audioError) {
+        setAudioLoading(false);
+        setAudioError(true);
+      }
+    }, 8000); // 8 second timeout
+
+    return () => clearTimeout(timeout);
+  }, [file.file_id, file.document_type, audioLoading, audioError]);
 
   if (!canPreviewNatively(file.document_type) && file.document_type !== 'audio') {
     return <SourceEmptyState file={file} onSwitchToMarkdown={onSwitchToMarkdown} />;
@@ -223,15 +281,70 @@ function SourceViewer({ file, onSwitchToMarkdown }: { file: FileReviewStatus; on
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <audio controls className="w-full">
+              {audioLoading && !audioError && (
+                <div className="flex items-center justify-center p-4 bg-gray-50 rounded-lg">
+                  <Loader2 className="w-5 h-5 animate-spin text-brand-orange-500 mr-2" />
+                  <span className="text-sm text-gray-600">Loading audio...</span>
+                </div>
+              )}
+
+              {audioError && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Audio Playback Failed</AlertTitle>
+                  <AlertDescription>
+                    The audio file could not be loaded. This may be due to an unsupported format, network error, or the file may be corrupted.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <audio
+                key={`audio-${file.file_id}`}
+                controls
+                className="w-full"
+                style={{ display: audioError ? 'none' : 'block' }}
+                onLoadedData={() => {
+                  console.log('[DocumentViewer] Audio loaded successfully');
+                  setAudioLoading(false);
+                }}
+                onError={(e) => {
+                  console.error('[DocumentViewer] Audio failed to load:', e);
+                  setAudioLoading(false);
+                  setAudioError(true);
+                }}
+                onCanPlayThrough={() => {
+                  setAudioLoading(false);
+                }}
+              >
                 <source src={getDocumentUrl(file.document_url)} />
                 Your browser does not support the audio element.
               </audio>
-              
+
+              {audioError && (
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setAudioError(false);
+                      setAudioLoading(true);
+                    }}
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Retry
+                  </Button>
+                  <Button asChild className="bg-brand-orange-500 hover:bg-brand-orange-600">
+                    <a href={getDocumentUrl(file.document_url)} download={file.filename}>
+                      <Download className="w-4 h-4 mr-2" />
+                      Download Audio
+                    </a>
+                  </Button>
+                </div>
+              )}
+
               <Alert>
                 <FileText className="h-4 w-4" />
                 <AlertDescription>
-                  Switch to the Markdown tab to view the audio transcript
+                  💡 Switch to the Markdown tab to view the audio transcript
                 </AlertDescription>
               </Alert>
             </CardContent>
@@ -247,7 +360,8 @@ function SourceViewer({ file, onSwitchToMarkdown }: { file: FileReviewStatus; on
         {pdfLoading && !pdfError && (
           <div className="space-y-3">
             <Skeleton className="h-[calc(100vh-250px)] w-full rounded-lg" />
-            <div className="flex items-center justify-center">
+            <div className="flex items-center justify-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
               <Skeleton className="h-4 w-[150px]" />
             </div>
           </div>
@@ -261,7 +375,13 @@ function SourceViewer({ file, onSwitchToMarkdown }: { file: FileReviewStatus; on
                   <div className="flex-1">
                     <CardTitle className="text-destructive">PDF Preview Failed</CardTitle>
                     <CardDescription className="mt-2">
-                      Your browser may not support inline PDF viewing or the file could not be loaded.
+                      The PDF could not be displayed. This may be due to:
+                      <ul className="list-disc list-inside mt-2 space-y-1">
+                        <li>Browser doesn't support inline PDF viewing</li>
+                        <li>PDF took too long to load (timeout after 15 seconds)</li>
+                        <li>Network connection issue</li>
+                        <li>File may be corrupted or password-protected</li>
+                      </ul>
                     </CardDescription>
                   </div>
                 </div>
@@ -276,8 +396,8 @@ function SourceViewer({ file, onSwitchToMarkdown }: { file: FileReviewStatus; on
                 </Alert>
 
                 <div className="flex gap-3">
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     onClick={() => {
                       setPdfError(false);
                       setPdfLoading(true);
@@ -287,41 +407,38 @@ function SourceViewer({ file, onSwitchToMarkdown }: { file: FileReviewStatus; on
                     Retry Preview
                   </Button>
                   <Button asChild className="bg-brand-orange-500 hover:bg-brand-orange-600">
-                    <a href={getDocumentUrl(file.document_url)} download={file.filename}>
+                    <a href={getDocumentUrl(file.document_url)} download={file.filename} target="_blank" rel="noopener noreferrer">
                       <Download className="w-4 h-4 mr-2" />
-                      Download PDF
+                      Open in New Tab
                     </a>
                   </Button>
                 </div>
-                
+
                 <p className="text-xs text-muted-foreground">
-                  Tip: Switch to the Markdown tab to view extracted text content
+                  💡 Tip: Switch to the Markdown tab to view extracted text content, or open the PDF in a new tab for better compatibility
                 </p>
               </CardContent>
             </Card>
           </div>
         )}
-        <object
-          data={getDocumentUrl(file.document_url)}
-          type="application/pdf"
-          className="w-full h-[calc(100vh-200px)] border-0"
-          style={{ display: pdfError ? 'none' : 'block' }}
-          onLoad={() => setPdfLoading(false)}
-          onError={() => {
-            setPdfLoading(false);
-            setPdfError(true);
-          }}
-        >
-          <embed
+        {!pdfError && (
+          <iframe
+            key={`pdf-${file.file_id}`}
             src={getDocumentUrl(file.document_url)}
-            type="application/pdf"
-            className="w-full h-[calc(100vh-200px)] border-0"
+            className="w-full h-[calc(100vh-200px)] border border-gray-200 rounded-lg"
+            style={{ display: pdfLoading ? 'none' : 'block' }}
+            title={`PDF: ${file.filename}`}
+            onLoad={() => {
+              console.log('[DocumentViewer] PDF iframe loaded successfully');
+              setPdfLoading(false);
+            }}
             onError={() => {
+              console.error('[DocumentViewer] PDF iframe failed to load');
               setPdfLoading(false);
               setPdfError(true);
             }}
           />
-        </object>
+        )}
       </div>
     );
   }
