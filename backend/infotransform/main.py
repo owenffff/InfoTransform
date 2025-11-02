@@ -353,5 +353,6 @@ if __name__ == "__main__":
         host=config.get("api.host", "0.0.0.0"),
         port=config.PORT,
         reload=True,
+        reload_dirs=["backend/infotransform"],  # Only watch source code
         log_level="info",
     )

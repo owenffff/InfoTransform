@@ -224,12 +224,12 @@ processing:
   # Controls how files are analyzed by AI to extract structured information
   # Note: Timeout configuration is in performance.yaml (ai_processing.timeout_per_batch)
   analysis:
-    max_concurrent: 10                  # How many files can be analyzed by AI simultaneously
+    max_concurrent: 20                  # How many files can be analyzed by AI simultaneously
   
   # File Conversion Stage (Step 1: raw files → markdown)
   # Controls how uploaded files are converted to markdown text
   conversion:
-    max_concurrent: 10                 # How many files can be converted to markdown simultaneously
+    max_concurrent: 20                 # How many files can be converted to markdown simultaneously
     max_zip_size_mb: 100              # Maximum size for ZIP file uploads
     temp_extract_dir: temp_extracts    # Temporary directory for ZIP file extraction
 
@@ -257,3 +257,24 @@ database:
 features:
   streaming_responses: true            # Stream results in real-time
   batch_processing: true               # Allow processing multiple files
+
+# ============================================================================
+# PERFORMANCE CONFIGURATION
+# ============================================================================
+# Advanced settings for parallel processing and resource utilization
+
+performance:
+  # Markdown Conversion Stage (Step 1: raw files → markdown)
+  markdown_conversion:
+    max_workers: 20                    # Number of worker processes/threads for markdown conversion
+    worker_type: "process"             # Use "process" for better CPU utilization (bypasses GIL) or "thread" for lower memory
+    timeout_per_file: 120              # Timeout for processing a single file (seconds)
+
+  # AI Processing Stage (Step 3: markdown → structured data)
+  ai_processing:
+    max_concurrent_items: 20           # Maximum concurrent AI API calls
+
+  # Monitoring Settings
+  monitoring:
+    enable_metrics: true               # Track performance metrics
+    slow_operation_threshold: 5.0      # Log operations slower than this (seconds)
