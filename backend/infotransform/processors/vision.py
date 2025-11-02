@@ -20,6 +20,7 @@ except Exception:  # pragma: no cover
 
 from openai import OpenAI
 from infotransform.config import config
+from infotransform.processors.pdf_processor import PdfProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -29,17 +30,11 @@ class VisionProcessor:
         """Initialize the vision processor with OpenAI-compatible client"""
         self.client = OpenAI(api_key=config.API_KEY, base_url=config.BASE_URL)
 
-        # Initialize Markitdown with LLM support and optional Azure Document Intelligence
-        init_params = {"llm_client": self.client, "llm_model": config.MODEL_NAME}
+        # Initialize Markitdown with LLM support (no Azure - for non-PDF images only)
+        self.md = MarkItDown(llm_client=self.client, llm_model=config.MODEL_NAME)
 
-        # Add Azure Document Intelligence endpoint if configured
-        if config.DOCINTEL_ENDPOINT:
-            init_params["docintel_endpoint"] = config.DOCINTEL_ENDPOINT
-            print(
-                f"[OK] Azure Document Intelligence enabled: {config.DOCINTEL_ENDPOINT}"
-            )
-
-        self.md = MarkItDown(**init_params)
+        # Initialize PDF processor for intelligent PDF handling
+        self.pdf_processor = PdfProcessor()
 
     def process_file(self, file_path):
         """
@@ -54,8 +49,14 @@ class VisionProcessor:
         filename = os.path.basename(file_path)
         is_pdf = filename.lower().endswith(".pdf")
 
+        # Route PDFs to the intelligent PDF processor
+        if is_pdf:
+            logger.debug(f"Routing PDF {filename} to PdfProcessor")
+            return self.pdf_processor.process_pdf(file_path)
+
+        # Process non-PDF images with markitdown
         try:
-            logger.debug(f"Processing file: {filename}")
+            logger.debug(f"Processing image file: {filename}")
 
             # Validate file exists and get basic info
             if not os.path.exists(file_path):
@@ -70,36 +71,13 @@ class VisionProcessor:
 
             if not hasattr(result, "text_content") or not result.text_content:
                 logger.warning(f"No text content extracted from {filename}")
-
-                # Provide specific guidance for PDFs
-                if is_pdf:
-                    if not config.DOCINTEL_ENDPOINT:
-                        error_msg = (
-                            "Could not extract text from PDF. This may be an image-based (scanned) PDF. "
-                            "To process scanned PDFs, configure Azure Document Intelligence by setting "
-                            "AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT in your .env file. "
-                            "See README.md for setup instructions."
-                        )
-                    else:
-                        error_msg = "Could not extract text from PDF. The file may be corrupted or in an unsupported format."
-                else:
-                    error_msg = "Could not extract text from image."
-
                 return {
                     "success": False,
-                    "error": error_msg,
+                    "error": "Could not extract text from image.",
                     "error_type": "ocr_failure",
                     "filename": filename,
                     "type": "vision",
-                    "azure_configured": bool(config.DOCINTEL_ENDPOINT),
                 }
-
-            # Check if extracted content is suspiciously short for a PDF (might be image-based)
-            if is_pdf and len(result.text_content.strip()) < 100:
-                logger.warning(
-                    f"PDF {filename} extracted very little text ({len(result.text_content)} chars). "
-                    f"This may be an image-based PDF. Azure Document Intelligence: {'enabled' if config.DOCINTEL_ENDPOINT else 'not configured'}"
-                )
 
             logger.info(f"Successfully processed {filename} ({file_size} bytes)")
 
@@ -114,24 +92,14 @@ class VisionProcessor:
             logger.error(f"Error processing {filename}: {type(e).__name__}: {str(e)}")
             logger.debug(f"Full traceback for {filename}:", exc_info=True)
 
-            # Categorise common error types so upper layers can react properly
+            # Categorize common error types
             error_msg = str(e).lower()
-            if isinstance(e, PDFPasswordIncorrect) or "password" in error_msg:
-                error_type = "password_required"
-                pretty_msg = "PDF is password-protected."
-            elif "corrupt" in error_msg or "invalid" in error_msg or "bad" in error_msg:
+            if "corrupt" in error_msg or "invalid" in error_msg or "bad" in error_msg:
                 error_type = "corrupt_file"
                 pretty_msg = "File appears to be corrupted."
             else:
                 error_type = "generic"
-                # Provide Azure guidance for PDFs if not configured
-                if is_pdf and not config.DOCINTEL_ENDPOINT:
-                    pretty_msg = (
-                        "File processing failed. For scanned/image-based PDFs, configure Azure Document Intelligence. "
-                        "Set AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT in your .env file. See README.md for details."
-                    )
-                else:
-                    pretty_msg = "File processing failed."
+                pretty_msg = "File processing failed."
 
             return {
                 "success": False,
@@ -139,7 +107,6 @@ class VisionProcessor:
                 "error_type": error_type,
                 "filename": filename,
                 "type": "vision",
-                "azure_configured": bool(config.DOCINTEL_ENDPOINT),
             }
 
     def is_supported_file(self, filename):

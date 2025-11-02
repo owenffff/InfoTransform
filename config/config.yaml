@@ -219,7 +219,17 @@ processing:
         - msg
       archives:
         - zip
-  
+
+  # PDF Processing Settings
+  # Controls intelligent detection and routing for text-based vs image-based PDFs
+  pdf:
+    detection:
+      min_chars_per_page: 50           # Pages with fewer characters are considered scanned/image-based
+      text_page_threshold_percent: 70  # If less than this % of pages have text, use OCR for entire document
+    extraction:
+      prefer_markitdown: true           # Use markitdown first (fast/free) for text-based PDFs
+      fallback_to_ocr: true            # Use Azure OCR for image-based/scanned PDFs
+
   # AI Analysis Stage (Step 3: markdown → structured data)
   # Controls how files are analyzed by AI to extract structured information
   # Note: Timeout configuration is in performance.yaml (ai_processing.timeout_per_batch)
